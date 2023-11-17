@@ -733,9 +733,6 @@ function Chat:open()
       self:addQuestion(value)
       if self.role == ROLE_USER then
         self:showProgess()
-        -- local params = vim.tbl_extend("keep", { stream = true, messages = self:toMessages() }, Settings.params)
-        -- local params = vim.tbl_extend("keep", { stream = false, prompt = self:toMessages() }, Settings.params)
-        -- local params = vim.tbl_extend("keep", { stream = true, prompt = self:toMessages() }, Settings.params)
         local params = vim.tbl_extend("keep", {
           stream = true,
           context = self.session:previous_context(),

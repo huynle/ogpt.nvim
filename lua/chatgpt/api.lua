@@ -87,7 +87,17 @@ function Api.edits(custom_params, cb)
   Api.make_call(Api.CHAT_COMPLETIONS_URL, params, cb)
 end
 
+function Api.conform_to_ollama(params)
+  local messages = params.messages
+  params.messages = nil
+  params.prompt = messages[#messages].content
+  params.stream = false
+  return params
+end
+
 function Api.make_call(url, params, cb)
+  params = Api.conform_to_ollama(params)
+
   TMP_MSG_FILENAME = os.tmpname()
   local f = io.open(TMP_MSG_FILENAME, "w+")
   if f == nil then

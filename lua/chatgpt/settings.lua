@@ -85,6 +85,16 @@ M.get_settings_panel = function(type, default_params)
     end
   end
 
+  for _, key in pairs(params_order) do
+    if M.params.options and M.params.options[key] ~= nil then
+      local vt = {
+        { Config.options.settings_window.setting_sign .. key .. ": ", "ErrorMsg" },
+        { M.params.options[key] .. "", "Identifier" },
+      }
+      table.insert(details, vt)
+    end
+  end
+
   local line = 1
   local empty_lines = {}
   for _ = 1, #details do
