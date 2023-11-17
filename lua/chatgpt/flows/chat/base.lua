@@ -155,6 +155,7 @@ function Chat:add(type, text, usage)
     type = type,
     text = text,
     usage = usage,
+    context = self.session:previous_context(),
   })
   self:_add(type, text, usage, idx)
   self:render_role()
@@ -183,6 +184,7 @@ function Chat:_add(type, text, usage, idx)
     usage = usage or {},
     type = type,
     text = text,
+    context = {},
     lines = lines,
     nr_of_lines = nr_of_lines,
     start_line = start_line,
@@ -204,7 +206,7 @@ function Chat:addAnswer(text, usage)
   self:add(ANSWER, text, usage)
 end
 
-function Chat:addAnswerPartial(text, state)
+function Chat:addAnswerPartial(text, state, context)
   if state == "ERROR" then
     return self:addAnswer(text, {})
   end
@@ -220,6 +222,7 @@ function Chat:addAnswerPartial(text, state)
     local idx = self.session:add_item({
       type = ANSWER,
       text = text,
+      context = context,
       usage = usage,
     })
 
@@ -240,6 +243,7 @@ function Chat:addAnswerPartial(text, state)
       nr_of_lines = nr_of_lines,
       start_line = start_line,
       end_line = end_line,
+      context = context,
     })
     self.selectedIndex = self.selectedIndex + 1
     vim.api.nvim_buf_set_lines(self.chat_window.bufnr, -1, -1, false, { "", "" })
@@ -490,7 +494,18 @@ function Chat:toMessages()
     end
     table.insert(messages, { role = role, content = msg.text })
   end
-  return messages
+  -- return self:toOllama(messages)
+  return messages[#messages].content
+end
+
+function Chat:toOllama(messages)
+  local output = ""
+  for _, entry in ipairs(messages) do
+    if entry.content then
+      output = output .. entry.role .. ": " .. entry.content .. "\n\n"
+    end
+  end
+  return output
 end
 
 function Chat:count()
@@ -718,9 +733,16 @@ function Chat:open()
       self:addQuestion(value)
       if self.role == ROLE_USER then
         self:showProgess()
-        local params = vim.tbl_extend("keep", { stream = true, messages = self:toMessages() }, Settings.params)
-        Api.chat_completions(params, function(answer, state)
-          self:addAnswerPartial(answer, state)
+        -- local params = vim.tbl_extend("keep", { stream = true, messages = self:toMessages() }, Settings.params)
+        -- local params = vim.tbl_extend("keep", { stream = false, prompt = self:toMessages() }, Settings.params)
+        -- local params = vim.tbl_extend("keep", { stream = true, prompt = self:toMessages() }, Settings.params)
+        local params = vim.tbl_extend("keep", {
+          stream = true,
+          context = self.session:previous_context(),
+          prompt = self.messages[#self.messages].text,
+        }, Settings.params)
+        Api.chat_completions(params, function(answer, state, context)
+          self:addAnswerPartial(answer, state, context)
         end, self.should_stop)
       end
     end,

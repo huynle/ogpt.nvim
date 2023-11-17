@@ -64,6 +64,13 @@ function Session:to_export()
   }
 end
 
+function Session:previous_context()
+  if #self.conversation > 1 then
+    return self.conversation[#self.conversation].context
+  end
+  return {}
+end
+
 function Session:add_item(item)
   if self.updated_at == self.name and item.type == 1 then
     self.name = item.text

@@ -40,27 +40,28 @@ function Api.chat_completions(custom_params, cb, should_stop)
             return
           end
         end
-        for line in chunk:gmatch("[^\n]+") do
-          local raw_json = string.gsub(line, "^data: ", "")
-          if raw_json == "[DONE]" then
-            cb(raw_chunks, "END")
-          else
-            ok, json = pcall(vim.json.decode, raw_json)
-            if ok and json ~= nil then
-              if
-                json
-                and json.choices
-                and json.choices[1]
-                and json.choices[1].delta
-                and json.choices[1].delta.content
-              then
-                cb(json.choices[1].delta.content, state)
-                raw_chunks = raw_chunks .. json.choices[1].delta.content
-                state = "CONTINUE"
-              end
-            end
+        -- dump(chunk)
+        -- for line in chunk:gmatch("[^\n]+") do
+        -- local raw_json = string.gsub(line, "^data: ", "")
+        if json and json.done == true then
+          cb(raw_chunks, "END", json.context)
+        else
+          -- ok, json = pcall(vim.json.decode, raw_json)
+          -- if ok and json ~= nil then
+          if
+            json and json.response
+            -- and json.choices
+            -- and json.choices[1]
+            -- and json.choices[1].delta
+            -- and json.choices[1].delta.content
+          then
+            cb(json.response, state)
+            raw_chunks = raw_chunks .. json.response
+            state = "CONTINUE"
           end
+          -- end
         end
+        -- end
       end,
       function(err, _)
         cb(err, "ERROR")
@@ -128,24 +129,24 @@ Api.handle_response = vim.schedule_wrap(function(response, exit_code, cb)
   elseif json.error then
     cb("// API ERROR: " .. json.error.message)
   else
-    local message = json.choices[1].message
+    local message = json.response
     if message ~= nil then
       local message_response
-      local first_message = json.choices[1].message
+      local first_message = json.response
       if first_message.function_call then
         message_response = vim.fn.json_decode(first_message.function_call.arguments)
       else
-        message_response = first_message.content
+        message_response = first_message
       end
       if (type(message_response) == "string" and message_response ~= "") or type(message_response) == "table" then
-        cb(message_response, json.usage)
+        cb(message_response, "CONTINUE")
       else
         cb("...")
       end
     else
-      local response_text = json.choices[1].text
+      local response_text = json.response
       if type(response_text) == "string" and response_text ~= "" then
-        cb(response_text, json.usage)
+        cb(response_text, "CONTINUE")
       else
         cb("...")
       end
@@ -266,8 +267,8 @@ end
 function Api.setup()
   loadApiHost("OPENAI_API_HOST", "OPENAI_API_HOST", "api_host_cmd", function(value)
     Api.OPENAI_API_HOST = value
-    Api.COMPLETIONS_URL = ensureUrlProtocol(Api.OPENAI_API_HOST .. "/v1/completions")
-    Api.CHAT_COMPLETIONS_URL = ensureUrlProtocol(Api.OPENAI_API_HOST .. "/v1/chat/completions")
+    Api.COMPLETIONS_URL = ensureUrlProtocol(Api.OPENAI_API_HOST .. "/api/generate")
+    Api.CHAT_COMPLETIONS_URL = ensureUrlProtocol(Api.OPENAI_API_HOST .. "/api/generate")
     Api.EDITS_URL = ensureUrlProtocol(Api.OPENAI_API_HOST .. "/v1/edits")
   end, "api.openai.com")
 

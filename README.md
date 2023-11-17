@@ -112,12 +112,12 @@ Note that the `api_key_cmd` arguments are split by whitespace. If you need white
 Plugin exposes following commands:
 
 #### `ChatGPT`
-`ChatGPT` command which opens interactive window using the `gpt-3.5-turbo`
+`ChatGPT` command which opens interactive window using the `mistral:7b`
 model.
 (also known as `ChatGPT`)
 
 #### `ChatGPTActAs`
-`ChatGPTActAs` command which opens a prompt selection from [Awesome ChatGPT Prompts](https://github.com/f/awesome-chatgpt-prompts) to be used with the `gpt-3.5-turbo` model.
+`ChatGPTActAs` command which opens a prompt selection from [Awesome ChatGPT Prompts](https://github.com/f/awesome-chatgpt-prompts) to be used with the `mistral:7b` model.
 
 ![preview image](https://github.com/jackMort/ChatGPT.nvim/blob/media/preview-3.png?raw=true)
 
@@ -162,7 +162,7 @@ wk.register({
   10. `roxygen_edit`
   11. `code_readability_analysis` -- see [demo](https://youtu.be/zlU3YGGv2zY)
 
-All the above actions are using `gpt-3.5-turbo` model.
+All the above actions are using `mistral:7b` model.
 
 It is possible to define custom actions with a JSON file. See [`actions.json`](./lua/chatgpt/flows/actions/actions.json) for an example. The path of custom actions can be set in the config (see `actions_paths` field in the config example above).
 
@@ -175,7 +175,7 @@ An example of custom action may look like this: (`#` marks comments)
       "template": "A template using possible variable: {{filetype}} (neovim filetype), {{input}} (the selected text) an {{argument}} (provided on the command line)",
       "strategy": "replace", # or "display" or "append" or "edit"
       "params": { # parameters according to the official OpenAI API
-        "model": "gpt-3.5-turbo", # or any other model supported by `"type"` in the OpenAI API, use the playground for reference
+        "model": "mistral:7b", # or any other model supported by `"type"` in the OpenAI API, use the playground for reference
         "stop": [
           "```" # a string used to stop the model
         ]
