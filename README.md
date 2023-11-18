@@ -11,6 +11,11 @@ Because of this, this repo is a hack together solution for me to test out the lo
 
 **THIS PLUGIN MAY NOT LAST VERY LONG, depending on the state of Ollama.**
 
+TO USE with local Ollama
+```sh
+OPENAI_API_HOST=http://localhost:11434 OPENAI_API_KEY=" " nvim
+```
+
 # ChatGPT.nvim
 
 ![GitHub Workflow Status](http://img.shields.io/github/actions/workflow/status/jackMort/ChatGPT.nvim/default.yml?branch=main&style=for-the-badge)
