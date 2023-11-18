@@ -44,6 +44,7 @@ function ChatAction:render_template()
     or self:get_selected_text()
   local data = {
     filetype = self:get_filetype(),
+    lang = self:get_filetype(),
     input = input,
   }
   data = vim.tbl_extend("force", {}, data, self.variables)

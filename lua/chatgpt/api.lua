@@ -1,11 +1,13 @@
 local job = require("plenary.job")
 local Config = require("chatgpt.config")
 local logger = require("chatgpt.common.logger")
+local Utils = require("chatgpt.utils")
 
 local Api = {}
 
 function Api.completions(custom_params, cb)
   local params = vim.tbl_extend("keep", custom_params, Config.options.openai_params)
+  params.stream = false
   Api.make_call(Api.COMPLETIONS_URL, params, cb)
 end
 
@@ -72,13 +74,15 @@ function Api.chat_completions(custom_params, cb, should_stop)
       end
     )
   else
+    params.stream = false
     Api.make_call(Api.CHAT_COMPLETIONS_URL, params, cb)
   end
 end
 
 function Api.edits(custom_params, cb)
   local params = vim.tbl_extend("keep", custom_params, Config.options.openai_edit_params)
-  if params.model == "text-davinci-edit-001" or params.model == "code-davinci-edit-001" then
+  params.stream = false
+  if params.model == "codellama:13b" or params.model == "codellama:13b" then
     vim.notify("Edit models are deprecated", vim.log.levels.WARN)
     Api.make_call(Api.EDITS_URL, params, cb)
     return
@@ -87,16 +91,8 @@ function Api.edits(custom_params, cb)
   Api.make_call(Api.CHAT_COMPLETIONS_URL, params, cb)
 end
 
-function Api.conform_to_ollama(params)
-  local messages = params.messages
-  params.messages = nil
-  params.prompt = messages[#messages].content
-  params.stream = false
-  return params
-end
-
 function Api.make_call(url, params, cb)
-  params = Api.conform_to_ollama(params)
+  params = Utils.conform_to_ollama(params)
 
   TMP_MSG_FILENAME = os.tmpname()
   local f = io.open(TMP_MSG_FILENAME, "w+")

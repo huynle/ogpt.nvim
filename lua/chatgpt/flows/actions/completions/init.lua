@@ -65,6 +65,7 @@ function CompletionAction:run()
     self:set_loading(true)
 
     local params = self:get_params()
+    params.stream = false
     Api.completions(params, function(answer, usage)
       self:on_result(answer, usage)
     end)

@@ -146,4 +146,27 @@ function M.match_indentation(input, output)
   return table.concat(lines)
 end
 
+function M.conform_to_ollama(params)
+  if not params.messages then
+    return params
+  end
+
+  local messages = params.messages
+  params.messages = nil
+  params.system = ""
+  params.prompt = ""
+  for _, message in ipairs(messages) do
+    if message.role == "system" then
+      params.system = params.system .. message.content .. "\n"
+    end
+  end
+
+  for _, message in ipairs(messages) do
+    if message.role == "user" then
+      params.prompt = params.prompt .. message.content .. "\n"
+    end
+  end
+  return params
+end
+
 return M

@@ -6,9 +6,11 @@
       "strategy": "replace",
       "params": {
         "model": "mistral:7b",
-        "stop": [
-          "```"
-        ]
+        "options": {
+          "stop": [
+            "```"
+          ]
+        }
       }
     }
   },
@@ -66,9 +68,11 @@
       "strategy": "edit",
       "params": {
         "model": "mistral:7b",
-        "stop": [
-          "```"
-        ]
+        "options": {
+          "stop": [
+            "```"
+          ]
+        }
       }
     }
   },
@@ -79,9 +83,11 @@
       "strategy": "append",
       "params": {
         "model": "mistral:7b",
-        "stop": [
-          "```"
-        ]
+        "options": {
+          "stop": [
+            "```"
+          ]
+        }
       }
     }
   },
