@@ -50,6 +50,7 @@ function EditAction:run()
     self:set_loading(true)
 
     local params = self:get_params()
+    params.stream = false
     Api.edits(params, function(answer, usage)
       self:on_result(answer, usage)
     end)

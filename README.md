@@ -1,3 +1,16 @@
+# NOTES
+First of all, thank you to the author of `ChatGPT.nvim` for creating a seamless framework
+to interact with ChatGPT in neovim!
+
+**THIS IS A FORK of the original ChatGPT.nvim that supports Ollama (<https://ollama.ai/>), which
+allows you to run complete local LLMs.**
+
+Ollama is still in its infancy, so there are numerous pull requests open to expand its capabilities.
+One of which is to conform to the ChatGPT API - <https://github.com/jmorganca/ollama/pull/991>.
+Because of this, this repo is a hack together solution for me to test out the local LLMs that I have running.
+
+**THIS PLUGIN MAY NOT LAST VERY LONG, depending on the state of Ollama.**
+
 # ChatGPT.nvim
 
 ![GitHub Workflow Status](http://img.shields.io/github/actions/workflow/status/jackMort/ChatGPT.nvim/default.yml?branch=main&style=for-the-badge)
