@@ -11,11 +11,21 @@ Because of this, this repo is a hack together solution for me to test out the lo
 
 **THIS PLUGIN MAY NOT LAST VERY LONG, depending on the state of Ollama.**
 
-TO USE with local Ollama
+## Plan for this plugin:
++ Support model selection on the fly, query from Ollama
++ Support model creation on the fly
++ help docs for all parameters
+
+## General usage
+
+TO USE with local Ollama, should be the same as the original ChatGPT.nvim plugin.
+change your API HOST and Key can be empty string.
+
 ```sh
 OPENAI_API_HOST=http://localhost:11434 OPENAI_API_KEY=" " nvim
 ```
 
+----
 # ChatGPT.nvim
 
 ![GitHub Workflow Status](http://img.shields.io/github/actions/workflow/status/jackMort/ChatGPT.nvim/default.yml?branch=main&style=for-the-badge)

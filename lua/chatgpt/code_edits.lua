@@ -41,10 +41,10 @@ local build_edit_messages = function(input, instructions, use_functions_for_edit
   local system_message_content
   if use_functions_for_edits then
     system_message_content =
-      "Apply the changes requested by the user to the code. Output ONLY the changed code and a brief description of the edits. DO NOT wrap the code in a formatting block. DO NOT provide other text or explanation."
+      "Apply the changes requested by the user to the {{filetype}} code. Output ONLY the changed code and a brief description of the edits. DO NOT wrap the code in a formatting block. DO NOT provide other text or explanation."
   else
     system_message_content =
-      "Apply the changes requested by the user to the code. Output ONLY the changed code. DO NOT wrap the code in a formatting block. DO NOT provide other text or explanation."
+      "Apply the changes requested by the user to the {{filetype}} code. Output ONLY the changed code. DO NOT wrap the code in a formatting block. DO NOT provide other text or explanation."
   end
   local messages = {
     {
@@ -163,7 +163,8 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, ...)
         local nlcount = Utils.count_newlines_at_end(input)
         local output_txt = response
         if use_functions_for_edits then
-          output_txt = Utils.match_indentation(input, response.changed_code)
+          -- output_txt = Utils.match_indentation(input, response.changed_code)
+          output_txt = Utils.match_indentation(input, Utils.extract_code(response))
           if response.applied_changes then
             vim.notify(response.applied_changes, vim.log.levels.INFO)
           end

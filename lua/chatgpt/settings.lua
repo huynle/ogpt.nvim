@@ -22,7 +22,43 @@ local model_validator = function(value)
   return value
 end
 
-local params_order = { "model", "frequency_penalty", "presence_penalty", "max_tokens", "temperature", "top_p" }
+local params_order = {
+  "model",
+  "embedding_only",
+  "f16_kv",
+  "frequency_penalty",
+  "logits_all",
+  "low_vram",
+  "main_gpu",
+  "max_tokens",
+  "mirostat",
+  "mirostat_eta",
+  "mirostat_tau",
+  "num_batch",
+  "num_ctx",
+  "num_gpu",
+  "num_gqa",
+  "num_keep",
+  "num_predict",
+  "num_thread",
+  "numa",
+  "penalize_newline",
+  "presence_penalty",
+  "repeat_last_n",
+  "repeat_penalty",
+  "rope_frequency_base",
+  "rope_frequency_scale",
+  "seed",
+  "stop",
+  "temperature",
+  "tfs_z",
+  "top_k",
+  "top_p",
+  "typical_p",
+  "use_mlock",
+  "use_mmap",
+  "vocab_only",
+}
 local params_validators = {
   model = model_validator,
   frequency_penalty = float_validator(-2, 2),
@@ -85,16 +121,6 @@ M.get_settings_panel = function(type, default_params)
     end
   end
 
-  for _, key in pairs(params_order) do
-    if M.params.options and M.params.options[key] ~= nil then
-      local vt = {
-        { Config.options.settings_window.setting_sign .. key .. ": ", "ErrorMsg" },
-        { M.params.options[key] .. "", "Identifier" },
-      }
-      table.insert(details, vt)
-    end
-  end
-
   local line = 1
   local empty_lines = {}
   for _ = 1, #details do
@@ -119,6 +145,7 @@ M.get_settings_panel = function(type, default_params)
 
     local key = existing_order[row]
     local value = M.params[key]
+
     M.open_edit_property_input(key, value, row, function(new_value)
       M.params[key] = params_validators[key](new_value)
       local vt = {

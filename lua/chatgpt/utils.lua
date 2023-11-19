@@ -146,27 +146,105 @@ function M.match_indentation(input, output)
   return table.concat(lines)
 end
 
-function M.conform_to_ollama(params)
-  if not params.messages then
-    return params
-  end
+function M._conform_to_ollama_api(params)
+  local ollama_parameters = {
+    "model",
+    "prompt",
+    "format",
+    "options",
+    "system",
+    "template",
+    "context",
+    "stream",
+    "raw",
+  }
 
-  local messages = params.messages
-  params.messages = nil
-  params.system = ""
-  params.prompt = ""
-  for _, message in ipairs(messages) do
-    if message.role == "system" then
-      params.system = params.system .. message.content .. "\n"
+  -- https://github.com/jmorganca/ollama/blob/main/docs/api.md#show-model-information
+  local ollama_options = {
+    "num_keep",
+    "seed",
+    "num_predict",
+    "top_k",
+    "top_p",
+    "tfs_z",
+    "typical_p",
+    "repeat_last_n",
+    "temperature",
+    "repeat_penalty",
+    "presence_penalty",
+    "frequency_penalty",
+    "mirostat",
+    "mirostat_tau",
+    "mirostat_eta",
+    "penalize_newline",
+    "stop",
+    "numa",
+    "num_ctx",
+    "num_batch",
+    "num_gqa",
+    "num_gpu",
+    "main_gpu",
+    "low_vram",
+    "f16_kv",
+    "logits_all",
+    "vocab_only",
+    "use_mmap",
+    "use_mlock",
+    "embedding_only",
+    "rope_frequency_base",
+    "rope_frequency_scale",
+    "num_thread",
+  }
+
+  local param_options = {}
+
+  for key, value in pairs(params) do
+    if not vim.tbl_contains(ollama_parameters, key) and vim.tbl_contains(ollama_options, key) then
+      param_options[key] = value
+      params[key] = nil
     end
   end
-
-  for _, message in ipairs(messages) do
-    if message.role == "user" then
-      params.prompt = params.prompt .. message.content .. "\n"
-    end
-  end
+  params.options = vim.tbl_extend("keep", param_options, params.options or {})
   return params
+end
+
+function M.conform_to_ollama(params)
+  if params.messages then
+    local messages = params.messages
+    params.messages = nil
+    params.system = ""
+    params.prompt = ""
+    for _, message in ipairs(messages) do
+      if message.role == "system" then
+        params.system = params.system .. message.content .. "\n"
+      end
+    end
+
+    for _, message in ipairs(messages) do
+      if message.role == "user" then
+        params.prompt = params.prompt .. message.content .. "\n"
+      end
+    end
+  end
+
+  return M._conform_to_ollama_api(params)
+end
+
+function M.extract_code(text)
+  -- Iterate through all code blocks in the message using a regular expression pattern
+  local lastCodeBlock
+  for codeBlock in text:gmatch("```.-```%s*") do
+    lastCodeBlock = codeBlock
+  end
+  -- If a code block was found, strip the delimiters and return the code
+  if lastCodeBlock then
+    local index = string.find(lastCodeBlock, "\n")
+    if index ~= nil then
+      lastCodeBlock = string.sub(lastCodeBlock, index + 1)
+    end
+    return lastCodeBlock:gsub("```\n", ""):gsub("```", ""):match("^%s*(.-)%s*$")
+  end
+  return nil
 end
 
 return M

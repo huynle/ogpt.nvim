@@ -15,6 +15,7 @@ function Api.chat_completions(custom_params, cb, should_stop)
   local params = vim.tbl_extend("keep", custom_params, Config.options.openai_params)
   local stream = params.stream or false
   if stream then
+    params = Utils.conform_to_ollama(params)
     local raw_chunks = ""
     local state = "START"
 
@@ -82,12 +83,6 @@ end
 function Api.edits(custom_params, cb)
   local params = vim.tbl_extend("keep", custom_params, Config.options.openai_edit_params)
   params.stream = false
-  if params.model == "codellama:13b" or params.model == "codellama:13b" then
-    vim.notify("Edit models are deprecated", vim.log.levels.WARN)
-    Api.make_call(Api.EDITS_URL, params, cb)
-    return
-  end
-
   Api.make_call(Api.CHAT_COMPLETIONS_URL, params, cb)
 end
 
@@ -133,7 +128,7 @@ Api.handle_response = vim.schedule_wrap(function(response, exit_code, cb)
   if json == nil then
     cb("No Response.")
   elseif json.error then
-    cb("// API ERROR: " .. json.error.message)
+    cb("// API ERROR: " .. json.error)
   else
     local message = json.response
     if message ~= nil then
@@ -275,7 +270,6 @@ function Api.setup()
     Api.OPENAI_API_HOST = value
     Api.COMPLETIONS_URL = ensureUrlProtocol(Api.OPENAI_API_HOST .. "/api/generate")
     Api.CHAT_COMPLETIONS_URL = ensureUrlProtocol(Api.OPENAI_API_HOST .. "/api/generate")
-    Api.EDITS_URL = ensureUrlProtocol(Api.OPENAI_API_HOST .. "/v1/edits")
   end, "api.openai.com")
 
   loadApiKey("OPENAI_API_KEY", "OPENAI_API_KEY", "api_key_cmd", function(value)
