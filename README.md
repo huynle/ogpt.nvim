@@ -60,7 +60,7 @@ so they might not work.
 ```lua
 -- Packer
 use({
-  "jackMort/ChatGPT.nvim",
+  "huynle/ogpt.nvim",
     config = function()
       require("chatgpt").setup()
     end,
@@ -73,7 +73,7 @@ use({
 
 -- Lazy
 {
-  "jackMort/ChatGPT.nvim",
+  "huynle/ogpt.nvim",
     event = "VeryLazy",
     config = function()
       require("chatgpt").setup()
