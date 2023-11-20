@@ -737,8 +737,9 @@ function Chat:open()
           stream = true,
           context = self.session:previous_context(),
           prompt = self.messages[#self.messages].text,
+          system = self.system_message,
         }, Settings.params)
-        params = Utils.conform_to_ollama(params)
+        -- params = Utils.conform_to_ollama(params)
         Api.chat_completions(params, function(answer, state, context)
           self:addAnswerPartial(answer, state, context)
         end, self.should_stop)

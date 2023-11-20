@@ -36,36 +36,36 @@ function Api.chat_completions(custom_params, cb, should_stop)
         vim.json.encode(params),
       },
       function(chunk)
+        local process_line = function(_ok, _json)
+          if _json and _json.done then
+            cb(raw_chunks, "END", _json.context)
+          else
+            if _ok and _json ~= nil then
+              if _json and _json.response then
+                cb(_json.response, state)
+                raw_chunks = raw_chunks .. _json.response
+                state = "CONTINUE"
+              end
+            end
+          end
+        end
+
         local ok, json = pcall(vim.json.decode, chunk)
         if ok and json ~= nil then
           if json.error ~= nil then
             cb(json.error.message, "ERROR")
             return
           end
-        end
-        -- dump(chunk)
-        -- for line in chunk:gmatch("[^\n]+") do
-        -- local raw_json = string.gsub(line, "^data: ", "")
-        if json and json.done == true then
-          cb(raw_chunks, "END", json.context)
+          process_line(ok, json)
         else
-          -- ok, json = pcall(vim.json.decode, raw_json)
-          -- if ok and json ~= nil then
-          if
-            json and json.response
-            -- and json.choices
-            -- and json.choices[1]
-            -- and json.choices[1].delta
-            -- and json.choices[1].delta.content
-          then
-            cb(json.response, state)
-            raw_chunks = raw_chunks .. json.response
-            state = "CONTINUE"
+          for line in chunk:gmatch("[^\n]+") do
+            local raw_json = string.gsub(line, "^data: ", "")
+            local _ok, _json = pcall(vim.json.decode, raw_json)
+            process_line(_ok, _json)
           end
-          -- end
         end
-        -- end
       end,
+
       function(err, _)
         cb(err, "ERROR")
       end,
