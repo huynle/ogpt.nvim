@@ -14,6 +14,9 @@ end
 function Api.chat_completions(custom_params, cb, should_stop)
   local params = vim.tbl_extend("keep", custom_params, Config.options.openai_params)
   local stream = params.stream or false
+  local ctx = {}
+  -- add params before conform
+  ctx.params = params
   if stream then
     params = Utils.conform_to_ollama(params)
     local raw_chunks = ""
@@ -38,11 +41,12 @@ function Api.chat_completions(custom_params, cb, should_stop)
       function(chunk)
         local process_line = function(_ok, _json)
           if _json and _json.done then
-            cb(raw_chunks, "END", _json.context)
+            ctx.context = _json.context
+            cb(raw_chunks, "END", ctx)
           else
             if _ok and _json ~= nil then
               if _json and _json.response then
-                cb(_json.response, state)
+                cb(_json.response, state, ctx)
                 raw_chunks = raw_chunks .. _json.response
                 state = "CONTINUE"
               end
@@ -53,7 +57,7 @@ function Api.chat_completions(custom_params, cb, should_stop)
         local ok, json = pcall(vim.json.decode, chunk)
         if ok and json ~= nil then
           if json.error ~= nil then
-            cb(json.error.message, "ERROR")
+            cb(json.error.message, "ERROR", ctx)
             return
           end
           process_line(ok, json)
@@ -67,11 +71,11 @@ function Api.chat_completions(custom_params, cb, should_stop)
       end,
 
       function(err, _)
-        cb(err, "ERROR")
+        cb(err, "ERROR", ctx)
       end,
       should_stop,
       function()
-        cb(raw_chunks, "END")
+        cb(raw_chunks, "END", ctx)
       end
     )
   else

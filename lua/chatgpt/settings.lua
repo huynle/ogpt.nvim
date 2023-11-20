@@ -77,34 +77,42 @@ local function write_virtual_text(bufnr, ns, line, chunks, mode)
   end
 end
 
-M.read_config = function()
-  local home = os.getenv("HOME") or os.getenv("USERPROFILE")
-  local file = io.open(home .. "/" .. ".chatgpt-" .. M.type .. "-params.json", "rb")
-  if not file then
-    return nil
-  end
+M.read_config = function(session)
+  if not session then
+    local home = os.getenv("HOME") or os.getenv("USERPROFILE")
+    local file = io.open(home .. "/" .. ".chatgpt-" .. M.type .. "-params.json", "rb")
+    if not file then
+      return nil
+    end
 
-  local jsonString = file:read("*a")
-  file:close()
-
-  return vim.json.decode(jsonString)
-end
-
-M.write_config = function(config)
-  local home = os.getenv("HOME") or os.getenv("USERPROFILE")
-  local file, err = io.open(home .. "/" .. ".chatgpt-" .. M.type .. "-params.json", "w")
-  if file ~= nil then
-    local json_string = vim.json.encode(config)
-    file:write(json_string)
+    local jsonString = file:read("*a")
     file:close()
+    return vim.json.decode(jsonString)
   else
-    vim.notify("Cannot save settings: " .. err, vim.log.levels.ERROR)
+    return session.settings
   end
 end
 
-M.get_settings_panel = function(type, default_params)
+M.write_config = function(config, session)
+  if not session then
+    local home = os.getenv("HOME") or os.getenv("USERPROFILE")
+    local file, err = io.open(home .. "/" .. ".chatgpt-" .. M.type .. "-params.json", "w")
+    if file ~= nil then
+      local json_string = vim.json.encode(config)
+      file:write(json_string)
+      file:close()
+    else
+      vim.notify("Cannot save settings: " .. err, vim.log.levels.ERROR)
+    end
+  else
+    session.settings = config
+    session:save()
+  end
+end
+
+M.get_settings_panel = function(type, default_params, session)
   M.type = type
-  local custom_params = M.read_config()
+  local custom_params = M.read_config(session or {})
   M.params = vim.tbl_deep_extend("force", {}, default_params, custom_params or {})
 
   M.panel = Popup(Config.options.settings_window)
@@ -161,11 +169,15 @@ M.get_settings_panel = function(type, default_params)
         0,
         { virt_text = vt, virt_text_pos = "overlay" }
       )
-      M.write_config(M.params)
+      M.write_config(M.params, session)
     end)
   end, {})
 
   return M.panel
+end
+
+M.get_panel = function(session)
+  return M.get_settings_panel(" ", session.settings, session)
 end
 
 M.open_edit_property_input = function(key, value, row, cb)

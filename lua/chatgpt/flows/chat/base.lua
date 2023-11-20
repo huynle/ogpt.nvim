@@ -144,6 +144,8 @@ function Chat:set_session(session)
   self:set_lines(0, -1, false, {})
   self:set_cursor({ 1, 0 })
   self:welcome()
+  self:configure_settings_panel(session)
+  self:set_keymaps()
 end
 
 function Chat:isBusy()
@@ -206,7 +208,7 @@ function Chat:addAnswer(text, usage)
   self:add(ANSWER, text, usage)
 end
 
-function Chat:addAnswerPartial(text, state, context)
+function Chat:addAnswerPartial(text, state, ctx)
   if state == "ERROR" then
     return self:addAnswer(text, {})
   end
@@ -222,7 +224,7 @@ function Chat:addAnswerPartial(text, state, context)
     local idx = self.session:add_item({
       type = ANSWER,
       text = text,
-      context = context,
+      context = ctx.context or {},
       usage = usage,
     })
 
@@ -691,7 +693,10 @@ function Chat:get_layout_params()
 end
 
 function Chat:open()
-  self.settings_panel = Settings.get_settings_panel("chat_completions", self.params)
+  self.settings_panel = Settings.get_settings_panel("chat_completions", self.params, self)
+  -- self.settings_panel = Settings.get_panel(function(session)
+  --   self:set_session(session)
+  -- end)
   self.sessions_panel = Sessions.get_panel(function(session)
     self:set_session(session)
   end)
@@ -731,24 +736,38 @@ function Chat:open()
       end
 
       self:addQuestion(value)
+
       if self.role == ROLE_USER then
         self:showProgess()
+        -- self.session.settings = Settings.params
+        -- self.session:save()
         local params = vim.tbl_extend("keep", {
           stream = true,
           context = self.session:previous_context(),
           prompt = self.messages[#self.messages].text,
           system = self.system_message,
         }, Settings.params)
-        -- params = Utils.conform_to_ollama(params)
-        Api.chat_completions(params, function(answer, state, context)
-          self:addAnswerPartial(answer, state, context)
+        Api.chat_completions(params, function(answer, state, ctx)
+          self:addAnswerPartial(answer, state, ctx)
         end, self.should_stop)
       end
     end,
   })
 
   self.layout = Layout(self:get_layout_params())
+  self:set_keymaps()
 
+  -- initialize
+  self.layout:mount()
+  self:welcome()
+
+  local event = require("nui.utils.autocmd").event
+  self.chat_input:on(event.QuitPre, function()
+    self.active = false
+  end)
+end
+
+function Chat:set_keymaps()
   -- yank last answer
   self:map(Config.options.chat.keymaps.yank_last, function()
     local msg = self:getSelected()
@@ -909,15 +928,6 @@ function Chat:open()
       vim.notify("Nothing selected.", vim.log.levels.WARN)
     end
   end, { self.chat_window }, { "n" })
-
-  -- initialize
-  self.layout:mount()
-  self:welcome()
-
-  local event = require("nui.utils.autocmd").event
-  self.chat_input:on(event.QuitPre, function()
-    self.active = false
-  end)
 end
 
 function Chat:open_system_panel()
@@ -949,6 +959,11 @@ function Chat:toggle()
   else
     self:show()
   end
+end
+
+function Chat:configure_settings_panel(session)
+  self.settings_panel = Settings.get_panel(session)
+  self:redraw()
 end
 
 return Chat
