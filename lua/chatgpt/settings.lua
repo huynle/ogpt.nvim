@@ -177,7 +177,7 @@ M.get_settings_panel = function(type, default_params, session)
 end
 
 M.get_panel = function(session)
-  return M.get_settings_panel(" ", session.settings, session)
+  return M.get_settings_panel(" ", session.settings or {}, session)
 end
 
 M.open_edit_property_input = function(key, value, row, cb)

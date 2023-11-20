@@ -141,8 +141,8 @@ function M.defaults()
     },
     openai_params = {
       model = "mistral:7b",
-      -- frequency_penalty = 0,
-      -- presence_penalty = 0,
+      frequency_penalty = 0,
+      presence_penalty = 0,
       -- max_tokens = 300,
       temperature = 0.8,
       top_p = 1,

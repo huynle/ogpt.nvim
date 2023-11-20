@@ -157,7 +157,7 @@ function Chat:add(type, text, usage)
     type = type,
     text = text,
     usage = usage,
-    context = self.session:previous_context(),
+    ctx = { context = self.session:previous_context() },
   })
   self:_add(type, text, usage, idx)
   self:render_role()
@@ -224,7 +224,7 @@ function Chat:addAnswerPartial(text, state, ctx)
     local idx = self.session:add_item({
       type = ANSWER,
       text = text,
-      context = ctx.context or {},
+      ctx = ctx or {},
       usage = usage,
     })
 
@@ -245,7 +245,7 @@ function Chat:addAnswerPartial(text, state, ctx)
       nr_of_lines = nr_of_lines,
       start_line = start_line,
       end_line = end_line,
-      context = context,
+      context = ctx.context,
     })
     self.selectedIndex = self.selectedIndex + 1
     vim.api.nvim_buf_set_lines(self.chat_window.bufnr, -1, -1, false, { "", "" })
@@ -693,7 +693,9 @@ function Chat:get_layout_params()
 end
 
 function Chat:open()
-  self.settings_panel = Settings.get_settings_panel("chat_completions", self.params, self)
+  -- self.settings_panel = Settings.get_settings_panel("chat_completions", self.params, self.session)
+  self.session.settings = vim.tbl_extend("keep", self.session.settings, self.params)
+  self.settings_panel = Settings.get_panel(self.session)
   -- self.settings_panel = Settings.get_panel(function(session)
   --   self:set_session(session)
   -- end)
