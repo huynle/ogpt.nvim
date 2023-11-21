@@ -65,8 +65,11 @@ function Session:to_export()
 end
 
 function Session:previous_context()
-  if #self.conversation > 2 then
-    return self.conversation[#self.conversation - 1].context
+  for ith = #self.conversation, 1, -1 do
+    local context = self.conversation[ith].context
+    if context then
+      return context
+    end
   end
   return {}
 end

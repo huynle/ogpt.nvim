@@ -828,7 +828,7 @@ function Chat:set_keymaps()
   self:map(Config.options.chat.keymaps.new_session, function()
     self:new_session()
     Sessions:refresh()
-  end, { self.parameters_panel, self.chat_input })
+  end, { self.parameters_panel, self.chat_input, self.chat_window })
 
   -- cycle panes
   self:map(Config.options.chat.keymaps.cycle_windows, function()

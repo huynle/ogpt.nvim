@@ -26,8 +26,8 @@ function M.defaults()
       loading_text = "Loading, please wait ...",
       question_sign = "", -- 🙂
       answer_sign = "ﮧ", -- 🤖
-      border_left_sign = "",
-      border_right_sign = "",
+      border_left_sign = "|",
+      border_right_sign = "|",
       max_line_length = 120,
       sessions_window = {
         active_sign = "  ",
@@ -54,7 +54,7 @@ function M.defaults()
         cycle_modes = "<C-f>",
         next_message = "<C-j>",
         prev_message = "<C-k>",
-        select_session = "<Space>",
+        select_session = "<CR>",
         rename_session = "r",
         delete_session = "d",
         draft_message = "<C-d>",
@@ -141,8 +141,6 @@ function M.defaults()
     },
     api_params = {
       model = "mistral:7b",
-      frequency_penalty = 0,
-      presence_penalty = 0,
       -- max_tokens = 300,
       temperature = 0.8,
       top_p = 1,
@@ -152,7 +150,7 @@ function M.defaults()
       model = "codellama:13b",
       frequency_penalty = 0,
       presence_penalty = 0,
-      temperature = 0,
+      temperature = 0.5,
       top_p = 1,
       -- n = 1,
     },
