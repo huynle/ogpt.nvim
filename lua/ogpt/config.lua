@@ -139,7 +139,7 @@ function M.defaults()
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
       },
     },
-    openai_params = {
+    api_params = {
       model = "mistral:7b",
       frequency_penalty = 0,
       presence_penalty = 0,
@@ -148,7 +148,7 @@ function M.defaults()
       top_p = 1,
       -- n = 1,
     },
-    openai_edit_params = {
+    api_edit_params = {
       model = "codellama:13b",
       frequency_penalty = 0,
       presence_penalty = 0,

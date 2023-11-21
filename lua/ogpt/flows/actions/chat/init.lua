@@ -62,7 +62,7 @@ function ChatAction:get_params()
     content = self:render_template(),
   }
   table.insert(messages, message)
-  return vim.tbl_extend("force", Config.options.openai_params, self.params, { messages = messages })
+  return vim.tbl_extend("force", Config.options.api_params, self.params, { messages = messages })
 end
 
 function ChatAction:run()

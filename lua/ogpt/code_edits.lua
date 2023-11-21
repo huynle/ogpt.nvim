@@ -137,9 +137,9 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, ...)
   else
     visual_lines, start_row, start_col, end_row, end_col = unpack(selection)
   end
-  local openai_params = Config.options.openai_edit_params
+  local api_params = Config.options.api_edit_params
   local use_functions_for_edits = Config.options.use_openai_functions_for_edits
-  local settings_panel = Parameters.get_parameters_panel("edits", openai_params)
+  local settings_panel = Parameters.get_parameters_panel("edits", api_params)
   input_window = Popup(Config.options.popup_window)
   output_window = Popup(Config.options.popup_window)
   instructions_input = ChatInput(Config.options.popup_input, {

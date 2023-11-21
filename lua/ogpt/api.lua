@@ -6,13 +6,13 @@ local Utils = require("ogpt.utils")
 local Api = {}
 
 function Api.completions(custom_params, cb)
-  local params = vim.tbl_extend("keep", custom_params, Config.options.openai_params)
+  local params = vim.tbl_extend("keep", custom_params, Config.options.api_params)
   params.stream = false
   Api.make_call(Api.COMPLETIONS_URL, params, cb)
 end
 
 function Api.chat_completions(custom_params, cb, should_stop)
-  local params = vim.tbl_extend("keep", custom_params, Config.options.openai_params)
+  local params = vim.tbl_extend("keep", custom_params, Config.options.api_params)
   local stream = params.stream or false
   local ctx = {}
   -- add params before conform
@@ -85,7 +85,7 @@ function Api.chat_completions(custom_params, cb, should_stop)
 end
 
 function Api.edits(custom_params, cb)
-  local params = vim.tbl_extend("keep", custom_params, Config.options.openai_edit_params)
+  local params = vim.tbl_extend("keep", custom_params, Config.options.api_edit_params)
   params.stream = false
   Api.make_call(Api.CHAT_COMPLETIONS_URL, params, cb)
 end
