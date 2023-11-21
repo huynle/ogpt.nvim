@@ -59,14 +59,14 @@ function Session:to_export()
   return {
     name = self.name,
     updated_at = self.updated_at,
-    settings = self.parameters,
+    parameters = self.parameters,
     conversation = self.conversation,
   }
 end
 
 function Session:previous_context()
-  if #self.conversation > 1 then
-    return self.conversation[#self.conversation].context
+  if #self.conversation > 2 then
+    return self.conversation[#self.conversation - 1].context
   end
   return {}
 end
@@ -78,7 +78,6 @@ function Session:add_item(item)
   end
   if ctx and ctx.params and ctx.params.options then
     self.parameters = ctx.params.options
-    self.parameters.model = ctx.params.model
     self.parameters.model = ctx.params.model
     item.context = ctx.context
   end
@@ -140,7 +139,7 @@ function Session:load()
   local data = vim.json.decode(jsonString)
   self.name = data.name
   self.updated_at = data.updated_at or get_current_date()
-  self.parameters = data.settings
+  self.parameters = data.parameters
   self.conversation = data.conversation
 end
 
