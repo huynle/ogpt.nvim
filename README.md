@@ -1,20 +1,8 @@
-# Credits
-First of all, thank you to the author of `jackMort/ChatGPT.nvim` for creating a seamless framework
-to interact with OGPT in neovim!
-
-**THIS IS A FORK of the original OGPT.nvim that supports Ollama (<https://ollama.ai/>), which
-allows you to run complete local LLMs.**
-
-Ollama is still in its infancy, so there are numerous pull requests open to expand its capabilities.
-One of which is to conform to the OGPT API - <https://github.com/jmorganca/ollama/pull/991>.
-Because of this, this repo is a hack together solution for me to test out the local LLMs that I have running.
-
-**THIS PLUGIN MAY NOT LAST VERY LONG, depending on the state of Ollama.**
 
 
 ----
 # OGPT.nvim
-![GitHub Workflow Status](http://img.shields.io/github/actions/workflow/status/jackMort/OGPT.nvim/default.yml?branch=main&style=for-the-badge)
+![GitHub Workflow Status](http://img.shields.io/github/actions/workflow/status/huynle/ogpt.nvim/default.yml?branch=main&style=for-the-badge)
 ![Lua](https://img.shields.io/badge/Made%20with%20Lua-blueviolet.svg?style=for-the-badge&logo=lua)
 
 ## Features
@@ -225,4 +213,19 @@ c = {
   },
 ```
 
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/jackMort)
+# Credits
+First of all, thank you to the author of `jackMort/ChatGPT.nvim` for creating a seamless framework
+to interact with OGPT in neovim!
+
+**THIS IS A FORK of the original OGPT.nvim that supports Ollama (<https://ollama.ai/>), which
+allows you to run complete local LLMs.**
+
+Ollama is still in its infancy, so there are numerous pull requests open to expand its capabilities.
+One of which is to conform to the OGPT API - <https://github.com/jmorganca/ollama/pull/991>.
+Because of this, this repo is a hack together solution for me to test out the local LLMs that I have running.
+
+**THIS PLUGIN MAY NOT LAST VERY LONG, depending on the state of Ollama.**
+
+[!["Buy Jack A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/jackMort)
+
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/huynle)
