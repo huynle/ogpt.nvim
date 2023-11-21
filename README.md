@@ -226,6 +226,8 @@ Because of this, this repo is a hack together solution for me to test out the lo
 
 **THIS PLUGIN MAY NOT LAST VERY LONG, depending on the state of Ollama.**
 
+Buy Jack(Original creator) a Coffee
 [!["Buy Jack A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/jackMort)
 
+Buy Me a Coffee
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/huynle)
