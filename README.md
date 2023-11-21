@@ -1,18 +1,18 @@
 # NOTES
-First of all, thank you to the author of `ChatGPT.nvim` for creating a seamless framework
-to interact with ChatGPT in neovim!
+First of all, thank you to the author of `jackMort/ChatGPT.nvim` for creating a seamless framework
+to interact with OGPT in neovim!
 
-**THIS IS A FORK of the original ChatGPT.nvim that supports Ollama (<https://ollama.ai/>), which
+**THIS IS A FORK of the original OGPT.nvim that supports Ollama (<https://ollama.ai/>), which
 allows you to run complete local LLMs.**
 
 Ollama is still in its infancy, so there are numerous pull requests open to expand its capabilities.
-One of which is to conform to the ChatGPT API - <https://github.com/jmorganca/ollama/pull/991>.
+One of which is to conform to the OGPT API - <https://github.com/jmorganca/ollama/pull/991>.
 Because of this, this repo is a hack together solution for me to test out the local LLMs that I have running.
 
 **THIS PLUGIN MAY NOT LAST VERY LONG, depending on the state of Ollama.**
 
 ## Plan for this plugin:
-+ [x] original functionality of ChatGPT.nvim with Ollama
++ [x] original functionality of OGPT.nvim with Ollama
 + [x] Custom settings per session
 + [ ] Support model selection on the fly, query from Ollama
 + [ ] Support model creation on the fly
@@ -20,7 +20,7 @@ Because of this, this repo is a hack together solution for me to test out the lo
 
 ## General usage
 
-TO USE with local Ollama, should be the same as the original ChatGPT.nvim plugin.
+TO USE with local Ollama, should be the same as the original OGPT.nvim plugin.
 change your API HOST and Key can be empty string.
 
 ```sh
@@ -28,19 +28,19 @@ OPENAI_API_HOST=http://localhost:11434 OPENAI_API_KEY=" " nvim
 ```
 
 ----
-# ChatGPT.nvim
+# OGPT.nvim
 
-![GitHub Workflow Status](http://img.shields.io/github/actions/workflow/status/jackMort/ChatGPT.nvim/default.yml?branch=main&style=for-the-badge)
+![GitHub Workflow Status](http://img.shields.io/github/actions/workflow/status/jackMort/OGPT.nvim/default.yml?branch=main&style=for-the-badge)
 ![Lua](https://img.shields.io/badge/Made%20with%20Lua-blueviolet.svg?style=for-the-badge&logo=lua)
 
-`ChatGPT` is a Neovim plugin that allows you to effortlessly utilize the OpenAI ChatGPT API,
-empowering you to generate natural language responses from OpenAI's ChatGPT directly within the editor in response to your inquiries.
+`OGPT` is a Neovim plugin that allows you to effortlessly utilize the OpenAI OGPT API,
+empowering you to generate natural language responses from OpenAI's OGPT directly within the editor in response to your inquiries.
 
-![preview image](https://github.com/jackMort/ChatGPT.nvim/blob/media/preview-2.png?raw=true)
+![preview image](https://github.com/jackMort/OGPT.nvim/blob/media/preview-2.png?raw=true)
 
 ## Features
-- **Interactive Q&A**: Engage in interactive question-and-answer sessions with the powerful gpt model (ChatGPT) using an intuitive interface.
-- **Persona-based Conversations**: Explore various perspectives and have conversations with different personas by selecting prompts from Awesome ChatGPT Prompts.
+- **Interactive Q&A**: Engage in interactive question-and-answer sessions with the powerful gpt model (OGPT) using an intuitive interface.
+- **Persona-based Conversations**: Explore various perspectives and have conversations with different personas by selecting prompts from Awesome OGPT Prompts.
 - **Code Editing Assistance**: Enhance your coding experience with an interactive editing window powered by the gpt model, offering instructions tailored for coding tasks.
 - **Code Completion**: Enjoy the convenience of code completion similar to GitHub Copilot, leveraging the capabilities of the gpt model to suggest code snippets and completions based on context and programming patterns.
 - **Customizable Actions**: Execute a range of actions utilizing the gpt model, such as grammar correction, translation, keyword generation, docstring creation, test addition, code optimization, summarization, bug fixing, code explanation, Roxygen editing, and code readability analysis. Additionally, you can define your own custom actions using a JSON file.
@@ -74,7 +74,7 @@ so they might not work.
 use({
   "huynle/ogpt.nvim",
     config = function()
-      require("chatgpt").setup()
+      require("ogpt").setup()
     end,
     requires = {
       "MunifTanjim/nui.nvim",
@@ -88,7 +88,7 @@ use({
   "huynle/ogpt.nvim",
     event = "VeryLazy",
     config = function()
-      require("chatgpt").setup()
+      require("ogpt").setup()
     end,
     dependencies = {
       "MunifTanjim/nui.nvim",
@@ -100,9 +100,9 @@ use({
 
 ## Configuration
 
-`ChatGPT.nvim` comes with the following defaults, you can override them by passing config as setup param
+`OGPT.nvim` comes with the following defaults, you can override them by passing config as setup param
 
-https://github.com/jackMort/ChatGPT.nvim/blob/9508429d514509b96d8ca9ec3f16933cfb30ac8a/lua/chatgpt/config.lua#L10-L157
+https://github.com/huynle/ogpt.nvim/blob/9508429d514509b96d8ca9ec3f16933cfb30ac8a/lua/ogpt/config.lua#L10-L157
 
 ### Secrets Management
 
@@ -120,7 +120,7 @@ The following configuration would use 1Passwords CLI, `op`, to fetch the API key
 from the `credential` field of the `OpenAI` entry.
 
 ```lua
-require("chatgpt").setup({
+require("ogpt").setup({
     api_key_cmd = "op read op://private/OpenAI/credential --no-newline"
 })
 ```
@@ -130,7 +130,7 @@ API key
 
 ```lua
 local home = vim.fn.expand("$HOME")
-require("chatgpt").setup({
+require("ogpt").setup({
     api_key_cmd = "gpg --decrypt " .. home .. "/secret.txt.gpg"
 })
 ```
@@ -141,28 +141,28 @@ Note that the `api_key_cmd` arguments are split by whitespace. If you need white
 
 Plugin exposes following commands:
 
-#### `ChatGPT`
-`ChatGPT` command which opens interactive window using the `mistral:7b`
+#### `OGPT`
+`OGPT` command which opens interactive window using the `mistral:7b`
 model.
-(also known as `ChatGPT`)
+(also known as `OGPT`)
 
-#### `ChatGPTActAs`
-`ChatGPTActAs` command which opens a prompt selection from [Awesome ChatGPT Prompts](https://github.com/f/awesome-chatgpt-prompts) to be used with the `mistral:7b` model.
+#### `OGPTActAs`
+`OGPTActAs` command which opens a prompt selection from [Awesome OGPT Prompts](https://github.com/f/awesome-ogpt-prompts) to be used with the `mistral:7b` model.
 
-![preview image](https://github.com/jackMort/ChatGPT.nvim/blob/media/preview-3.png?raw=true)
+![preview image](https://github.com/jackMort/OGPT.nvim/blob/media/preview-3.png?raw=true)
 
-#### `ChatGPTEditWithInstructions`
-`ChatGPTEditWithInstructions` command which opens interactive window to edit selected text or whole window using the `codellama:13b` model (GPT 3.5 fine-tuned for coding).
+#### `OGPTEditWithInstructions`
+`OGPTEditWithInstructions` command which opens interactive window to edit selected text or whole window using the `codellama:13b` model (GPT 3.5 fine-tuned for coding).
 
 You can map it using the Lua API, e.g. using `which-key.nvim`:
 ```lua
-local chatgpt = require("chatgpt")
+local ogpt = require("ogpt")
 wk.register({
     p = {
-        name = "ChatGPT",
+        name = "OGPT",
         e = {
             function()
-                chatgpt.edit_with_instructions()
+                ogpt.edit_with_instructions()
             end,
             "Edit with instructions",
         },
@@ -175,11 +175,11 @@ wk.register({
 
 - [demo video](https://www.youtube.com/watch?v=dWe01EV0q3Q).
 
-![preview image](https://github.com/jackMort/ChatGPT.nvim/blob/media/preview.png?raw=true)
+![preview image](https://github.com/jackMort/OGPT.nvim/blob/media/preview.png?raw=true)
 
-#### `ChatGPTRun`
+#### `OGPTRun`
 
-`ChatGPTRun [action]` command which runs specific actions -- see [`actions.json`](./lua/chatgpt/flows/actions/actions.json) file for a detailed list. Available actions are:
+`OGPTRun [action]` command which runs specific actions -- see [`actions.json`](./lua/ogpt/flows/actions/actions.json) file for a detailed list. Available actions are:
   1. `grammar_correction`
   2. `translate`
   3. `keywords`
@@ -194,7 +194,7 @@ wk.register({
 
 All the above actions are using `mistral:7b` model.
 
-It is possible to define custom actions with a JSON file. See [`actions.json`](./lua/chatgpt/flows/actions/actions.json) for an example. The path of custom actions can be set in the config (see `actions_paths` field in the config example above).
+It is possible to define custom actions with a JSON file. See [`actions.json`](./lua/ogpt/flows/actions/actions.json) for an example. The path of custom actions can be set in the config (see `actions_paths` field in the config example above).
 
 An example of custom action may look like this: (`#` marks comments)
 ```python
@@ -230,7 +230,7 @@ The `display` strategy shows the output in a float window.
 `append` and `replace` modify the text directly in the buffer.
 
 ### Interactive popup
-When using `ChatGPT` and `ChatGPTEditWithInstructions`, the following
+When using `OGPT` and `OGPTEditWithInstructions`, the following
 keybindings are available:
 - `<C-Enter>` [Both] to submit.
 - `<C-y>` [Both] to copy/yank last answer.
@@ -257,20 +257,20 @@ Add these to your [whichkey](https://github.com/folke/which-key.nvim) plugin map
 
 ```lua
 c = {
-  name = "ChatGPT",
-    c = { "<cmd>ChatGPT<CR>", "ChatGPT" },
-    e = { "<cmd>ChatGPTEditWithInstruction<CR>", "Edit with instruction", mode = { "n", "v" } },
-    g = { "<cmd>ChatGPTRun grammar_correction<CR>", "Grammar Correction", mode = { "n", "v" } },
-    t = { "<cmd>ChatGPTRun translate<CR>", "Translate", mode = { "n", "v" } },
-    k = { "<cmd>ChatGPTRun keywords<CR>", "Keywords", mode = { "n", "v" } },
-    d = { "<cmd>ChatGPTRun docstring<CR>", "Docstring", mode = { "n", "v" } },
-    a = { "<cmd>ChatGPTRun add_tests<CR>", "Add Tests", mode = { "n", "v" } },
-    o = { "<cmd>ChatGPTRun optimize_code<CR>", "Optimize Code", mode = { "n", "v" } },
-    s = { "<cmd>ChatGPTRun summarize<CR>", "Summarize", mode = { "n", "v" } },
-    f = { "<cmd>ChatGPTRun fix_bugs<CR>", "Fix Bugs", mode = { "n", "v" } },
-    x = { "<cmd>ChatGPTRun explain_code<CR>", "Explain Code", mode = { "n", "v" } },
-    r = { "<cmd>ChatGPTRun roxygen_edit<CR>", "Roxygen Edit", mode = { "n", "v" } },
-    l = { "<cmd>ChatGPTRun code_readability_analysis<CR>", "Code Readability Analysis", mode = { "n", "v" } },
+  name = "OGPT",
+    c = { "<cmd>OGPT<CR>", "OGPT" },
+    e = { "<cmd>OGPTEditWithInstruction<CR>", "Edit with instruction", mode = { "n", "v" } },
+    g = { "<cmd>OGPTRun grammar_correction<CR>", "Grammar Correction", mode = { "n", "v" } },
+    t = { "<cmd>OGPTRun translate<CR>", "Translate", mode = { "n", "v" } },
+    k = { "<cmd>OGPTRun keywords<CR>", "Keywords", mode = { "n", "v" } },
+    d = { "<cmd>OGPTRun docstring<CR>", "Docstring", mode = { "n", "v" } },
+    a = { "<cmd>OGPTRun add_tests<CR>", "Add Tests", mode = { "n", "v" } },
+    o = { "<cmd>OGPTRun optimize_code<CR>", "Optimize Code", mode = { "n", "v" } },
+    s = { "<cmd>OGPTRun summarize<CR>", "Summarize", mode = { "n", "v" } },
+    f = { "<cmd>OGPTRun fix_bugs<CR>", "Fix Bugs", mode = { "n", "v" } },
+    x = { "<cmd>OGPTRun explain_code<CR>", "Explain Code", mode = { "n", "v" } },
+    r = { "<cmd>OGPTRun roxygen_edit<CR>", "Roxygen Edit", mode = { "n", "v" } },
+    l = { "<cmd>OGPTRun code_readability_analysis<CR>", "Code Readability Analysis", mode = { "n", "v" } },
   },
 ```
 
