@@ -57,7 +57,7 @@ function Api.chat_completions(custom_params, cb, should_stop)
         local ok, json = pcall(vim.json.decode, chunk)
         if ok and json ~= nil then
           if json.error ~= nil then
-            cb(json.error.message, "ERROR", ctx)
+            cb(json.error, "ERROR", ctx)
             return
           end
           process_line(ok, json)
@@ -274,6 +274,7 @@ end
 function Api.setup()
   loadApiHost("OLLAMA_API_HOST", "OLLAMA_API_HOST", "api_host_cmd", function(value)
     Api.OLLAMA_API_HOST = value
+    Api.MODELS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/tags")
     Api.COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/generate")
     Api.CHAT_COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/generate")
   end, "http://localhost:11434/api/generate")

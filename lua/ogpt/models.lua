@@ -1,214 +1,113 @@
-local M = {}
-M.vts = {}
+local pickers = require("telescope.pickers")
+local conf = require("telescope.config").values
+local actions = require("telescope.actions")
+local action_state = require("telescope.actions.state")
+local job = require("plenary.job")
+local Api = require("ogpt.api")
 
-local Popup = require("nui.popup")
+local Utils = require("ogpt.utils")
 local Config = require("ogpt.config")
 
-local namespace_id = vim.api.nvim_create_namespace("OGPTNS")
-
-local float_validator = function(min, max)
-  return function(value)
-    return tonumber(value)
-  end
+local function preview_command(entry, bufnr, width)
+  vim.api.nvim_buf_call(bufnr, function()
+    local preview = Utils.wrapTextToTable(entry.value, width - 5)
+    table.insert(preview, 1, "---")
+    table.insert(preview, 1, entry.display)
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, true, preview)
+  end)
 end
 
-local integer_validator = function(min, max)
-  return function(value)
-    return tonumber(value)
-  end
+local function entry_maker(model)
+  return {
+    value = model.name,
+    display = model.name,
+    ordinal = model.digest,
+    preview_command = preview_command,
+  }
 end
 
-local model_validator = function(value)
-  return value
-end
+local finder = function(opts)
+  local job_started = false
+  local job_completed = false
+  local results = {}
+  local num_results = 0
 
-local params_order = {
-  "model",
-  "embedding_only",
-  "f16_kv",
-  "frequency_penalty",
-  "logits_all",
-  "low_vram",
-  "main_gpu",
-  "max_tokens",
-  "mirostat",
-  "mirostat_eta",
-  "mirostat_tau",
-  "num_batch",
-  "num_ctx",
-  "num_gpu",
-  "num_gqa",
-  "num_keep",
-  "num_predict",
-  "num_thread",
-  "numa",
-  "penalize_newline",
-  "presence_penalty",
-  "repeat_last_n",
-  "repeat_penalty",
-  "rope_frequency_base",
-  "rope_frequency_scale",
-  "seed",
-  "stop",
-  "temperature",
-  "tfs_z",
-  "top_k",
-  "top_p",
-  "typical_p",
-  "use_mlock",
-  "use_mmap",
-  "vocab_only",
-}
-local params_validators = {
-  model = model_validator,
-  frequency_penalty = float_validator(-2, 2),
-  presence_penalty = float_validator(-2, 2),
-  max_tokens = integer_validator(0, 4096),
-  temperature = float_validator(0, 1),
-  top_p = float_validator(0, 1),
-}
-
-local function write_virtual_text(bufnr, ns, line, chunks, mode)
-  mode = mode or "extmark"
-  if mode == "extmark" then
-    return vim.api.nvim_buf_set_extmark(bufnr, ns, line, 0, { virt_text = chunks, virt_text_pos = "overlay" })
-  elseif mode == "vt" then
-    pcall(vim.api.nvim_buf_set_virtual_text, bufnr, ns, line, chunks, {})
-  end
-end
-
-M.read_config = function(session)
-  if not session then
-    local home = os.getenv("HOME") or os.getenv("USERPROFILE")
-    local file = io.open(home .. "/" .. ".ogpt-" .. M.type .. "-params.json", "rb")
-    if not file then
-      return nil
-    end
-
-    local jsonString = file:read("*a")
-    file:close()
-    return vim.json.decode(jsonString)
-  else
-    return session.parameters
-  end
-end
-
-M.write_config = function(config, session)
-  if not session then
-    local home = os.getenv("HOME") or os.getenv("USERPROFILE")
-    local file, err = io.open(home .. "/" .. ".ogpt-" .. M.type .. "-params.json", "w")
-    if file ~= nil then
-      local json_string = vim.json.encode(config)
-      file:write(json_string)
-      file:close()
-    else
-      vim.notify("Cannot save parameters: " .. err, vim.log.levels.ERROR)
-    end
-  else
-    session.parameters = config
-    session:save()
-  end
-end
-
-M.get_parameters_panel = function(type, default_params, session)
-  M.type = type
-  local custom_params = M.read_config(session or {})
-  M.params = vim.tbl_deep_extend("force", {}, default_params, custom_params or {})
-
-  M.panel = Popup(Config.options.parameters_window)
-
-  -- write details as virtual text
-  local details = {}
-  for _, key in pairs(params_order) do
-    if M.params[key] ~= nil then
-      local vt = {
-        { Config.options.parameters_window.setting_sign .. key .. ": ", "ErrorMsg" },
-        { M.params[key] .. "", "Identifier" },
-      }
-      table.insert(details, vt)
-    end
-  end
-
-  local line = 1
-  local empty_lines = {}
-  for _ = 1, #details do
-    table.insert(empty_lines, "")
-  end
-
-  vim.api.nvim_buf_set_lines(M.panel.bufnr, line - 1, line - 1 + #empty_lines, false, empty_lines)
-  for _, d in ipairs(details) do
-    M.vts[line - 1] = write_virtual_text(M.panel.bufnr, namespace_id, line - 1, d)
-    line = line + 1
-  end
-
-  M.panel:map("n", "<Enter>", function()
-    local row, _ = unpack(vim.api.nvim_win_get_cursor(M.panel.winid))
-
-    local existing_order = {}
-    for _, key in ipairs(params_order) do
-      if M.params[key] ~= nil then
-        table.insert(existing_order, key)
-      end
-    end
-
-    local key = existing_order[row]
-    local value = M.params[key]
-
-    M.open_edit_property_input(key, value, row, function(new_value)
-      M.params[key] = params_validators[key](new_value)
-      local vt = {
-
-        { Config.options.parameters_window.setting_sign .. key .. ": ", "ErrorMsg" },
-        { M.params[key] .. "", "Identifier" },
-      }
-      vim.api.nvim_buf_del_extmark(M.panel.bufnr, namespace_id, M.vts[row - 1])
-      M.vts[row - 1] = vim.api.nvim_buf_set_extmark(
-        M.panel.bufnr,
-        namespace_id,
-        row - 1,
-        0,
-        { virt_text = vt, virt_text_pos = "overlay" }
-      )
-      M.write_config(M.params, session)
-    end)
-  end, {})
-
-  return M.panel
-end
-
-M.get_panel = function(session)
-  return M.get_parameters_panel(" ", session.parameters or {}, session)
-end
-
-M.open_edit_property_input = function(key, value, row, cb)
-  local Input = require("nui.input")
-
-  local input = Input({
-    relative = {
-      type = "win",
-      winid = M.panel.winid,
-    },
-    position = {
-      row = row - 1,
-      col = 0,
-    },
-    size = {
-      width = 38,
-    },
-    border = {
-      style = "none",
-    },
-    win_options = {
-      winhighlight = "Normal:Normal,FloatBorder:Normal",
-    },
+  return setmetatable({
+    close = function()
+      -- TODO: check if we need to make some cleanup
+    end,
   }, {
-    prompt = Config.options.popup_input.prompt .. key .. ": ",
-    default_value = "" .. value,
-    on_submit = cb,
-  })
+    __call = function(_, prompt, process_result, process_complete)
+      if job_completed then
+        local current_count = num_results
+        for index = 1, current_count do
+          if process_result(results[index]) then
+            break
+          end
+        end
+        process_complete()
+      end
 
-  -- mount/open the component
-  input:mount()
+      if not job_started then
+        job_started = true
+        job
+          :new({
+            command = "curl",
+            args = {
+              opts.url,
+            },
+            on_exit = vim.schedule_wrap(function(j, exit_code)
+              if exit_code ~= 0 then
+                vim.notify("An Error Occurred, cannot fetch list of prompts ...", vim.log.levels.ERROR)
+                process_complete()
+              end
+
+              local response = table.concat(j:result(), "\n")
+              local json = vim.fn.json_decode(response)
+
+              for _, model in ipairs(json.models) do
+                local v = entry_maker(model)
+                num_results = num_results + 1
+                results[num_results] = v
+                process_result(v)
+              end
+
+              process_complete()
+              job_completed = true
+            end),
+          })
+          :start()
+      end
+    end,
+  })
+end
+--
+
+local M = {}
+function M.select_model(opts)
+  opts = opts or {}
+  pickers
+    .new(opts, {
+      sorting_strategy = "ascending",
+      layout_config = {
+        height = 0.5,
+      },
+      results_title = "Select Ollama Model",
+      prompt_prefix = Config.options.popup_input.prompt,
+      selection_caret = Config.options.chat.answer_sign .. " ",
+      prompt_title = "Models",
+      finder = finder({ url = Api.MODELS_URL }),
+      sorter = conf.generic_sorter(opts),
+      attach_mappings = function(prompt_bufnr)
+        actions.select_default:replace(function()
+          actions.close(prompt_bufnr)
+          local selection = action_state.get_selected_entry()
+          opts.cb(selection.display, selection.value)
+        end)
+        return true
+      end,
+    })
+    :find()
 end
 
 return M
