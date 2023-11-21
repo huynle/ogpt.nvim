@@ -12,9 +12,11 @@ Because of this, this repo is a hack together solution for me to test out the lo
 **THIS PLUGIN MAY NOT LAST VERY LONG, depending on the state of Ollama.**
 
 ## Plan for this plugin:
-+ Support model selection on the fly, query from Ollama
-+ Support model creation on the fly
-+ help docs for all parameters
++ [x] original functionality of ChatGPT.nvim with Ollama
++ [x] Custom settings per session
++ [ ] Support model selection on the fly, query from Ollama
++ [ ] Support model creation on the fly
++ [ ] help docs for all parameters
 
 ## General usage
 
