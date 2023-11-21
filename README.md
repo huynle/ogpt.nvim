@@ -86,7 +86,7 @@ model.
 (also known as `OGPT`)
 
 #### `OGPTActAs`
-`OGPTActAs` command which opens a prompt selection from [Awesome OGPT Prompts](https://github.com/f/awesome-ogpt-prompts) to be used with the `mistral:7b` model.
+`OGPTActAs` command which opens a prompt selection from [Awesome OGPT Prompts](https://github.com/f/awesome-chatgpt-prompts) to be used with the `mistral:7b` model.
 
 ![preview image](https://github.com/jackmort/ChatGPT.nvim/blob/media/preview-3.png?raw=true)
 
@@ -161,7 +161,7 @@ An example of custom action may look like this: (`#` marks comments)
 }
 ```
 The `edit` strategy consists in showing the output side by side with the input and
-available for further editing requests.
+available for further editing requests
 For now, `edit` strategy is implemented for `chat` type only.
 
 The `display` strategy shows the output in a float window.
