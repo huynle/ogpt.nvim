@@ -225,6 +225,8 @@ local function loadApiKey(envName, configName, optionName, callback, defaultValu
   if not Api[configName] then
     if Config.options[optionName] ~= nil and Config.options[optionName] ~= "" then
       loadConfigFromCommand(Config.options[optionName], optionName, callback, defaultValue)
+    elseif defaultValue ~= nil then
+      callback(defaultValue)
     else
       logger.warn(envName .. " environment variable not set")
       return
