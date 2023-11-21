@@ -57,7 +57,7 @@ function CompletionAction:get_params()
     p_rendered = p1
   end
   additional_params["prompt"] = p_rendered
-  return vim.tbl_extend("force", Config.options.openai_params, self.params, additional_params)
+  return vim.tbl_extend("force", Config.options.api_params, self.params, additional_params)
 end
 
 function CompletionAction:run()
