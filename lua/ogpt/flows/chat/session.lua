@@ -42,7 +42,7 @@ function Session:init(opts)
     self.updated_at = dt
     self.filename = Session.get_dir():joinpath(get_default_filename() .. ".json"):absolute()
     self.conversation = {}
-    self.settings = {}
+    self.parameters = {}
   end
 end
 
@@ -59,7 +59,7 @@ function Session:to_export()
   return {
     name = self.name,
     updated_at = self.updated_at,
-    settings = self.settings,
+    settings = self.parameters,
     conversation = self.conversation,
   }
 end
@@ -77,9 +77,9 @@ function Session:add_item(item)
     item.ctx = nil
   end
   if ctx and ctx.params and ctx.params.options then
-    self.settings = ctx.params.options
-    self.settings.model = ctx.params.model
-    self.settings.model = ctx.params.model
+    self.parameters = ctx.params.options
+    self.parameters.model = ctx.params.model
+    self.parameters.model = ctx.params.model
     item.context = ctx.context
   end
   if self.updated_at == self.name and item.type == 1 then
@@ -140,7 +140,7 @@ function Session:load()
   local data = vim.json.decode(jsonString)
   self.name = data.name
   self.updated_at = data.updated_at or get_current_date()
-  self.settings = data.settings
+  self.parameters = data.settings
   self.conversation = data.conversation
 end
 

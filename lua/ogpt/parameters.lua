@@ -89,7 +89,7 @@ M.read_config = function(session)
     file:close()
     return vim.json.decode(jsonString)
   else
-    return session.settings
+    return session.parameters
   end
 end
 
@@ -102,27 +102,27 @@ M.write_config = function(config, session)
       file:write(json_string)
       file:close()
     else
-      vim.notify("Cannot save settings: " .. err, vim.log.levels.ERROR)
+      vim.notify("Cannot save parameters: " .. err, vim.log.levels.ERROR)
     end
   else
-    session.settings = config
+    session.parameters = config
     session:save()
   end
 end
 
-M.get_settings_panel = function(type, default_params, session)
+M.get_parameters_panel = function(type, default_params, session)
   M.type = type
   local custom_params = M.read_config(session or {})
   M.params = vim.tbl_deep_extend("force", {}, default_params, custom_params or {})
 
-  M.panel = Popup(Config.options.settings_window)
+  M.panel = Popup(Config.options.parameters_window)
 
   -- write details as virtual text
   local details = {}
   for _, key in pairs(params_order) do
     if M.params[key] ~= nil then
       local vt = {
-        { Config.options.settings_window.setting_sign .. key .. ": ", "ErrorMsg" },
+        { Config.options.parameters_window.setting_sign .. key .. ": ", "ErrorMsg" },
         { M.params[key] .. "", "Identifier" },
       }
       table.insert(details, vt)
@@ -158,7 +158,7 @@ M.get_settings_panel = function(type, default_params, session)
       M.params[key] = params_validators[key](new_value)
       local vt = {
 
-        { Config.options.settings_window.setting_sign .. key .. ": ", "ErrorMsg" },
+        { Config.options.parameters_window.setting_sign .. key .. ": ", "ErrorMsg" },
         { M.params[key] .. "", "Identifier" },
       }
       vim.api.nvim_buf_del_extmark(M.panel.bufnr, namespace_id, M.vts[row - 1])
@@ -177,7 +177,7 @@ M.get_settings_panel = function(type, default_params, session)
 end
 
 M.get_panel = function(session)
-  return M.get_settings_panel(" ", session.settings or {}, session)
+  return M.get_parameters_panel(" ", session.parameters or {}, session)
 end
 
 M.open_edit_property_input = function(key, value, row, cb)

@@ -5,7 +5,7 @@ local Popup = require("nui.popup")
 local ChatInput = require("ogpt.input")
 local Api = require("ogpt.api")
 local Config = require("ogpt.config")
-local Settings = require("ogpt.settings")
+local Parameters = require("ogpt.parameters")
 local Sessions = require("ogpt.flows.chat.sessions")
 local Utils = require("ogpt.utils")
 local Signs = require("ogpt.signs")
@@ -35,11 +35,11 @@ function Chat:init()
   self.chat_input = nil
   self.chat_window = nil
   self.sessions_panel = nil
-  self.settings_panel = nil
+  self.parameters_panel = nil
   self.system_role_panel = nil
 
   -- UI OPEN INDICATORS
-  self.settings_open = false
+  self.parameters_open = false
   self.system_role_open = false
 
   self.prompt_lines = 1
@@ -144,7 +144,7 @@ function Chat:set_session(session)
   self:set_lines(0, -1, false, {})
   self:set_cursor({ 1, 0 })
   self:welcome()
-  self:configure_settings_panel(session)
+  self:configure_parameters_panel(session)
   self:set_keymaps()
 end
 
@@ -586,7 +586,7 @@ end
 
 function Chat:map(keys, fn, windows, modes)
   if windows == nil or next(windows) == nil then
-    windows = { self.settings_panel, self.sessions_panel, self.system_role_panel, self.chat_input, self.chat_window }
+    windows = { self.parameters_panel, self.sessions_panel, self.system_role_panel, self.chat_input, self.chat_window }
   end
 
   if modes == nil or next(modes) == nil then
@@ -629,7 +629,7 @@ function Chat:get_layout_params()
   local starting_row = tabline_height == 0 and 0 or 1
 
   local width = Utils.calculate_percentage_width(Config.options.popup_layout.right.width)
-  if self.settings_open then
+  if self.parameters_open then
     width = width + 40
   end
 
@@ -669,14 +669,14 @@ function Chat:get_layout_params()
     Layout.Box(self.chat_input, { size = 2 + self.prompt_lines }),
   }, { dir = "col" })
 
-  if self.settings_open then
+  if self.parameters_open then
     box = Layout.Box({
       Layout.Box({
         left_layout,
         Layout.Box(self.chat_input, { size = 2 + self.prompt_lines }),
       }, { dir = "col", grow = 1 }),
       Layout.Box({
-        Layout.Box(self.settings_panel, { size = "30%" }),
+        Layout.Box(self.parameters_panel, { size = "30%" }),
         Layout.Box(self.sessions_panel, { grow = 1 }),
       }, { dir = "col", size = 40 }),
     }, { dir = "row" })
@@ -686,12 +686,8 @@ function Chat:get_layout_params()
 end
 
 function Chat:open()
-  -- self.settings_panel = Settings.get_settings_panel("chat_completions", self.params, self.session)
-  self.session.settings = vim.tbl_extend("keep", self.session.settings, self.params)
-  self.settings_panel = Settings.get_panel(self.session)
-  -- self.settings_panel = Settings.get_panel(function(session)
-  --   self:set_session(session)
-  -- end)
+  self.session.parameters = vim.tbl_extend("keep", self.session.parameters, self.params)
+  self.parameters_panel = Parameters.get_panel(self.session)
   self.sessions_panel = Sessions.get_panel(function(session)
     self:set_session(session)
   end)
@@ -734,14 +730,12 @@ function Chat:open()
 
       if self.role == ROLE_USER then
         self:showProgess()
-        -- self.session.settings = Settings.params
-        -- self.session:save()
         local params = vim.tbl_extend("keep", {
           stream = true,
           context = self.session:previous_context(),
           prompt = self.messages[#self.messages].text,
           system = self.system_message,
-        }, Settings.params)
+        }, Parameters.params)
         Api.chat_completions(params, function(answer, state, ctx)
           self:addAnswerPartial(answer, state, ctx)
         end, self.should_stop)
@@ -815,16 +809,16 @@ function Chat:set_keymaps()
     end
   end)
 
-  -- toggle settings
-  self:map(Config.options.chat.keymaps.toggle_settings, function()
-    self.settings_open = not self.settings_open
+  -- toggle parameters
+  self:map(Config.options.chat.keymaps.toggle_parameters, function()
+    self.parameters_open = not self.parameters_open
     self:redraw()
 
-    if self.settings_open then
-      vim.api.nvim_buf_set_option(self.settings_panel.bufnr, "modifiable", false)
-      vim.api.nvim_win_set_option(self.settings_panel.winid, "cursorline", true)
+    if self.parameters_open then
+      vim.api.nvim_buf_set_option(self.parameters_panel.bufnr, "modifiable", false)
+      vim.api.nvim_win_set_option(self.parameters_panel.winid, "cursorline", true)
 
-      self:set_active_panel(self.settings_panel)
+      self:set_active_panel(self.parameters_panel)
     else
       self:set_active_panel(self.chat_input)
     end
@@ -834,14 +828,14 @@ function Chat:set_keymaps()
   self:map(Config.options.chat.keymaps.new_session, function()
     self:new_session()
     Sessions:refresh()
-  end, { self.settings_panel, self.chat_input })
+  end, { self.parameters_panel, self.chat_input })
 
   -- cycle panes
   self:map(Config.options.chat.keymaps.cycle_windows, function()
     if not self.active_panel then
       self:set_active_panel(self.chat_input)
     end
-    if self.active_panel == self.settings_panel then
+    if self.active_panel == self.parameters_panel then
       self:set_active_panel(self.sessions_panel)
     elseif self.active_panel == self.chat_input then
       if self.system_role_open then
@@ -851,8 +845,8 @@ function Chat:set_keymaps()
       end
     elseif self.active_panel == self.system_role_panel then
       self:set_active_panel(self.chat_window)
-    elseif self.active_panel == self.chat_window and self.settings_open == true then
-      self:set_active_panel(self.settings_panel)
+    elseif self.active_panel == self.chat_window and self.parameters_open == true then
+      self:set_active_panel(self.parameters_panel)
     else
       self:set_active_panel(self.chat_input)
     end
@@ -956,8 +950,8 @@ function Chat:toggle()
   end
 end
 
-function Chat:configure_settings_panel(session)
-  self.settings_panel = Settings.get_panel(session)
+function Chat:configure_parameters_panel(session)
+  self.parameters_panel = Parameters.get_panel(session)
   self:redraw()
 end
 

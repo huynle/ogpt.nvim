@@ -8,7 +8,7 @@ local Api = require("ogpt.api")
 local Config = require("ogpt.config")
 local Utils = require("ogpt.utils")
 local Spinner = require("ogpt.spinner")
-local Settings = require("ogpt.settings")
+local Parameters = require("ogpt.parameters")
 
 EDIT_FUNCTION_ARGUMENTS = {
   function_call = {
@@ -139,7 +139,7 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, ...)
   end
   local openai_params = Config.options.openai_edit_params
   local use_functions_for_edits = Config.options.use_openai_functions_for_edits
-  local settings_panel = Settings.get_settings_panel("edits", openai_params)
+  local settings_panel = Parameters.get_parameters_panel("edits", openai_params)
   input_window = Popup(Config.options.popup_window)
   output_window = Popup(Config.options.popup_window)
   instructions_input = ChatInput(Config.options.popup_input, {
@@ -157,7 +157,7 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, ...)
       local input = table.concat(vim.api.nvim_buf_get_lines(input_window.bufnr, 0, -1, false), "\n")
       local messages = build_edit_messages(input, instruction, use_functions_for_edits)
       local function_params = use_functions_for_edits and EDIT_FUNCTION_ARGUMENTS or {}
-      local params = vim.tbl_extend("keep", { messages = messages }, Settings.params, function_params)
+      local params = vim.tbl_extend("keep", { messages = messages }, Parameters.params, function_params)
       Api.edits(params, function(response, usage)
         hide_progress()
         local nlcount = Utils.count_newlines_at_end(input)

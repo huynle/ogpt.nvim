@@ -16,7 +16,7 @@ function M.defaults()
         close = "<C-c>",
         accept = "<C-y>",
         toggle_diff = "<C-d>",
-        toggle_settings = "<C-o>",
+        toggle_parameters = "<C-o>",
         cycle_windows = "<Tab>",
         use_output_as_input = "<C-i>",
       },
@@ -60,7 +60,7 @@ function M.defaults()
         draft_message = "<C-d>",
         edit_message = "e",
         delete_message = "d",
-        toggle_settings = "<C-o>",
+        toggle_parameters = "<C-o>",
         toggle_message_role = "<C-r>",
         toggle_system_role_open = "<C-s>",
         stop_generating = "<C-x>",
@@ -74,7 +74,7 @@ function M.defaults()
       },
       right = {
         width = "30%",
-        width_settings_open = "50%",
+        width_parameters_open = "50%",
       },
     },
     popup_window = {
@@ -127,12 +127,12 @@ function M.defaults()
       submit_n = "<Enter>",
       max_visible_lines = 20,
     },
-    settings_window = {
+    parameters_window = {
       setting_sign = "  ",
       border = {
         style = "rounded",
         text = {
-          top = " Settings ",
+          top = " Parameters ",
         },
       },
       win_options = {
