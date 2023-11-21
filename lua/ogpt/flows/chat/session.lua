@@ -72,7 +72,7 @@ function Session:previous_context()
 end
 
 function Session:add_item(item)
-  if item.ctx.params and item.ctx.params.options then
+  if item.ctx and item.ctx.params and item.ctx.params.options then
     self.settings = item.ctx.params.options
     self.settings.model = item.ctx.params.model
   end
