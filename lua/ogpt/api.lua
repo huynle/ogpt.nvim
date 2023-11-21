@@ -270,22 +270,11 @@ local function ensureUrlProtocol(str)
 end
 
 function Api.setup()
-  loadApiHost("OPENAI_API_HOST", "OPENAI_API_HOST", "api_host_cmd", function(value)
-    Api.OPENAI_API_HOST = value
-    Api.COMPLETIONS_URL = ensureUrlProtocol(Api.OPENAI_API_HOST .. "/api/generate")
-    Api.CHAT_COMPLETIONS_URL = ensureUrlProtocol(Api.OPENAI_API_HOST .. "/api/generate")
-  end, "api.openai.com")
-
-  loadApiKey("OPENAI_API_KEY", "OPENAI_API_KEY", "api_key_cmd", function(value)
-    Api.OPENAI_API_KEY = value
-    loadConfigFromEnv("OPENAI_API_TYPE", "OPENAI_API_TYPE")
-    if Api["OPENAI_API_TYPE"] == "azure" then
-      loadAzureConfigs()
-      Api.AUTHORIZATION_HEADER = "api-key: " .. Api.OPENAI_API_KEY
-    else
-      Api.AUTHORIZATION_HEADER = "Authorization: Bearer " .. Api.OPENAI_API_KEY
-    end
-  end)
+  loadApiHost("OLLAMA_API_HOST", "OLLAMA_API_HOST", "api_host_cmd", function(value)
+    Api.OLLAMA_API_HOST = value
+    Api.COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/generate")
+    Api.CHAT_COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/generate")
+  end, "http://localhost:11434/api/generate")
 end
 
 function Api.exec(cmd, args, on_stdout_chunk, on_complete, should_stop, on_stop)

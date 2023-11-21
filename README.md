@@ -1,4 +1,4 @@
-# NOTES
+# Credits
 First of all, thank you to the author of `jackMort/ChatGPT.nvim` for creating a seamless framework
 to interact with OGPT in neovim!
 
@@ -11,63 +11,47 @@ Because of this, this repo is a hack together solution for me to test out the lo
 
 **THIS PLUGIN MAY NOT LAST VERY LONG, depending on the state of Ollama.**
 
-## Plan for this plugin:
-+ [x] original functionality of OGPT.nvim with Ollama
-+ [x] Custom settings per session
-+ [ ] Support model selection on the fly, query from Ollama
-+ [ ] Support model creation on the fly
-+ [ ] help docs for all parameters
-
-## General usage
-
-TO USE with local Ollama, should be the same as the original OGPT.nvim plugin.
-change your API HOST and Key can be empty string.
-
-```sh
-OPENAI_API_HOST=http://localhost:11434 OPENAI_API_KEY=" " nvim
-```
 
 ----
 # OGPT.nvim
-
 ![GitHub Workflow Status](http://img.shields.io/github/actions/workflow/status/jackMort/OGPT.nvim/default.yml?branch=main&style=for-the-badge)
 ![Lua](https://img.shields.io/badge/Made%20with%20Lua-blueviolet.svg?style=for-the-badge&logo=lua)
 
-`OGPT` is a Neovim plugin that allows you to effortlessly utilize the OpenAI OGPT API,
-empowering you to generate natural language responses from OpenAI's OGPT directly within the editor in response to your inquiries.
-
-![preview image](https://github.com/jackMort/OGPT.nvim/blob/media/preview-2.png?raw=true)
-
 ## Features
+**Again Credits goes to `jackMort/ChatGPT.nvim` For these Awesome features**
+
 - **Interactive Q&A**: Engage in interactive question-and-answer sessions with the powerful gpt model (OGPT) using an intuitive interface.
-- **Persona-based Conversations**: Explore various perspectives and have conversations with different personas by selecting prompts from Awesome OGPT Prompts.
+- **Persona-based Conversations**: Explore various perspectives and have conversations with different personas by selecting prompts from Awesome ChatGPT Prompts.
 - **Code Editing Assistance**: Enhance your coding experience with an interactive editing window powered by the gpt model, offering instructions tailored for coding tasks.
 - **Code Completion**: Enjoy the convenience of code completion similar to GitHub Copilot, leveraging the capabilities of the gpt model to suggest code snippets and completions based on context and programming patterns.
 - **Customizable Actions**: Execute a range of actions utilizing the gpt model, such as grammar correction, translation, keyword generation, docstring creation, test addition, code optimization, summarization, bug fixing, code explanation, Roxygen editing, and code readability analysis. Additionally, you can define your own custom actions using a JSON file.
 
 For a comprehensive understanding of the extension's functionality, you can watch a plugin showcase [video](https://www.youtube.com/watch?v=7k0KZsheLP4)
 
+## Ollama Specific Features:
++ [ ] clean up documentation
++ [x] original functionality of OGPT.nvim with Ollama
++ [x] Custom settings per session
+  + [ ] Add/remove settings as Ollama [request options](https://github.com/jmorganca/ollama/blob/main/docs/api.md#request-with-options)
+  + [ ] Change Settings -> [Parameters](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#parameter)
++ [ ] Another Windows for [Template](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#template), [System](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#system)
++ [ ] Query and Select model from Ollama
++ [ ] Support model creation on the fly
+
+
+`OGPT` is a Neovim plugin that allows you to effortlessly utilize the Ollama OGPT API,
+empowering you to generate natural language responses from Ollama's OGPT directly within the editor in response to your inquiries.
+
+![preview image](https://github.com/jackMort/OGPT.nvim/blob/media/preview-2.png?raw=true)
+
+
 ## Installation
 
 - Make sure you have `curl` installed.
-- Get an API key from OpenAI, which you can [obtain here](https://beta.openai.com/account/api-keys).
+- Have a local instance of Ollama running.
 
-The OpenAI API key can be provided in one of the following two ways:
-
-1. In the configuration option `api_key_cmd`, provide the path and arguments to
-   an executable that returns the API key via stdout.
-1. Setting it via an environment variable called `$OPENAI_API_KEY`.
-
-Custom OpenAI API host with the configuration option `api_host_cmd` or
-environment variable called `$OPENAI_API_HOST`. It's useful if you can't access
-OpenAI directly
-
-For Azure deployments, you also need to set environment variables
-`$OPENAI_API_TYPE` to `azure`, `$OPENAI_API_BASE` to your own resource URL,
-e.g. `https://{your-resource-name}.openai.azure.com`, and `$OPENAI_API_AZURE_ENGINE`
-to your deployment ID. Optionally, if you need a different API version,
-set `$OPENAI_API_AZURE_VERSION` as well. Note that edit models have been deprecated
-so they might not work.
+Custom Ollama API host with the configuration option `api_host_cmd` or
+environment variable called `$OLLAMA_API_HOST`. It's useful if you run Ollama remotely 
 
 ```lua
 -- Packer
@@ -102,40 +86,7 @@ use({
 
 `OGPT.nvim` comes with the following defaults, you can override them by passing config as setup param
 
-https://github.com/huynle/ogpt.nvim/blob/9508429d514509b96d8ca9ec3f16933cfb30ac8a/lua/ogpt/config.lua#L10-L157
-
-### Secrets Management
-
-Providing the OpenAI API key via an environment variable is dangerous, as it
-leaves the API key easily readable by any process that can access the
-environment variables of other processes. In addition, it encourages the user
-to store the credential in clear-text in a configuration file.
-
-As an alternative to providing the API key via the `OPENAI_API_KEY` environment
-variable, the user is encouraged to use the `api_key_cmd` configuration option.
-The `api_key_cmd` configuration option takes a string, which is executed at
-startup, and whose output is used as the API key.
-
-The following configuration would use 1Passwords CLI, `op`, to fetch the API key
-from the `credential` field of the `OpenAI` entry.
-
-```lua
-require("ogpt").setup({
-    api_key_cmd = "op read op://private/OpenAI/credential --no-newline"
-})
-```
-
-The following configuration would use GPG to decrypt a local file containing the
-API key
-
-```lua
-local home = vim.fn.expand("$HOME")
-require("ogpt").setup({
-    api_key_cmd = "gpg --decrypt " .. home .. "/secret.txt.gpg"
-})
-```
-
-Note that the `api_key_cmd` arguments are split by whitespace. If you need whitespace inside an argument (for example to reference a path with spaces), you can wrap it in a separate script.
+https://github.com/huynle/ogpt.nvim/blob/81b5e189a044cb9c035b0e9b5e1ad0f2e03c440a/lua/ogpt/config.lua#L10-L157
 
 ## Usage
 
@@ -149,7 +100,7 @@ model.
 #### `OGPTActAs`
 `OGPTActAs` command which opens a prompt selection from [Awesome OGPT Prompts](https://github.com/f/awesome-ogpt-prompts) to be used with the `mistral:7b` model.
 
-![preview image](https://github.com/jackMort/OGPT.nvim/blob/media/preview-3.png?raw=true)
+![preview image](https://github.com/jackmort/ChatGPT.nvim/blob/media/preview-3.png?raw=true)
 
 #### `OGPTEditWithInstructions`
 `OGPTEditWithInstructions` command which opens interactive window to edit selected text or whole window using the `codellama:13b` model (GPT 3.5 fine-tuned for coding).
@@ -175,7 +126,7 @@ wk.register({
 
 - [demo video](https://www.youtube.com/watch?v=dWe01EV0q3Q).
 
-![preview image](https://github.com/jackMort/OGPT.nvim/blob/media/preview.png?raw=true)
+![preview image](https://github.com/jackMort/ChatGPT.nvim/blob/media/preview.png?raw=true)
 
 #### `OGPTRun`
 
@@ -204,8 +155,8 @@ An example of custom action may look like this: (`#` marks comments)
     "opts": {
       "template": "A template using possible variable: {{filetype}} (neovim filetype), {{input}} (the selected text) an {{argument}} (provided on the command line)",
       "strategy": "replace", # or "display" or "append" or "edit"
-      "params": { # parameters according to the official OpenAI API
-        "model": "mistral:7b", # or any other model supported by `"type"` in the OpenAI API, use the playground for reference
+      "params": { # parameters according to the official Ollama API
+        "model": "mistral:7b", # or any other model supported by `"type"` in the Ollama API, use the playground for reference
         "stop": [
           "```" # a string used to stop the model
         ]
