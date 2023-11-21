@@ -72,9 +72,15 @@ function Session:previous_context()
 end
 
 function Session:add_item(item)
-  if item.ctx and item.ctx.params and item.ctx.params.options then
-    self.settings = item.ctx.params.options
-    self.settings.model = item.ctx.params.model
+  local ctx = item.ctx or {}
+  if item.ctx then
+    item.ctx = nil
+  end
+  if ctx and ctx.params and ctx.params.options then
+    self.settings = ctx.params.options
+    self.settings.model = ctx.params.model
+    self.settings.model = ctx.params.model
+    item.context = ctx.context
   end
   if self.updated_at == self.name and item.type == 1 then
     self.name = item.text
