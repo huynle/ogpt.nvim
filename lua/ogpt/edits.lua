@@ -11,14 +11,7 @@ local Spinner = require("ogpt.spinner")
 local Parameters = require("ogpt.parameters")
 
 local build_edit_messages = function(input, instructions)
-  local system_message_content
-  system_message_content =
-    "Apply the changes requested by the user to the {{filetype}} code. Output ONLY the changed code and a brief description of the edits. DO NOT wrap the code in a formatting block. DO NOT provide other text or explanation."
   local messages = {
-    {
-      role = "system",
-      content = system_message_content,
-    },
     {
       role = "user",
       content = input,
@@ -93,7 +86,7 @@ local setup_and_mount = vim.schedule_wrap(function(lines, output_lines, ...)
   end
 end)
 
-M.edit_with_instructions = function(output_lines, bufnr, selection, opts)
+M.edit_with_instructions = function(output_lines, bufnr, selection, opts, ...)
   opts = opts or {}
 
   if bufnr == nil then
@@ -124,6 +117,11 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, opts)
       show_progress()
 
       local input = table.concat(vim.api.nvim_buf_get_lines(input_window.bufnr, 0, -1, false), "\n")
+
+      -- if instruction is empty, try to get the original instruction from opts
+      if instruction == "" then
+        instruction = opts.instruction or ""
+      end
       local messages = build_edit_messages(input, instruction)
       local params = vim.tbl_extend("keep", { messages = messages }, Parameters.params)
       Api.edits(params, function(response, usage)
@@ -167,37 +165,43 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, opts)
   )
 
   -- accept output window
-  for _, mode in ipairs({ "n", "i" }) do
-    instructions_input:map(mode, Config.options.edit_with_instructions.keymaps.accept, function()
-      instructions_input.input_props.on_close()
-      local lines = vim.api.nvim_buf_get_lines(output_window.bufnr, 0, -1, false)
-      vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
-      vim.notify("Successfully applied the change!", vim.log.levels.INFO)
-    end, { noremap = true })
+  for _, window in ipairs({ input_window, output_window, instructions_input }) do
+    for _, mode in ipairs({ "n", "i" }) do
+      window:map(mode, Config.options.edit_with_instructions.keymaps.accept, function()
+        instructions_input.input_props.on_close()
+        local lines = vim.api.nvim_buf_get_lines(output_window.bufnr, 0, -1, false)
+        vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
+        vim.notify("Successfully applied the change!", vim.log.levels.INFO)
+      end, { noremap = true })
+    end
   end
 
   -- use output as input
-  for _, mode in ipairs({ "n", "i" }) do
-    instructions_input:map(mode, Config.options.edit_with_instructions.keymaps.use_output_as_input, function()
-      local lines = vim.api.nvim_buf_get_lines(output_window.bufnr, 0, -1, false)
-      vim.api.nvim_buf_set_lines(input_window.bufnr, 0, -1, false, lines)
-      vim.api.nvim_buf_set_lines(output_window.bufnr, 0, -1, false, {})
-    end, { noremap = true })
+  for _, window in ipairs({ input_window, output_window, instructions_input }) do
+    for _, mode in ipairs({ "n", "i" }) do
+      window:map(mode, Config.options.edit_with_instructions.keymaps.use_output_as_input, function()
+        local lines = vim.api.nvim_buf_get_lines(output_window.bufnr, 0, -1, false)
+        vim.api.nvim_buf_set_lines(input_window.bufnr, 0, -1, false, lines)
+        vim.api.nvim_buf_set_lines(output_window.bufnr, 0, -1, false, {})
+      end, { noremap = true })
+    end
   end
 
   -- close
-  for _, mode in ipairs({ "n", "i" }) do
-    instructions_input:map(mode, Config.options.edit_with_instructions.keymaps.close, function()
-      if vim.fn.mode() == "i" then
-        vim.api.nvim_command("stopinsert")
-      end
-      vim.cmd("q")
-    end, { noremap = true })
+  for _, window in ipairs({ input_window, output_window, instructions_input }) do
+    for _, mode in ipairs({ "n", "i" }) do
+      window:map(mode, Config.options.edit_with_instructions.keymaps.close, function()
+        if vim.fn.mode() == "i" then
+          vim.api.nvim_command("stopinsert")
+        end
+        vim.cmd("q")
+      end, { noremap = true })
+    end
   end
 
   -- toggle parameters
   local parameters_open = false
-  for _, popup in ipairs({ parameters_panel, instructions_input }) do
+  for _, popup in ipairs({ parameters_panel, instructions_input, input_window, output_window }) do
     for _, mode in ipairs({ "n", "i" }) do
       popup:map(mode, Config.options.edit_with_instructions.keymaps.toggle_parameters, function()
         if parameters_open then
@@ -272,7 +276,7 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, opts)
 
   -- toggle diff mode
   local diff_mode = Config.options.edit_with_instructions.diff
-  for _, popup in ipairs({ parameters_panel, instructions_input }) do
+  for _, popup in ipairs({ parameters_panel, instructions_input, output_window, input_window }) do
     for _, mode in ipairs({ "n", "i" }) do
       popup:map(mode, Config.options.edit_with_instructions.keymaps.toggle_diff, function()
         diff_mode = not diff_mode

@@ -2,7 +2,7 @@
 local M = {}
 
 local Chat = require("ogpt.flows.chat")
-local Edits = require("ogpt.code_edits")
+local Edits = require("ogpt.edits")
 local Actions = require("ogpt.flows.actions")
 local CodeCompletions = require("ogpt.flows.code_completions")
 

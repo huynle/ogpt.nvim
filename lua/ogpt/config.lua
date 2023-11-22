@@ -18,7 +18,7 @@ function M.defaults()
         toggle_diff = "<C-d>",
         toggle_parameters = "<C-o>",
         cycle_windows = "<Tab>",
-        use_output_as_input = "<C-i>",
+        use_output_as_input = "<C-u>",
       },
     },
     chat = {

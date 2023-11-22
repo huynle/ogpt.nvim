@@ -34,6 +34,7 @@ local STRATEGY_QUICK_FIX = "quick_fix"
 function ChatAction:init(opts)
   self.super:init(opts)
   self.params = opts.params or {}
+  self.system = opts.system or ""
   self.template = opts.template or "{{input}}"
   self.variables = opts.variables or {}
   self.strategy = opts.strategy or STRATEGY_APPEND
@@ -63,7 +64,10 @@ function ChatAction:get_params()
     content = self:render_template(),
   }
   table.insert(messages, message)
-  return vim.tbl_extend("force", Config.options.api_params, self.params, { messages = messages })
+  return vim.tbl_extend("force", Config.options.api_params, self.params, {
+    messages = messages,
+    system = self.system,
+  })
 end
 
 function ChatAction:run()
@@ -141,10 +145,12 @@ function ChatAction:on_result(answer, usage)
       popup:mount()
     elseif self.strategy == STRATEGY_EDIT then
       Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
+        instruction = self.template,
         params = self:get_params(),
       })
     elseif self.strategy == STRATEGY_EDIT_CODE then
       Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
+        instruction = self.template,
         params = self:get_params(),
         edit_code = true,
       })

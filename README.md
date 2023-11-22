@@ -97,8 +97,8 @@ model.
 
 ![preview image](https://github.com/jackmort/ChatGPT.nvim/blob/media/preview-3.png?raw=true)
 
-#### `OGPTEditWithInstructions`
-`OGPTEditWithInstructions` command which opens interactive window to edit selected text or whole window using the `codellama:13b` model (GPT 3.5 fine-tuned for coding).
+#### `OGPTEditCodeWithInstructions`
+`OGPTEditCodeWithInstructions` command which opens interactive window to edit selected text or whole window using the `codellama:13b` model (GPT 3.5 fine-tuned for coding).
 
 You can map it using the Lua API, e.g. using `which-key.nvim`:
 ```lua
@@ -176,7 +176,7 @@ The `display` strategy shows the output in a float window.
 `append` and `replace` modify the text directly in the buffer.
 
 ### Interactive popup
-When using `OGPT` and `OGPTEditWithInstructions`, the following
+When using `OGPT` and `OGPTEditCodeWithInstructions`, the following
 keybindings are available:
 - `<C-Enter>` [Both] to submit.
 - `<C-y>` [Both] to copy/yank last answer.
