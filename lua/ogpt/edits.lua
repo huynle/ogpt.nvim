@@ -106,6 +106,7 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, opts, ...)
   output_window = Popup(Config.options.popup_window)
   instructions_input = ChatInput(Config.options.popup_input, {
     prompt = Config.options.popup_input.prompt,
+    default_value = opts.instruction or "",
     on_close = function()
       if timer ~= nil then
         timer:stop()
