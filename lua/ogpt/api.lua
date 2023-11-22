@@ -86,7 +86,7 @@ end
 
 function Api.edits(custom_params, cb)
   local params = vim.tbl_extend("keep", custom_params, Config.options.api_edit_params)
-  params.stream = false
+  params.stream = params.stream or false
   Api.make_call(Api.CHAT_COMPLETIONS_URL, params, cb)
 end
 

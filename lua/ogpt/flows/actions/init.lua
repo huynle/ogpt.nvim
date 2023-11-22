@@ -45,7 +45,7 @@ function M.read_actions()
       end
     end
   end
-  return actions
+  return vim.tbl_extend("keep", Config.options.actions, actions)
 end
 
 function M.run_action(opts)

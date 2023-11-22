@@ -19,11 +19,12 @@ local BaseAction = require("ogpt.flows.actions.base")
 local Api = require("ogpt.api")
 local Utils = require("ogpt.utils")
 local Config = require("ogpt.config")
-local Edits = require("ogpt.code_edits")
+local Edits = require("ogpt.edits")
 
 local ChatAction = classes.class(BaseAction)
 
 local STRATEGY_EDIT = "edit"
+local STRATEGY_EDIT_CODE = "edit_code"
 local STRATEGY_REPLACE = "replace"
 local STRATEGY_APPEND = "append"
 local STRATEGY_PREPEND = "prepend"
@@ -139,7 +140,14 @@ function ChatAction:on_result(answer, usage)
       vim.api.nvim_buf_set_lines(popup.bufnr, 0, 1, false, lines)
       popup:mount()
     elseif self.strategy == STRATEGY_EDIT then
-      Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() })
+      Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
+        params = self:get_params(),
+      })
+    elseif self.strategy == STRATEGY_EDIT_CODE then
+      Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
+        params = self:get_params(),
+        edit_code = true,
+      })
     elseif self.strategy == STRATEGY_QUICK_FIX then
       if #lines == 1 and lines[1] == "<OK>" then
         vim.notify("Your Code looks fine, no issues.", vim.log.levels.INFO)

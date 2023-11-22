@@ -205,7 +205,10 @@ function M._conform_to_ollama_api(params)
       params[key] = nil
     end
   end
-  params.options = vim.tbl_extend("keep", param_options, params.options or {})
+  local _options = vim.tbl_extend("keep", param_options, params.options or {})
+  if next(_options) ~= nil then
+    params.options = _options
+  end
   return params
 end
 
@@ -213,17 +216,17 @@ function M.conform_to_ollama(params)
   if params.messages then
     local messages = params.messages
     params.messages = nil
-    params.system = ""
-    params.prompt = ""
+    params.system = params.system or ""
+    params.prompt = params.prompt or ""
     for _, message in ipairs(messages) do
       if message.role == "system" then
-        params.system = params.system .. message.content .. "\n"
+        params.system = params.system .. "\n" .. message.content .. "\n"
       end
     end
 
     for _, message in ipairs(messages) do
       if message.role == "user" then
-        params.prompt = params.prompt .. message.content .. "\n"
+        params.prompt = params.prompt .. "\n" .. message.content .. "\n"
       end
     end
   end
