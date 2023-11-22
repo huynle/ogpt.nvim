@@ -42,7 +42,7 @@ function EditAction:render_template()
 end
 
 function EditAction:get_params()
-  return vim.tbl_extend("force", Config.options.openai_edit_params, self.params, { input = self:render_template() })
+  return vim.tbl_extend("force", Config.options.api_edit_params, self.params, { input = self:render_template() })
 end
 
 function EditAction:run()

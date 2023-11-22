@@ -8,7 +8,7 @@ local Api = require("ogpt.api")
 local Config = require("ogpt.config")
 local Utils = require("ogpt.utils")
 local Spinner = require("ogpt.spinner")
-local Settings = require("ogpt.settings")
+local Parameters = require("ogpt.parameters")
 
 EDIT_FUNCTION_ARGUMENTS = {
   function_call = {
@@ -137,9 +137,9 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, ...)
   else
     visual_lines, start_row, start_col, end_row, end_col = unpack(selection)
   end
-  local openai_params = Config.options.openai_edit_params
+  local api_params = Config.options.api_edit_params
   local use_functions_for_edits = Config.options.use_openai_functions_for_edits
-  local settings_panel = Settings.get_settings_panel("edits", openai_params)
+  local parameters_panel = Parameters.get_parameters_panel("edits", api_params)
   input_window = Popup(Config.options.popup_window)
   output_window = Popup(Config.options.popup_window)
   instructions_input = ChatInput(Config.options.popup_input, {
@@ -157,7 +157,7 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, ...)
       local input = table.concat(vim.api.nvim_buf_get_lines(input_window.bufnr, 0, -1, false), "\n")
       local messages = build_edit_messages(input, instruction, use_functions_for_edits)
       local function_params = use_functions_for_edits and EDIT_FUNCTION_ARGUMENTS or {}
-      local params = vim.tbl_extend("keep", { messages = messages }, Settings.params, function_params)
+      local params = vim.tbl_extend("keep", { messages = messages }, Parameters.params, function_params)
       Api.edits(params, function(response, usage)
         hide_progress()
         local nlcount = Utils.count_newlines_at_end(input)
@@ -227,12 +227,12 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, ...)
     end, { noremap = true })
   end
 
-  -- toggle settings
-  local settings_open = false
-  for _, popup in ipairs({ settings_panel, instructions_input }) do
+  -- toggle parameters
+  local parameters_open = false
+  for _, popup in ipairs({ parameters_panel, instructions_input }) do
     for _, mode in ipairs({ "n", "i" }) do
-      popup:map(mode, Config.options.edit_with_instructions.keymaps.toggle_settings, function()
-        if settings_open then
+      popup:map(mode, Config.options.edit_with_instructions.keymaps.toggle_parameters, function()
+        if parameters_open then
           layout:update(Layout.Box({
             Layout.Box({
               Layout.Box(input_window, { grow = 1 }),
@@ -240,7 +240,7 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, ...)
             }, { dir = "col", size = "50%" }),
             Layout.Box(output_window, { size = "50%" }),
           }, { dir = "row" }))
-          settings_panel:hide()
+          parameters_panel:hide()
           vim.api.nvim_set_current_win(instructions_input.winid)
         else
           layout:update(Layout.Box({
@@ -249,16 +249,16 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, ...)
               Layout.Box(instructions_input, { size = 3 }),
             }, { dir = "col", grow = 1 }),
             Layout.Box(output_window, { grow = 1 }),
-            Layout.Box(settings_panel, { size = 40 }),
+            Layout.Box(parameters_panel, { size = 40 }),
           }, { dir = "row" }))
-          settings_panel:show()
-          settings_panel:mount()
+          parameters_panel:show()
+          parameters_panel:mount()
 
-          vim.api.nvim_set_current_win(settings_panel.winid)
-          vim.api.nvim_buf_set_option(settings_panel.bufnr, "modifiable", false)
-          vim.api.nvim_win_set_option(settings_panel.winid, "cursorline", true)
+          vim.api.nvim_set_current_win(parameters_panel.winid)
+          vim.api.nvim_buf_set_option(parameters_panel.bufnr, "modifiable", false)
+          vim.api.nvim_win_set_option(parameters_panel.winid, "cursorline", true)
         end
-        settings_open = not settings_open
+        parameters_open = not parameters_open
         -- set input and output settings
         --  TODO
         for _, window in ipairs({ input_window, output_window }) do
@@ -271,7 +271,7 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, ...)
 
   -- cycle windows
   local active_panel = instructions_input
-  for _, popup in ipairs({ input_window, output_window, settings_panel, instructions_input }) do
+  for _, popup in ipairs({ input_window, output_window, parameters_panel, instructions_input }) do
     for _, mode in ipairs({ "n", "i" }) do
       if mode == "i" and (popup == input_window or popup == output_window) then
         goto continue
@@ -286,14 +286,14 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, ...)
           active_panel = output_window
           vim.api.nvim_command("stopinsert")
         elseif active_panel == output_window and mode ~= "i" then
-          if settings_open then
-            vim.api.nvim_set_current_win(settings_panel.winid)
-            active_panel = settings_panel
+          if parameters_open then
+            vim.api.nvim_set_current_win(parameters_panel.winid)
+            active_panel = parameters_panel
           else
             vim.api.nvim_set_current_win(instructions_input.winid)
             active_panel = instructions_input
           end
-        elseif active_panel == settings_panel then
+        elseif active_panel == parameters_panel then
           vim.api.nvim_set_current_win(instructions_input.winid)
           active_panel = instructions_input
         end
@@ -304,7 +304,7 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, ...)
 
   -- toggle diff mode
   local diff_mode = Config.options.edit_with_instructions.diff
-  for _, popup in ipairs({ settings_panel, instructions_input }) do
+  for _, popup in ipairs({ parameters_panel, instructions_input }) do
     for _, mode in ipairs({ "n", "i" }) do
       popup:map(mode, Config.options.edit_with_instructions.keymaps.toggle_diff, function()
         diff_mode = not diff_mode

@@ -6,13 +6,13 @@ local Utils = require("ogpt.utils")
 local Api = {}
 
 function Api.completions(custom_params, cb)
-  local params = vim.tbl_extend("keep", custom_params, Config.options.openai_params)
+  local params = vim.tbl_extend("keep", custom_params, Config.options.api_params)
   params.stream = false
   Api.make_call(Api.COMPLETIONS_URL, params, cb)
 end
 
 function Api.chat_completions(custom_params, cb, should_stop)
-  local params = vim.tbl_extend("keep", custom_params, Config.options.openai_params)
+  local params = vim.tbl_extend("keep", custom_params, Config.options.api_params)
   local stream = params.stream or false
   local ctx = {}
   -- add params before conform
@@ -57,7 +57,7 @@ function Api.chat_completions(custom_params, cb, should_stop)
         local ok, json = pcall(vim.json.decode, chunk)
         if ok and json ~= nil then
           if json.error ~= nil then
-            cb(json.error.message, "ERROR", ctx)
+            cb(json.error, "ERROR", ctx)
             return
           end
           process_line(ok, json)
@@ -85,7 +85,7 @@ function Api.chat_completions(custom_params, cb, should_stop)
 end
 
 function Api.edits(custom_params, cb)
-  local params = vim.tbl_extend("keep", custom_params, Config.options.openai_edit_params)
+  local params = vim.tbl_extend("keep", custom_params, Config.options.api_edit_params)
   params.stream = false
   Api.make_call(Api.CHAT_COMPLETIONS_URL, params, cb)
 end
@@ -274,6 +274,7 @@ end
 function Api.setup()
   loadApiHost("OLLAMA_API_HOST", "OLLAMA_API_HOST", "api_host_cmd", function(value)
     Api.OLLAMA_API_HOST = value
+    Api.MODELS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/tags")
     Api.COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/generate")
     Api.CHAT_COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/generate")
   end, "http://localhost:11434/api/generate")

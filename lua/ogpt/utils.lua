@@ -2,6 +2,42 @@ local M = {}
 
 local ESC_FEEDKEY = vim.api.nvim_replace_termcodes("<ESC>", true, false, true)
 
+M.ollama_options = {
+  "num_keep",
+  "seed",
+  "num_predict",
+  "top_k",
+  "top_p",
+  "tfs_z",
+  "typical_p",
+  "repeat_last_n",
+  "temperature",
+  "repeat_penalty",
+  "presence_penalty",
+  "frequency_penalty",
+  "mirostat",
+  "mirostat_tau",
+  "mirostat_eta",
+  "penalize_newline",
+  "stop",
+  "numa",
+  "num_ctx",
+  "num_batch",
+  "num_gqa",
+  "num_gpu",
+  "main_gpu",
+  "low_vram",
+  "f16_kv",
+  "logits_all",
+  "vocab_only",
+  "use_mmap",
+  "use_mlock",
+  "embedding_only",
+  "rope_frequency_base",
+  "rope_frequency_scale",
+  "num_thread",
+}
+
 function M.split(text)
   local t = {}
   for str in string.gmatch(text, "%S+") do
@@ -160,46 +196,11 @@ function M._conform_to_ollama_api(params)
   }
 
   -- https://github.com/jmorganca/ollama/blob/main/docs/api.md#show-model-information
-  local ollama_options = {
-    "num_keep",
-    "seed",
-    "num_predict",
-    "top_k",
-    "top_p",
-    "tfs_z",
-    "typical_p",
-    "repeat_last_n",
-    "temperature",
-    "repeat_penalty",
-    "presence_penalty",
-    "frequency_penalty",
-    "mirostat",
-    "mirostat_tau",
-    "mirostat_eta",
-    "penalize_newline",
-    "stop",
-    "numa",
-    "num_ctx",
-    "num_batch",
-    "num_gqa",
-    "num_gpu",
-    "main_gpu",
-    "low_vram",
-    "f16_kv",
-    "logits_all",
-    "vocab_only",
-    "use_mmap",
-    "use_mlock",
-    "embedding_only",
-    "rope_frequency_base",
-    "rope_frequency_scale",
-    "num_thread",
-  }
 
   local param_options = {}
 
   for key, value in pairs(params) do
-    if not vim.tbl_contains(ollama_parameters, key) and vim.tbl_contains(ollama_options, key) then
+    if not vim.tbl_contains(ollama_parameters, key) and vim.tbl_contains(M.ollama_options, key) then
       param_options[key] = value
       params[key] = nil
     end

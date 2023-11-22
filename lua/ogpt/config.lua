@@ -16,7 +16,7 @@ function M.defaults()
         close = "<C-c>",
         accept = "<C-y>",
         toggle_diff = "<C-d>",
-        toggle_settings = "<C-o>",
+        toggle_parameters = "<C-o>",
         cycle_windows = "<Tab>",
         use_output_as_input = "<C-i>",
       },
@@ -26,8 +26,8 @@ function M.defaults()
       loading_text = "Loading, please wait ...",
       question_sign = "", -- 🙂
       answer_sign = "ﮧ", -- 🤖
-      border_left_sign = "",
-      border_right_sign = "",
+      border_left_sign = "|",
+      border_right_sign = "|",
       max_line_length = 120,
       sessions_window = {
         active_sign = "  ",
@@ -54,13 +54,13 @@ function M.defaults()
         cycle_modes = "<C-f>",
         next_message = "<C-j>",
         prev_message = "<C-k>",
-        select_session = "<Space>",
+        select_session = "<CR>",
         rename_session = "r",
         delete_session = "d",
         draft_message = "<C-d>",
         edit_message = "e",
         delete_message = "d",
-        toggle_settings = "<C-o>",
+        toggle_parameters = "<C-o>",
         toggle_message_role = "<C-r>",
         toggle_system_role_open = "<C-s>",
         stop_generating = "<C-x>",
@@ -74,7 +74,7 @@ function M.defaults()
       },
       right = {
         width = "30%",
-        width_settings_open = "50%",
+        width_parameters_open = "50%",
       },
     },
     popup_window = {
@@ -127,32 +127,30 @@ function M.defaults()
       submit_n = "<Enter>",
       max_visible_lines = 20,
     },
-    settings_window = {
+    parameters_window = {
       setting_sign = "  ",
       border = {
         style = "rounded",
         text = {
-          top = " Settings ",
+          top = " Parameters ",
         },
       },
       win_options = {
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
       },
     },
-    openai_params = {
+    api_params = {
       model = "mistral:7b",
-      frequency_penalty = 0,
-      presence_penalty = 0,
       -- max_tokens = 300,
       temperature = 0.8,
       top_p = 1,
       -- n = 1,
     },
-    openai_edit_params = {
+    api_edit_params = {
       model = "codellama:13b",
       frequency_penalty = 0,
       presence_penalty = 0,
-      temperature = 0,
+      temperature = 0.5,
       top_p = 1,
       -- n = 1,
     },
