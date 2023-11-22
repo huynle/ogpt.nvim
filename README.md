@@ -20,20 +20,27 @@ For a comprehensive understanding of the extension's functionality, you can watc
 + [ ] clean up documentation
 + [x] original functionality of OGPT.nvim with Ollama
 + [x] Custom settings per session
-  + [ ] Add/remove settings as Ollama [request options](https://github.com/jmorganca/ollama/blob/main/docs/api.md#request-with-options)
-  + [ ] Change Settings -> [Parameters](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#parameter)
+  + [x] Add/remove settings as Ollama [request options](https://github.com/jmorganca/ollama/blob/main/docs/api.md#request-with-options)
+  + [x] Change Settings -> [Parameters](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#parameter)
 + [ ] Another Windows for [Template](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#template), [System](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#system)
-+ [ ] Query and Select model from Ollama
++ [x] Query and Select model from Ollama
 + [ ] Support model creation on the fly
 
+Change Model by Opening the Parameter panels default to (ctrl-o) and Tab your way to it
+then press Enter (<cr>) on the model field to change it. It should list all the available models on
+the your Ollama server.
+![Change Model](assets/images/change_model.png)
+
+Same with changing the model, add and delete parameters by using the keys "a" and "d" respectively
+![Additional Ollama Parameters](assets/images/addl_params.png)
+
+
+## Installation
 
 `OGPT` is a Neovim plugin that allows you to effortlessly utilize the Ollama OGPT API,
 empowering you to generate natural language responses from Ollama's OGPT directly within the editor in response to your inquiries.
 
 ![preview image](https://github.com/jackMort/OGPT.nvim/blob/media/preview-2.png?raw=true)
-
-
-## Installation
 
 - Make sure you have `curl` installed.
 - Have a local instance of Ollama running.
