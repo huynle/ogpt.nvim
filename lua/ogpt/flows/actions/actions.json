@@ -5,7 +5,7 @@
       "template": "Complete the following code written in {{lang}} by pasting the existing code and continuing it.\n\nExisting code:\n```{{filetype}}\n{{input}}\n```\n\n```{{filetype}}\n",
       "strategy": "replace",
       "params": {
-        "model": "codellama:13b",
+        "model": "deepseek-coder:6.7b",
         "options": {
           "stop": [
             "```"
@@ -82,7 +82,7 @@
       "template": "Implement tests for the following code.\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nTests:\n```{{filetype}}",
       "strategy": "append",
       "params": {
-        "model": "codellama:13b",
+        "model": "deepseek-coder:6.7b",
         "options": {
           "stop": [
             "```"
@@ -97,7 +97,7 @@
       "template": "Optimize the following code.\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nOptimized version:\n```{{filetype}}",
       "strategy": "edit",
       "params": {
-        "model": "codellama:13b",
+        "model": "deepseek-coder:6.7b",
         "stop": [
           "```"
         ]
@@ -120,7 +120,7 @@
       "template": "Fix bugs in the below code\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nFixed code:\n```{{filetype}}",
       "strategy": "edit",
       "params": {
-        "model": "codellama:13b",
+        "model": "deepseek-coder:6.7b",
         "stop": [
           "```"
         ]
@@ -134,7 +134,7 @@
       "template": "Explain the following code:\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nUse markdown format.\nHere's what the above code is doing:\n```",
       "strategy": "display",
       "params": {
-        "model": "codellama:13b",
+        "model": "deepseek-coder:6.7b",
         "stop": [
           "```"
         ]
