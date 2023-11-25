@@ -38,8 +38,8 @@ M.selectAwesomePrompt = function()
   module.open_chat_with_awesome_prompt()
 end
 
-M.edit_with_instructions = function()
-  module.edit_with_instructions()
+M.edit_with_instructions = function(opts)
+  module.edit_with_instructions(nil, nil, nil, opts)
 end
 
 M.run_action = function(opts)

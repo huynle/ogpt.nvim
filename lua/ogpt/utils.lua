@@ -251,4 +251,13 @@ function M.extract_code(text)
   return nil
 end
 
+function M.write_virtual_text(bufnr, ns, line, chunks, mode)
+  mode = mode or "extmark"
+  if mode == "extmark" then
+    return vim.api.nvim_buf_set_extmark(bufnr, ns, line, 0, { virt_text = chunks, virt_text_pos = "overlay" })
+  elseif mode == "vt" then
+    pcall(vim.api.nvim_buf_set_virtual_text, bufnr, ns, line, chunks, {})
+  end
+end
+
 return M
