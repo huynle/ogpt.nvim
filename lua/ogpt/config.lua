@@ -152,7 +152,45 @@ function M.defaults()
       top_p = 1,
     },
     use_openai_functions_for_edits = false,
-    actions = {},
+    actions = {
+
+      code_completion = {
+        type = "chat",
+        opts = {
+          system = [[You are a CoPilot; a tool that uses natural language processing (NLP)
+    techniques to generate and complete code based on user input. You help developers write code more quickly and efficiently by
+    generating boilerplate code or completing partially written code. Respond with only the resulting code snippet. This means:
+    1. Do not include the code context that was given
+    2. Only place comments in the code snippets
+    ]],
+          strategy = "display",
+          params = {
+            model = "deepseek-coder:6.7b",
+          },
+        },
+      },
+
+      edit_code_with_instructions = {
+        type = "chat",
+        opts = {
+          strategy = "edit_code",
+          delay = true,
+          params = {
+            model = "deepseek-coder:6.7b",
+          },
+        },
+      },
+
+      edit_with_instructions = {
+        type = "chat",
+        opts = {
+          strategy = "edit",
+          params = {
+            model = "mistral:7b",
+          },
+        },
+      },
+    },
     actions_paths = {},
     show_quickfixes_cmd = "Trouble quickfix",
     predefined_chat_gpt_prompts = "https://raw.githubusercontent.com/f/awesome-chatgpt-prompts/main/prompts.csv",

@@ -11,7 +11,7 @@ function Api.completions(custom_params, cb)
   Api.make_call(Api.COMPLETIONS_URL, params, cb)
 end
 
-function Api.chat_completions(custom_params, cb, should_stop)
+function Api.chat_completions(custom_params, cb, should_stop, opts)
   local params = vim.tbl_extend("keep", custom_params, Config.options.api_params)
   local stream = params.stream or false
   local ctx = {}

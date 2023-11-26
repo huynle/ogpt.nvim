@@ -97,8 +97,15 @@ model.
 
 ![preview image](https://github.com/jackmort/ChatGPT.nvim/blob/media/preview-3.png?raw=true)
 
-#### `OGPTEditCodeWithInstructions`
-`OGPTEditCodeWithInstructions` command which opens interactive window to edit selected text or whole window using the `codellama:13b` model (GPT 3.5 fine-tuned for coding).
+#### `OGPTRun edit_with_instructions`
+`OGPTRun edit_with_instructions` command which opens interactive window to edit selected text or
+whole window using the `deepseek-coder:6.7b` model, you can change in this in your config options
+
+#### `OGPTRun edit_code_with_instructions`
+This command opens an interactive window to edit selected text or the entire window using the
+`deepseek-coder:6.7b` model. You can modify this in your config options. The Ollama response will
+be extracted for its code content, and if it doesn't contain any codeblock, it will default back to
+the full response.
 
 You can map it using the Lua API, e.g. using `which-key.nvim`:
 ```lua
@@ -176,7 +183,7 @@ The `display` strategy shows the output in a float window.
 `append` and `replace` modify the text directly in the buffer.
 
 ### Interactive popup
-When using `OGPT` and `OGPTEditCodeWithInstructions`, the following
+When using `OGPT`, the following
 keybindings are available:
 - `<C-Enter>` [Both] to submit.
 - `<C-y>` [Both] to copy/yank last answer.
@@ -204,8 +211,8 @@ Add these to your [whichkey](https://github.com/folke/which-key.nvim) plugin map
 ```lua
 c = {
   name = "OGPT",
-    c = { "<cmd>OGPT<CR>", "OGPT" },
-    e = { "<cmd>OGPTEditWithInstruction<CR>", "Edit with instruction", mode = { "n", "v" } },
+    e = { "<cmd>OGPTRun edit_with_instructions<CR>", "Edit with instruction", mode = { "n", "v" } },
+    c = { "<cmd>OGPTRun edit_code_with_instructions<CR>", "Edit code with instruction", mode = { "n", "v" } },
     g = { "<cmd>OGPTRun grammar_correction<CR>", "Grammar Correction", mode = { "n", "v" } },
     t = { "<cmd>OGPTRun translate<CR>", "Translate", mode = { "n", "v" } },
     k = { "<cmd>OGPTRun keywords<CR>", "Keywords", mode = { "n", "v" } },

@@ -48,8 +48,10 @@ end
 
 function M.split_string_by_line(text)
   local lines = {}
-  for line in (text .. "\n"):gmatch("(.-)\n") do
-    table.insert(lines, line)
+  if text then
+    for line in (text .. "\n"):gmatch("(.-)\n") do
+      table.insert(lines, line)
+    end
   end
   return lines
 end

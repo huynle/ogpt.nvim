@@ -130,8 +130,12 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, opts, ...)
         local nlcount = Utils.count_newlines_at_end(input)
         local output_txt = response
         if opts.edit_code then
+          local code_response = Utils.extract_code(response)
           -- if the chat is to edit code, it will try to extract out the code from response
-          output_txt = Utils.match_indentation(input, Utils.extract_code(response))
+          output_txt = response
+          if code_response then
+            output_txt = Utils.match_indentation(input, code_response)
+          end
           if response.applied_changes then
             vim.notify(response.applied_changes, vim.log.levels.INFO)
           end

@@ -73,11 +73,24 @@ end
 function ChatAction:run()
   vim.schedule(function()
     self:set_loading(true)
-
-    local params = self:get_params()
-    Api.chat_completions(params, function(answer, usage)
-      self:on_result(answer, usage)
-    end)
+    if self.strategy == STRATEGY_EDIT_CODE and self.opts.delay then
+      Edits.edit_with_instructions({}, self:get_bufnr(), { self:get_visual_selection() }, {
+        instruction = self.template,
+        params = self:get_params(),
+        edit_code = true,
+      })
+    elseif self.strategy == STRATEGY_EDIT and self.opts.delay then
+      Edits.edit_with_instructions({}, self:get_bufnr(), { self:get_visual_selection() }, {
+        instruction = self.template,
+        params = self:get_params(),
+        edit_code = false,
+      })
+    else
+      local params = self:get_params()
+      Api.chat_completions(params, function(answer, usage)
+        self:on_result(answer, usage)
+      end, nil, self.opts)
+    end
   end)
 end
 
