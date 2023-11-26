@@ -185,6 +185,7 @@ function M.defaults()
         type = "chat",
         opts = {
           strategy = "edit",
+          delay = true,
           params = {
             model = "mistral:7b",
           },

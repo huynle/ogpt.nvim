@@ -97,7 +97,7 @@ function M.select_model(opts)
       selection_caret = Config.options.chat.answer_sign .. " ",
       prompt_title = "Models",
       finder = finder({ url = Api.MODELS_URL }),
-      sorter = conf.generic_sorter(opts),
+      sorter = conf.generic_sorter(),
       attach_mappings = function(prompt_bufnr)
         actions.select_default:replace(function()
           actions.close(prompt_bufnr)

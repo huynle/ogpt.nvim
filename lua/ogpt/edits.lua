@@ -10,11 +10,15 @@ local Utils = require("ogpt.utils")
 local Spinner = require("ogpt.spinner")
 local Parameters = require("ogpt.parameters")
 
-local build_edit_messages = function(input, instructions)
+local build_edit_messages = function(input, instructions, opts)
+  local _input = input
+  if opts.edit_code then
+    _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
+  end
   local messages = {
     {
       role = "user",
-      content = input,
+      content = _input,
     },
     {
       role = "user",
@@ -123,7 +127,7 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, opts, ...)
       if instruction == "" then
         instruction = opts.instruction or ""
       end
-      local messages = build_edit_messages(input, instruction)
+      local messages = build_edit_messages(input, instruction, opts)
       local params = vim.tbl_extend("keep", { messages = messages }, Parameters.params)
       Api.edits(params, function(response, usage)
         hide_progress()

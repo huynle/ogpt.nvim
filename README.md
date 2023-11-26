@@ -35,6 +35,11 @@ Same with changing the model, add and delete parameters by using the keys "a" an
 ![Additional Ollama Parameters](assets/images/addl_params.png)
 
 
+## OGPT Enhancement from Original ChatGPT.nvim
++ [x] additional actions can be added to config options
++ [x] running `OGPTRun` shows telescope picker
+
+
 ## Installation
 
 `OGPT` is a Neovim plugin that allows you to effortlessly utilize the Ollama OGPT API,

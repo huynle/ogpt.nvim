@@ -262,4 +262,19 @@ function M.write_virtual_text(bufnr, ns, line, chunks, mode)
   end
 end
 
+-- Function to convert a nested table to a string
+function M.tableToString(tbl, indent)
+  indent = indent or 0
+  local str = ""
+  for k, v in pairs(tbl) do
+    if type(v) == "table" then
+      str = str .. string.rep("  ", indent) .. k .. ":\n"
+      str = str .. M.tableToString(v, indent + 1)
+    else
+      str = str .. string.rep("  ", indent) .. k .. ": " .. tostring(v) .. "\n"
+    end
+  end
+  return str
+end
+
 return M
