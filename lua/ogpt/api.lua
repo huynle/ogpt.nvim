@@ -11,7 +11,7 @@ function Api.completions(custom_params, cb)
   Api.make_call(Api.COMPLETIONS_URL, params, cb)
 end
 
-function Api.chat_completions(custom_params, cb, should_stop)
+function Api.chat_completions(custom_params, cb, should_stop, opts)
   local params = vim.tbl_extend("keep", custom_params, Config.options.api_params)
   local stream = params.stream or false
   local ctx = {}
@@ -86,7 +86,7 @@ end
 
 function Api.edits(custom_params, cb)
   local params = vim.tbl_extend("keep", custom_params, Config.options.api_edit_params)
-  params.stream = false
+  params.stream = params.stream or false
   Api.make_call(Api.CHAT_COMPLETIONS_URL, params, cb)
 end
 
@@ -277,7 +277,7 @@ function Api.setup()
     Api.MODELS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/tags")
     Api.COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/generate")
     Api.CHAT_COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/generate")
-  end, "http://localhost:11434/api/generate")
+  end, "http://localhost:11434")
 
   loadApiKey("OLLAMA_API_KEY", "OLLAMA_API_KEY", "api_key_cmd", function(value)
     Api.OLLAMA_API_KEY = value

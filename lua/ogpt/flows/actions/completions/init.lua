@@ -86,7 +86,7 @@ function CompletionAction:on_result(answer, usage)
     local _, start_row, start_col, end_row, end_col = self:get_visual_selection()
 
     if self.strategy ~= STRATEGY_DISPLAY then
-      vim.api.nvim_buf_set_text(bufnr, start_row, start_col, end_row, end_col, lines)
+      vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
     else
       local Popup = require("nui.popup")
       local ui = vim.tbl_deep_extend("keep", self.ui, {

@@ -48,8 +48,10 @@ end
 
 function M.split_string_by_line(text)
   local lines = {}
-  for line in (text .. "\n"):gmatch("(.-)\n") do
-    table.insert(lines, line)
+  if text then
+    for line in (text .. "\n"):gmatch("(.-)\n") do
+      table.insert(lines, line)
+    end
   end
   return lines
 end
@@ -205,7 +207,10 @@ function M._conform_to_ollama_api(params)
       params[key] = nil
     end
   end
-  params.options = vim.tbl_extend("keep", param_options, params.options or {})
+  local _options = vim.tbl_extend("keep", param_options, params.options or {})
+  if next(_options) ~= nil then
+    params.options = _options
+  end
   return params
 end
 
@@ -213,17 +218,17 @@ function M.conform_to_ollama(params)
   if params.messages then
     local messages = params.messages
     params.messages = nil
-    params.system = ""
-    params.prompt = ""
+    params.system = params.system or ""
+    params.prompt = params.prompt or ""
     for _, message in ipairs(messages) do
       if message.role == "system" then
-        params.system = params.system .. message.content .. "\n"
+        params.system = params.system .. "\n" .. message.content .. "\n"
       end
     end
 
     for _, message in ipairs(messages) do
       if message.role == "user" then
-        params.prompt = params.prompt .. message.content .. "\n"
+        params.prompt = params.prompt .. "\n" .. message.content .. "\n"
       end
     end
   end
@@ -246,6 +251,30 @@ function M.extract_code(text)
     return lastCodeBlock:gsub("```\n", ""):gsub("```", ""):match("^%s*(.-)%s*$")
   end
   return nil
+end
+
+function M.write_virtual_text(bufnr, ns, line, chunks, mode)
+  mode = mode or "extmark"
+  if mode == "extmark" then
+    return vim.api.nvim_buf_set_extmark(bufnr, ns, line, 0, { virt_text = chunks, virt_text_pos = "overlay" })
+  elseif mode == "vt" then
+    pcall(vim.api.nvim_buf_set_virtual_text, bufnr, ns, line, chunks, {})
+  end
+end
+
+-- Function to convert a nested table to a string
+function M.tableToString(tbl, indent)
+  indent = indent or 0
+  local str = ""
+  for k, v in pairs(tbl) do
+    if type(v) == "table" then
+      str = str .. string.rep("  ", indent) .. k .. ":\n"
+      str = str .. M.tableToString(v, indent + 1)
+    else
+      str = str .. string.rep("  ", indent) .. k .. ": " .. tostring(v) .. "\n"
+    end
+  end
+  return str
 end
 
 return M
