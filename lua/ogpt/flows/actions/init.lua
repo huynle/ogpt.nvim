@@ -45,7 +45,7 @@ function M.read_actions()
       end
     end
   end
-  return actions
+  return vim.tbl_extend("keep", Config.options.actions, actions)
 end
 
 function M.run_action(opts)
@@ -55,7 +55,6 @@ function M.run_action(opts)
   local item = ACTIONS[action_name]
 
   -- parse args
-  --
   if item.args then
     item.opts.variables = {}
     local i = 2

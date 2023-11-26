@@ -6,12 +6,6 @@ vim.api.nvim_create_user_command("OGPTActAs", function()
   require("ogpt").selectAwesomePrompt()
 end, {})
 
-vim.api.nvim_create_user_command("OGPTEditWithInstructions", function()
-  require("ogpt").edit_with_instructions()
-end, {
-  range = true,
-})
-
 vim.api.nvim_create_user_command("OGPTRun", function(opts)
   require("ogpt").run_action(opts)
 end, {

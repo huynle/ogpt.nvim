@@ -152,7 +152,7 @@ function M.select_parameter(opts)
       layout_config = {
         height = 0.5,
       },
-      results_title = "OGPT Acts As ...",
+      results_title = "Select Additional Parameter",
       prompt_prefix = Config.options.popup_input.prompt,
       selection_caret = Config.options.chat.answer_sign .. " ",
       prompt_title = "Parameter",

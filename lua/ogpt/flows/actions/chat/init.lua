@@ -19,11 +19,12 @@ local BaseAction = require("ogpt.flows.actions.base")
 local Api = require("ogpt.api")
 local Utils = require("ogpt.utils")
 local Config = require("ogpt.config")
-local Edits = require("ogpt.code_edits")
+local Edits = require("ogpt.edits")
 
 local ChatAction = classes.class(BaseAction)
 
 local STRATEGY_EDIT = "edit"
+local STRATEGY_EDIT_CODE = "edit_code"
 local STRATEGY_REPLACE = "replace"
 local STRATEGY_APPEND = "append"
 local STRATEGY_PREPEND = "prepend"
@@ -33,6 +34,7 @@ local STRATEGY_QUICK_FIX = "quick_fix"
 function ChatAction:init(opts)
   self.super:init(opts)
   self.params = opts.params or {}
+  self.system = opts.system or ""
   self.template = opts.template or "{{input}}"
   self.variables = opts.variables or {}
   self.strategy = opts.strategy or STRATEGY_APPEND
@@ -62,17 +64,38 @@ function ChatAction:get_params()
     content = self:render_template(),
   }
   table.insert(messages, message)
-  return vim.tbl_extend("force", Config.options.api_params, self.params, { messages = messages })
+  return vim.tbl_extend("force", Config.options.api_params, self.params, {
+    messages = messages,
+    system = self.system,
+  })
 end
 
 function ChatAction:run()
   vim.schedule(function()
-    self:set_loading(true)
+    local _params = vim.tbl_extend("force", Config.options.api_params, self.params, {
+      system = self.system,
+    })
 
-    local params = self:get_params()
-    Api.chat_completions(params, function(answer, usage)
-      self:on_result(answer, usage)
-    end)
+    if self.strategy == STRATEGY_EDIT_CODE and self.opts.delay then
+      Edits.edit_with_instructions({}, self:get_bufnr(), { self:get_visual_selection() }, {
+        instruction = self.template,
+        params = _params,
+        edit_code = true,
+        filetype = self:get_filetype(),
+      })
+    elseif self.strategy == STRATEGY_EDIT and self.opts.delay then
+      Edits.edit_with_instructions({}, self:get_bufnr(), { self:get_visual_selection() }, {
+        instruction = self.template,
+        params = _params,
+        edit_code = false,
+      })
+    else
+      self:set_loading(true)
+      local params = self:get_params()
+      Api.chat_completions(params, function(answer, usage)
+        self:on_result(answer, usage)
+      end, nil, self.opts)
+    end
   end)
 end
 
@@ -139,7 +162,16 @@ function ChatAction:on_result(answer, usage)
       vim.api.nvim_buf_set_lines(popup.bufnr, 0, 1, false, lines)
       popup:mount()
     elseif self.strategy == STRATEGY_EDIT then
-      Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() })
+      Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
+        instruction = self.template,
+        params = self:get_params(),
+      })
+    elseif self.strategy == STRATEGY_EDIT_CODE then
+      Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
+        instruction = self.template,
+        params = self:get_params(),
+        edit_code = true,
+      })
     elseif self.strategy == STRATEGY_QUICK_FIX then
       if #lines == 1 and lines[1] == "<OK>" then
         vim.notify("Your Code looks fine, no issues.", vim.log.levels.INFO)
