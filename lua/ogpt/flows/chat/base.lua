@@ -750,17 +750,24 @@ function Chat:open()
   -- initialize
   self.layout:mount()
   self:welcome()
+  self:set_events()
+end
 
+function Chat:set_events()
   local event = require("nui.utils.autocmd").event
-  self.chat_input:on(event.QuitPre, function()
-    self.active = false
-  end)
-  self.chat_input:on(event.FocusLost, function()
-    self.focused = false
-  end)
-  self.chat_input:on(event.FocusGained, function()
-    self.focused = true
-  end)
+  local windows = { self.parameters_panel, self.chat_input, self.chat_window }
+
+  for _, popup in ipairs(windows) do
+    popup:on(event.QuitPre, function()
+      self.active = false
+    end)
+    popup:on(event.WinLeave, function()
+      self.focused = false
+    end)
+    popup:on(event.WinEnter, function()
+      self.focused = true
+    end)
+  end
 end
 
 function Chat:set_keymaps()
