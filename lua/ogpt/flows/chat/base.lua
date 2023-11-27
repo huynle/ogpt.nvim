@@ -28,6 +28,7 @@ function Chat:init()
 
   -- quit indicator
   self.active = true
+  self.focused = true
 
   -- UI ELEMENTS
   self.layout = nil
@@ -753,6 +754,12 @@ function Chat:open()
   local event = require("nui.utils.autocmd").event
   self.chat_input:on(event.QuitPre, function()
     self.active = false
+  end)
+  self.chat_input:on(event.FocusLost, function()
+    self.focused = false
+  end)
+  self.chat_input:on(event.FocusGained, function()
+    self.focused = true
   end)
 end
 
