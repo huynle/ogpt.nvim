@@ -15,6 +15,18 @@ M.open = function()
   end
 end
 
+M.focus = function()
+  if M.chat ~= nil then
+    if not M.chat.focused then
+      M.chat:hide()
+      M.chat:show()
+    end
+  else
+    M.chat = Chat:new()
+    M.chat:open()
+  end
+end
+
 M.open_with_awesome_prompt = function()
   Prompts.selectAwesomePrompt({
     cb = vim.schedule_wrap(function(act, prompt)

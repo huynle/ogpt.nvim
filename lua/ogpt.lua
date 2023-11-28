@@ -87,6 +87,10 @@ M.openChat = function()
   module.open_chat()
 end
 
+M.focusChat = function()
+  module.focus_chat()
+end
+
 M.selectAwesomePrompt = function()
   module.open_chat_with_awesome_prompt()
 end
