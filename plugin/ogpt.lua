@@ -6,25 +6,6 @@ vim.api.nvim_create_user_command("OGPTActAs", function()
   require("ogpt").selectAwesomePrompt()
 end, {})
 
-vim.api.nvim_create_user_command("OGPTEditCodeWithInstructions", function()
-  require("ogpt").edit_with_instructions({
-    edit_code = true,
-    params = {
-      model = "codellama:13b",
-    },
-  })
-end, {
-  range = true,
-})
-
-vim.api.nvim_create_user_command("OGPTEditWithInstructions", function()
-  require("ogpt").edit_with_instructions({
-    edit_code = false,
-  })
-end, {
-  range = true,
-})
-
 vim.api.nvim_create_user_command("OGPTRun", function(opts)
   require("ogpt").run_action(opts)
 end, {
