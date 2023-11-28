@@ -6,11 +6,7 @@
       "strategy": "replace",
       "params": {
         "model": "deepseek-coder:6.7b",
-        "options": {
-          "stop": [
-            "```"
-          ]
-        }
+        "options": {}
       }
     }
   },
@@ -68,11 +64,7 @@
       "strategy": "edit",
       "params": {
         "model": "mistral:7b",
-        "options": {
-          "stop": [
-            "```"
-          ]
-        }
+        "options": {}
       }
     }
   },
@@ -83,11 +75,7 @@
       "strategy": "append",
       "params": {
         "model": "deepseek-coder:6.7b",
-        "options": {
-          "stop": [
-            "```"
-          ]
-        }
+        "options": {}
       }
     }
   },
@@ -97,10 +85,7 @@
       "template": "Optimize the following code.\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nOptimized version:\n```{{filetype}}",
       "strategy": "edit",
       "params": {
-        "model": "deepseek-coder:6.7b",
-        "stop": [
-          "```"
-        ]
+        "model": "deepseek-coder:6.7b"
       }
     }
   },
@@ -120,10 +105,7 @@
       "template": "Fix bugs in the below code\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nFixed code:\n```{{filetype}}",
       "strategy": "edit",
       "params": {
-        "model": "deepseek-coder:6.7b",
-        "stop": [
-          "```"
-        ]
+        "model": "deepseek-coder:6.7b"
       }
     }
   },
@@ -134,10 +116,7 @@
       "template": "Explain the following code:\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nUse markdown format.\nHere's what the above code is doing:\n```",
       "strategy": "display",
       "params": {
-        "model": "deepseek-coder:6.7b",
-        "stop": [
-          "```"
-        ]
+        "model": "deepseek-coder:6.7b"
       }
     }
   },
