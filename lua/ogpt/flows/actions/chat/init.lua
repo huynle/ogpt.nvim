@@ -117,8 +117,8 @@ function ChatAction:on_result(answer, usage)
       -- compute size
       -- the width is calculated based on the maximum number of lines and the height is calculated based on the width
       local cur_win = vim.api.nvim_get_current_win()
-      local max_h = math.ceil(vim.api.nvim_win_get_height(cur_win) / 2)
-      local max_w = math.ceil(vim.api.nvim_win_get_width(cur_win) / 2)
+      local max_h = math.ceil(vim.api.nvim_win_get_height(cur_win) * 0.75)
+      local max_w = math.ceil(vim.api.nvim_win_get_width(cur_win) * 0.75)
       local ui_w = 0
       local len = 0
       local ncount = 0
