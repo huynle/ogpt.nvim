@@ -160,6 +160,33 @@ function ChatAction:on_result(answer, usage)
 
       local popup = PreviewWindow(ui_opts)
       vim.api.nvim_buf_set_lines(popup.bufnr, 0, 1, false, lines)
+
+      local _replace = function(replace)
+        replace = replace or false
+        if replace then
+          vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
+        else
+          table.insert(lines, 1, "")
+          table.insert(lines, "")
+          vim.api.nvim_buf_set_text(bufnr, end_row, start_col - 1, end_row, start_col - 1, lines)
+        end
+
+        if vim.fn.mode() == "i" then
+          vim.api.nvim_command("stopinsert")
+        end
+        vim.cmd("q")
+      end
+
+      -- accept output and replace
+      popup:map("n", "r", function()
+        _replace(true)
+      end)
+
+      -- accept output and append
+      popup:map("n", "a", function()
+        _replace(false)
+      end)
+
       popup:mount()
     elseif self.strategy == STRATEGY_EDIT then
       Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
