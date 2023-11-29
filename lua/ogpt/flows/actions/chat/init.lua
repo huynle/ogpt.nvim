@@ -145,7 +145,7 @@ function ChatAction:on_result(answer, usage)
         border = {
           style = "rounded",
           text = {
-            top = " " .. self.opts.title .. " ",
+            top = " " .. (self.opts.title or self.opts.args) .. " ",
             top_align = "left",
           },
         },
