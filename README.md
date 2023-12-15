@@ -38,6 +38,9 @@ Same with changing the model, add and delete parameters by using the keys "a" an
 ## OGPT Enhancement from Original ChatGPT.nvim
 + [x] additional actions can be added to config options
 + [x] running `OGPTRun` shows telescope picker
++ [x] for `type="chat"` and `strategy="display"`, "r" and "a" can be used to "replace the
+  highlighted text" or "append after the highlighted text", respectively. Otherwise, "esc" or
+"ctrl-c" would exit the popup
 
 
 ## Installation
@@ -183,9 +186,8 @@ The `edit` strategy consists in showing the output side by side with the input a
 available for further editing requests
 For now, `edit` strategy is implemented for `chat` type only.
 
-The `display` strategy shows the output in a float window.
-
-`append` and `replace` modify the text directly in the buffer.
+The `display` strategy shows the output in a float window. 
+`append` and `replace` modify the text directly in the buffer with "a" or "r"
 
 ### Interactive popup
 When using `OGPT`, the following
