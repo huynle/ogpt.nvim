@@ -168,7 +168,7 @@ function ChatAction:on_result(answer, usage)
         else
           table.insert(lines, 1, "")
           table.insert(lines, "")
-          vim.api.nvim_buf_set_text(bufnr, end_row, start_col - 1, end_row, start_col - 1, lines)
+          vim.api.nvim_buf_set_text(bufnr, end_row - 1, start_col - 1, end_row - 1, start_col - 1, lines)
         end
 
         if vim.fn.mode() == "i" then
@@ -185,6 +185,16 @@ function ChatAction:on_result(answer, usage)
       -- accept output and append
       popup:map("n", "a", function()
         _replace(false)
+      end)
+
+      -- yank output and close
+      popup:map("n", "y", function()
+        vim.fn.setreg(Config.options.yank_register, lines)
+
+        if vim.fn.mode() == "i" then
+          vim.api.nvim_command("stopinsert")
+        end
+        vim.cmd("q")
       end)
 
       popup:mount()
