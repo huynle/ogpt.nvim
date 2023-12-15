@@ -117,8 +117,8 @@ function ChatAction:on_result(answer, usage)
       -- compute size
       -- the width is calculated based on the maximum number of lines and the height is calculated based on the width
       local cur_win = vim.api.nvim_get_current_win()
-      local max_h = math.ceil(vim.api.nvim_win_get_height(cur_win) / 2)
-      local max_w = math.ceil(vim.api.nvim_win_get_width(cur_win) / 2)
+      local max_h = math.ceil(vim.api.nvim_win_get_height(cur_win) * 0.75)
+      local max_w = math.ceil(vim.api.nvim_win_get_width(cur_win) * 0.75)
       local ui_w = 0
       local len = 0
       local ncount = 0
@@ -145,7 +145,7 @@ function ChatAction:on_result(answer, usage)
         border = {
           style = "rounded",
           text = {
-            top = " " .. self.opts.title .. " ",
+            top = " " .. (self.opts.title or self.opts.args) .. " ",
             top_align = "left",
           },
         },
@@ -160,6 +160,43 @@ function ChatAction:on_result(answer, usage)
 
       local popup = PreviewWindow(ui_opts)
       vim.api.nvim_buf_set_lines(popup.bufnr, 0, 1, false, lines)
+
+      local _replace = function(replace)
+        replace = replace or false
+        if replace then
+          vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
+        else
+          table.insert(lines, 1, "")
+          table.insert(lines, "")
+          vim.api.nvim_buf_set_text(bufnr, end_row - 1, start_col - 1, end_row - 1, start_col - 1, lines)
+        end
+
+        if vim.fn.mode() == "i" then
+          vim.api.nvim_command("stopinsert")
+        end
+        vim.cmd("q")
+      end
+
+      -- accept output and replace
+      popup:map("n", "r", function()
+        _replace(true)
+      end)
+
+      -- accept output and append
+      popup:map("n", "a", function()
+        _replace(false)
+      end)
+
+      -- yank output and close
+      popup:map("n", "y", function()
+        vim.fn.setreg(Config.options.yank_register, lines)
+
+        if vim.fn.mode() == "i" then
+          vim.api.nvim_command("stopinsert")
+        end
+        vim.cmd("q")
+      end)
+
       popup:mount()
     elseif self.strategy == STRATEGY_EDIT then
       Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
