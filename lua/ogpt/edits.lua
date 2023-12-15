@@ -177,7 +177,7 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, opts, ...)
   for _, window in ipairs({ input_window, output_window, instructions_input }) do
     for _, mode in ipairs({ "n", "i" }) do
       window:map(mode, Config.options.edit_with_instructions.keymaps.accept, function()
-        instructions_input.input_props.on_close()
+        window.input_props.on_close()
         local lines = vim.api.nvim_buf_get_lines(output_window.bufnr, 0, -1, false)
         vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
         vim.notify("Successfully applied the change!", vim.log.levels.INFO)

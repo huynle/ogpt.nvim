@@ -139,6 +139,31 @@ function M.defaults()
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
       },
     },
+    preview_window = {
+      position = 1,
+      size = {
+        width = "40%",
+        height = 10,
+      },
+      padding = { 1, 1, 1, 1 },
+      enter = true,
+      focusable = true,
+      zindex = 50,
+      border = {
+        style = "rounded",
+      },
+      buf_options = {
+        modifiable = false,
+        readonly = true,
+        filetype = "markdown",
+      },
+      win_options = {
+        wrap = true,
+        linebreak = true,
+        winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+      },
+    },
+
     api_params = {
       model = "mistral:7b",
       temperature = 0.8,
