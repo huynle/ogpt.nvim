@@ -187,12 +187,13 @@ end
 function M._conform_to_ollama_api(params)
   local ollama_parameters = {
     "model",
-    "prompt",
+    -- "prompt",
+    "messages",
     "format",
     "options",
     "system",
     "template",
-    "context",
+    -- "context",
     "stream",
     "raw",
   }
@@ -202,9 +203,13 @@ function M._conform_to_ollama_api(params)
   local param_options = {}
 
   for key, value in pairs(params) do
-    if not vim.tbl_contains(ollama_parameters, key) and vim.tbl_contains(M.ollama_options, key) then
-      param_options[key] = value
-      params[key] = nil
+    if not vim.tbl_contains(ollama_parameters, key) then
+      if vim.tbl_contains(M.ollama_options, key) then
+        param_options[key] = value
+        params[key] = nil
+      else
+        params[key] = nil
+      end
     end
   end
   local _options = vim.tbl_extend("keep", param_options, params.options or {})
@@ -216,21 +221,21 @@ end
 
 function M.conform_to_ollama(params)
   if params.messages then
-    local messages = params.messages
-    params.messages = nil
-    params.system = params.system or ""
-    params.prompt = params.prompt or ""
-    for _, message in ipairs(messages) do
-      if message.role == "system" then
-        params.system = params.system .. "\n" .. message.content .. "\n"
-      end
-    end
-
-    for _, message in ipairs(messages) do
-      if message.role == "user" then
-        params.prompt = params.prompt .. "\n" .. message.content .. "\n"
-      end
-    end
+    --   local messages = params.messages
+    --   params.messages = nil
+    --   params.system = params.system or ""
+    --   params.prompt = params.prompt or ""
+    --   for _, message in ipairs(messages) do
+    --     if message.role == "system" then
+    --       params.system = params.system .. "\n" .. message.content .. "\n"
+    --     end
+    --   end
+    --
+    --   for _, message in ipairs(messages) do
+    --     if message.role == "user" then
+    --       params.prompt = params.prompt .. "\n" .. message.content .. "\n"
+    --     end
+    --   end
   end
 
   return M._conform_to_ollama_api(params)

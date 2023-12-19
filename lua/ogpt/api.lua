@@ -44,15 +44,28 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
             ctx.context = _json.context
             cb(raw_chunks, "END", ctx)
           else
-            if _ok and _json ~= nil then
-              if _json and _json.response then
-                cb(_json.response, state, ctx)
-                raw_chunks = raw_chunks .. _json.response
+            if _ok and not vim.tbl_isempty(_json) then
+              if _json and _json.message then
+                cb(_json.message.content, state, ctx)
+                raw_chunks = raw_chunks .. _json.message.content
                 state = "CONTINUE"
               end
             end
           end
         end
+
+        -- local ok, json = pcall(vim.json.decode, chunk)
+        -- if ok and json ~= nil then
+        --   if json.error ~= nil then
+        --     cb(json.error.message, "ERROR")
+        --     return
+        --   end
+        -- end
+        -- for line in chunk:gmatch("[^\n]+") do
+        --   local raw_json = string.gsub(line, "^data: ", "")
+        --   if raw_json == "[DONE]" then
+        --     cb(raw_chunks, "END")
+        --   else
 
         local ok, json = pcall(vim.json.decode, chunk)
         if ok and json ~= nil then
@@ -134,10 +147,10 @@ Api.handle_response = vim.schedule_wrap(function(response, exit_code, cb)
   elseif json.error then
     cb("// API ERROR: " .. json.error)
   else
-    local message = json.response
+    local message = json.message
     if message ~= nil then
       local message_response
-      local first_message = json.response
+      local first_message = json.message.content
       if first_message.function_call then
         message_response = vim.fn.json_decode(first_message.function_call.arguments)
       else
@@ -276,7 +289,7 @@ function Api.setup()
     Api.OLLAMA_API_HOST = value
     Api.MODELS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/tags")
     Api.COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/generate")
-    Api.CHAT_COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/generate")
+    Api.CHAT_COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/chat")
   end, "http://localhost:11434")
 
   loadApiKey("OLLAMA_API_KEY", "OLLAMA_API_KEY", "api_key_cmd", function(value)
