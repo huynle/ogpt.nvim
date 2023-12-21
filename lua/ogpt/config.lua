@@ -154,7 +154,7 @@ function M.defaults()
       },
       buf_options = {
         modifiable = false,
-        readonly = true,
+        readonly = false,
         filetype = "markdown",
       },
       win_options = {

@@ -91,19 +91,7 @@ function ChatAction:run()
         edit_code = false,
       })
     else
-      self:use_strategy()
-
-      -- params.stream = true
-      -- Api.chat_completions(
-      --   params,
-      --   Utils.partial(Utils.add_partial_completion, {
-      --     panel = PreviewWindow(ui_opts),
-      --     finalize_opts = {},
-      --     -- progress = show_process_flag,
-      --   }),
-      --   nil,
-      --   self.opts
-      -- )
+      self:run_action()
     end
   end)
 end
@@ -123,7 +111,7 @@ function ChatAction:calculate_size(opts)
   -- local cur_win = vim.api.nvim_get_current_win()
   local cur_win = self.main_winid
   local max_h = math.ceil(vim.api.nvim_win_get_height(cur_win) * 0.75)
-  local max_w = math.ceil(vim.api.nvim_win_get_width(cur_win) * 0.75)
+  local max_w = math.ceil(vim.api.nvim_win_get_width(cur_win) * 0.5)
   local ui_w = 0
   local len = 0
   local ncount = 0
@@ -168,14 +156,12 @@ function ChatAction:calculate_size(opts)
         col = start_col,
       },
     },
-    buf_options = {
-      readonly = false,
-    },
   }, self.ui)
   return ui_opts
 end
 
 function ChatAction:get_popup(opts)
+  opts = opts or {}
   local bufnr = self:get_bufnr()
   local lines = Utils.split_string_by_line(opts.answer or "")
   local _, start_row, start_col, end_row, end_col = self:get_visual_selection()
@@ -224,37 +210,43 @@ function ChatAction:get_popup(opts)
   return popup
 end
 
-function ChatAction:use_strategy()
+function ChatAction:call_api(panel, params)
+  Api.chat_completions(
+    params,
+    Utils.partial(Utils.add_partial_completion, {
+      panel = panel,
+      -- finalize_opts = opts,
+      progress = function(flag)
+        self:set_loading(flag)
+      end,
+    }),
+    function()
+      -- should stop function
+      if self.stop then
+        self.stop = false
+        self:set_loading(false)
+        return true
+      else
+        return false
+      end
+    end
+  )
+end
+
+function ChatAction:run_action()
   self:set_loading(true)
   self.stop = false
   local params = self:get_params()
 
   if self.strategy == STRATEGY_DISPLAY then
-    local popup = self:get_popup({
-      -- ui_w = 80,
-      -- ui_h = 3,
-    })
+    local popup = self:get_popup()
     popup:mount(self)
-
     params.stream = true
-    Api.chat_completions(
-      params,
-      Utils.partial(Utils.add_partial_completion, {
-        panel = popup,
-        -- finalize_opts = opts,
-        progress = function(flag)
-          self:set_loading(flag)
-        end,
-      }),
-      function()
-        if self.stop then
-          self.stop = false
-          return true
-        else
-          return false
-        end
-      end
-    )
+    self:call_api(popup, params)
+  -- elseif self.strategy == STRATEGY_APPEND then
+  --   -- answer = self:get_selected_text() .. "\n\n" .. answer .. "\n"
+  --   params.stream = true
+  --   self:call_api({ bufnr = self:get_bufnr() }, params)
   else
     Api.chat_completions(params, function(answer, usage)
       self:on_result(answer, usage)
@@ -272,6 +264,7 @@ function ChatAction:on_result(answer, usage)
     elseif self.strategy == STRATEGY_APPEND then
       answer = self:get_selected_text() .. "\n\n" .. answer .. "\n"
     end
+
     local lines = Utils.split_string_by_line(answer)
     local _, start_row, start_col, end_row, end_col = self:get_visual_selection()
 
@@ -280,16 +273,16 @@ function ChatAction:on_result(answer, usage)
       -- local popup = self:get_popup(answer)
       -- popup:mount()
     elseif self.strategy == STRATEGY_EDIT then
-      Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
-        instruction = self.template,
-        params = self:get_params(),
-      })
+      -- Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
+      --   instruction = self.template,
+      --   params = self:get_params(),
+      -- })
     elseif self.strategy == STRATEGY_EDIT_CODE then
-      Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
-        instruction = self.template,
-        params = self:get_params(),
-        edit_code = true,
-      })
+      -- Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
+      --   instruction = self.template,
+      --   params = self:get_params(),
+      --   edit_code = true,
+      -- })
     elseif self.strategy == STRATEGY_QUICK_FIX then
       if #lines == 1 and lines[1] == "<OK>" then
         vim.notify("Your Code looks fine, no issues.", vim.log.levels.INFO)
