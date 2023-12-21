@@ -4,6 +4,7 @@ local Layout = require("nui.layout")
 local Popup = require("nui.popup")
 
 local ChatInput = require("ogpt.input")
+local Signs = require("ogpt.signs")
 local Api = require("ogpt.api")
 local Config = require("ogpt.config")
 local Utils = require("ogpt.utils")
@@ -71,6 +72,14 @@ local hide_progress = function()
   output_window.border:set_text("top", " Result ", "center")
 end
 
+local show_process_flag = function(flag)
+  if flag then
+    show_progress()
+  else
+    hide_progress()
+  end
+end
+
 local setup_and_mount = vim.schedule_wrap(function(lines, output_lines, ...)
   layout:mount()
   -- set input
@@ -119,6 +128,7 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, opts, ...)
     on_submit = vim.schedule_wrap(function(instruction)
       -- clear input
       vim.api.nvim_buf_set_lines(instructions_input.bufnr, 0, -1, false, { "" })
+      vim.api.nvim_buf_set_lines(output_window.bufnr, 0, -1, false, { "" })
       show_progress()
 
       local input = table.concat(vim.api.nvim_buf_get_lines(input_window.bufnr, 0, -1, false), "\n")
@@ -129,29 +139,14 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, opts, ...)
       end
       local messages = build_edit_messages(input, instruction, opts)
       local params = vim.tbl_extend("keep", { messages = messages }, Parameters.params)
-      Api.edits(params, function(response, usage)
-        hide_progress()
-        local nlcount = Utils.count_newlines_at_end(input)
-        local output_txt = response
-        if opts.edit_code then
-          local code_response = Utils.extract_code(response)
-          -- if the chat is to edit code, it will try to extract out the code from response
-          output_txt = response
-          if code_response then
-            output_txt = Utils.match_indentation(input, code_response)
-          end
-          if response.applied_changes then
-            vim.notify(response.applied_changes, vim.log.levels.INFO)
-          end
-        end
-        local output_txt_nlfixed = Utils.replace_newlines_at_end(output_txt, nlcount)
-        output = Utils.split_string_by_line(output_txt_nlfixed)
-
-        vim.api.nvim_buf_set_lines(output_window.bufnr, 0, -1, false, output)
-        if usage then
-          display_input_suffix(usage.total_tokens)
-        end
-      end)
+      Api.edits(
+        params,
+        Utils.partial(Utils.add_partial_completion, {
+          panel = output_window,
+          finalize_opts = opts,
+          progress = show_process_flag,
+        })
+      )
     end),
   })
 

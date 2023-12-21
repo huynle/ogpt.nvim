@@ -54,19 +54,6 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
           end
         end
 
-        -- local ok, json = pcall(vim.json.decode, chunk)
-        -- if ok and json ~= nil then
-        --   if json.error ~= nil then
-        --     cb(json.error.message, "ERROR")
-        --     return
-        --   end
-        -- end
-        -- for line in chunk:gmatch("[^\n]+") do
-        --   local raw_json = string.gsub(line, "^data: ", "")
-        --   if raw_json == "[DONE]" then
-        --     cb(raw_chunks, "END")
-        --   else
-
         local ok, json = pcall(vim.json.decode, chunk)
         if ok and json ~= nil then
           if json.error ~= nil then
@@ -99,8 +86,10 @@ end
 
 function Api.edits(custom_params, cb)
   local params = vim.tbl_extend("keep", custom_params, Config.options.api_edit_params)
-  params.stream = params.stream or false
-  Api.make_call(Api.CHAT_COMPLETIONS_URL, params, cb)
+  -- params.stream = params.stream or false
+  -- Api.make_call(Api.CHAT_COMPLETIONS_URL, params, cb)
+  params.stream = true
+  Api.chat_completions(params, cb)
 end
 
 function Api.make_call(url, params, cb)
