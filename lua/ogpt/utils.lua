@@ -311,7 +311,9 @@ local function _finalize_output(response, panel, opts)
   end
   local output_txt_nlfixed = M.replace_newlines_at_end(output_txt, nlcount)
   local output = M.split_string_by_line(output_txt_nlfixed)
-  vim.api.nvim_buf_set_lines(panel.bufnr, 0, -1, false, output)
+  if panel.bufnr then
+    vim.api.nvim_buf_set_lines(panel.bufnr, 0, -1, false, output)
+  end
 end
 
 function M.add_partial_completion(opts, text, state)
@@ -340,13 +342,15 @@ function M.add_partial_completion(opts, text, state)
     local buffer = panel.bufnr
     local win = panel.winid
 
-    for i, line in ipairs(lines) do
-      local currentLine = vim.api.nvim_buf_get_lines(buffer, -2, -1, false)[1]
-      vim.api.nvim_buf_set_lines(buffer, -2, -1, false, { currentLine .. line })
+    if buffer then
+      for i, line in ipairs(lines) do
+        local currentLine = vim.api.nvim_buf_get_lines(buffer, -2, -1, false)[1]
+        vim.api.nvim_buf_set_lines(buffer, -2, -1, false, { currentLine .. line })
 
-      local last_line_num = vim.api.nvim_buf_line_count(buffer)
-      if i == length and i > 1 then
-        vim.api.nvim_buf_set_lines(buffer, -1, -1, false, { "" })
+        local last_line_num = vim.api.nvim_buf_line_count(buffer)
+        if i == length and i > 1 then
+          vim.api.nvim_buf_set_lines(buffer, -1, -1, false, { "" })
+        end
       end
     end
   end
