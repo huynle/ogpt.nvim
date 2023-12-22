@@ -199,6 +199,7 @@ function M.defaults()
         opts = {
           strategy = "edit_code",
           delay = true,
+          extract_codeblock = true,
           params = {
             model = "deepseek-coder:6.7b",
           },

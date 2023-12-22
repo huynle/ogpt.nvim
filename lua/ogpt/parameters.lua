@@ -210,9 +210,14 @@ M.refresh_panel = function()
   local details = {}
   for _, key in pairs(params_order) do
     if M.params[key] ~= nil then
+      local display_text = M.params[key]
+      if type(display_text) == "table" then
+        display_text = table.concat(M.params[key], ", ")
+      end
+
       local vt = {
         { Config.options.parameters_window.setting_sign .. key .. ": ", "ErrorMsg" },
-        { M.params[key] .. "", "Identifier" },
+        { display_text .. "", "Identifier" },
       }
       table.insert(details, vt)
     end
@@ -292,7 +297,7 @@ M.get_parameters_panel = function(type, default_params, session)
     else
       local value = M.params[key]
       M.open_edit_property_input(key, value, row, function(new_value)
-        M.update_property(key, row, new_value, session)
+        M.update_property(key, row, Utils.process_string(new_value), session)
       end)
     end
   end, {})
@@ -318,6 +323,11 @@ M.get_panel = function(session)
 end
 
 M.open_edit_property_input = function(key, value, row, cb)
+  -- convert table to string first
+  if type(value) == "table" then
+    value = table.concat(value, ", ")
+  end
+
   local Input = require("nui.input")
 
   local input = Input({

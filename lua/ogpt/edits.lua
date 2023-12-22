@@ -148,7 +148,29 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, opts, ...)
         params,
         Utils.partial(Utils.add_partial_completion, {
           panel = output_window,
-          finalize_opts = opts,
+          on_complete = function(response)
+            -- on the completion, execute this function to extract out codeblocks
+            local nlcount = Utils.count_newlines_at_end(response)
+            local output_txt = response
+            if opts.edit_code then
+              local code_response = Utils.extract_code(response)
+              -- if the chat is to edit code, it will try to extract out the code from response
+              output_txt = response
+              if code_response then
+                output_txt = Utils.match_indentation(response, code_response)
+              else
+                vim.notify("no codeblock detected", vim.log.levels.INFO)
+              end
+              if response.applied_changes then
+                vim.notify(response.applied_changes, vim.log.levels.INFO)
+              end
+            end
+            local output_txt_nlfixed = Utils.replace_newlines_at_end(output_txt, nlcount)
+            local _output = Utils.split_string_by_line(output_txt_nlfixed)
+            if output_window.bufnr then
+              vim.api.nvim_buf_set_lines(output_window.bufnr, 0, -1, false, _output)
+            end
+          end,
           progress = show_process_flag,
         })
       )
