@@ -187,12 +187,13 @@ end
 function M._conform_to_ollama_api(params)
   local ollama_parameters = {
     "model",
-    "prompt",
+    -- "prompt",
+    "messages",
     "format",
     "options",
     "system",
     "template",
-    "context",
+    -- "context",
     "stream",
     "raw",
   }
@@ -202,9 +203,13 @@ function M._conform_to_ollama_api(params)
   local param_options = {}
 
   for key, value in pairs(params) do
-    if not vim.tbl_contains(ollama_parameters, key) and vim.tbl_contains(M.ollama_options, key) then
-      param_options[key] = value
-      params[key] = nil
+    if not vim.tbl_contains(ollama_parameters, key) then
+      if vim.tbl_contains(M.ollama_options, key) then
+        param_options[key] = value
+        params[key] = nil
+      else
+        params[key] = nil
+      end
     end
   end
   local _options = vim.tbl_extend("keep", param_options, params.options or {})
@@ -216,21 +221,21 @@ end
 
 function M.conform_to_ollama(params)
   if params.messages then
-    local messages = params.messages
-    params.messages = nil
-    params.system = params.system or ""
-    params.prompt = params.prompt or ""
-    for _, message in ipairs(messages) do
-      if message.role == "system" then
-        params.system = params.system .. "\n" .. message.content .. "\n"
-      end
-    end
-
-    for _, message in ipairs(messages) do
-      if message.role == "user" then
-        params.prompt = params.prompt .. "\n" .. message.content .. "\n"
-      end
-    end
+    --   local messages = params.messages
+    --   params.messages = nil
+    --   params.system = params.system or ""
+    --   params.prompt = params.prompt or ""
+    --   for _, message in ipairs(messages) do
+    --     if message.role == "system" then
+    --       params.system = params.system .. "\n" .. message.content .. "\n"
+    --     end
+    --   end
+    --
+    --   for _, message in ipairs(messages) do
+    --     if message.role == "user" then
+    --       params.prompt = params.prompt .. "\n" .. message.content .. "\n"
+    --     end
+    --   end
   end
 
   return M._conform_to_ollama_api(params)
@@ -275,6 +280,80 @@ function M.tableToString(tbl, indent)
     end
   end
   return str
+end
+
+-- Partial application of arguments using closures
+function M.partial(func, ...)
+  local capturedArgs = { ... }
+  return function(...)
+    local args = { unpack(capturedArgs) } -- Captured arguments
+    for _, v in ipairs({ ... }) do
+      table.insert(args, v) -- Appending new arguments
+    end
+    return func(unpack(args))
+  end
+end
+
+-- use to extract code for diff
+local function _finalize_output(response, panel, opts)
+  local nlcount = M.count_newlines_at_end(response)
+  local output_txt = response
+  if opts.edit_code then
+    local code_response = M.extract_code(response)
+    -- if the chat is to edit code, it will try to extract out the code from response
+    output_txt = response
+    if code_response then
+      output_txt = M.match_indentation(response, code_response)
+    end
+    if response.applied_changes then
+      vim.notify(response.applied_changes, vim.log.levels.INFO)
+    end
+  end
+  local output_txt_nlfixed = M.replace_newlines_at_end(output_txt, nlcount)
+  local output = M.split_string_by_line(output_txt_nlfixed)
+  if panel.bufnr then
+    vim.api.nvim_buf_set_lines(panel.bufnr, 0, -1, false, output)
+  end
+end
+
+function M.add_partial_completion(opts, text, state)
+  local panel = opts.panel
+  local progress = opts.progress
+
+  if state == "ERROR" then
+    return _finalize_output(text, panel, opts.finalize_opts)
+  end
+
+  local start_line = 0
+  if state == "END" and text ~= "" then
+    return _finalize_output(text, panel, opts)
+  end
+
+  if state == "START" then
+    if progress then
+      progress(false)
+    end
+    vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
+  end
+
+  if state == "START" or state == "CONTINUE" then
+    local lines = vim.split(text, "\n", {})
+    local length = #lines
+    local buffer = panel.bufnr
+    local win = panel.winid
+
+    if buffer then
+      for i, line in ipairs(lines) do
+        local currentLine = vim.api.nvim_buf_get_lines(buffer, -2, -1, false)[1]
+        vim.api.nvim_buf_set_lines(buffer, -2, -1, false, { currentLine .. line })
+
+        local last_line_num = vim.api.nvim_buf_line_count(buffer)
+        if i == length and i > 1 then
+          vim.api.nvim_buf_set_lines(buffer, -1, -1, false, { "" })
+        end
+      end
+    end
+  end
 end
 
 return M
