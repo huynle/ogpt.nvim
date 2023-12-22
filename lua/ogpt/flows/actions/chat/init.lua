@@ -278,11 +278,11 @@ function ChatAction:on_result(answer, usage)
         params = self:get_params(),
       })
     elseif self.strategy == STRATEGY_EDIT_CODE then
-      -- Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
-      --   instruction = self.template,
-      --   params = self:get_params(),
-      --   edit_code = true,
-      -- })
+      Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
+        instruction = self.template,
+        params = self:get_params(),
+        edit_code = true,
+      })
     elseif self.strategy == STRATEGY_QUICK_FIX then
       if #lines == 1 and lines[1] == "<OK>" then
         vim.notify("Your Code looks fine, no issues.", vim.log.levels.INFO)

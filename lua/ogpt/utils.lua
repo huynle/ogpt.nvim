@@ -294,39 +294,23 @@ function M.partial(func, ...)
   end
 end
 
--- use to extract code for diff
-local function _finalize_output(response, panel, opts)
-  local nlcount = M.count_newlines_at_end(response)
-  local output_txt = response
-  if opts.edit_code then
-    local code_response = M.extract_code(response)
-    -- if the chat is to edit code, it will try to extract out the code from response
-    output_txt = response
-    if code_response then
-      output_txt = M.match_indentation(response, code_response)
-    end
-    if response.applied_changes then
-      vim.notify(response.applied_changes, vim.log.levels.INFO)
-    end
-  end
-  local output_txt_nlfixed = M.replace_newlines_at_end(output_txt, nlcount)
-  local output = M.split_string_by_line(output_txt_nlfixed)
-  if panel.bufnr then
-    vim.api.nvim_buf_set_lines(panel.bufnr, 0, -1, false, output)
-  end
-end
-
 function M.add_partial_completion(opts, text, state)
   local panel = opts.panel
   local progress = opts.progress
 
   if state == "ERROR" then
-    return _finalize_output(text, panel, opts.finalize_opts)
+    if not opts.on_complete then
+      return
+    end
+    return opts.on_complete(text)
   end
 
   local start_line = 0
   if state == "END" and text ~= "" then
-    return _finalize_output(text, panel, opts)
+    if not opts.on_complete then
+      return
+    end
+    return opts.on_complete(text)
   end
 
   if state == "START" then
