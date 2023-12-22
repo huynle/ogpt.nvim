@@ -220,7 +220,7 @@ function Chat:addAnswerPartial(text, state, ctx)
     start_line = prev.end_line + (prev.type == ANSWER and 2 or 1)
   end
 
-  if state == "END" then
+  if state == "END" and text ~= "" then
     local usage = {}
     local idx = self.session:add_item({
       type = ANSWER,
@@ -562,8 +562,8 @@ function Chat:toMessages()
     end
     table.insert(messages, { role = role, content = msg.text })
   end
-  -- return self:toOllama(messages)
-  return messages[#messages].content
+  -- return messages[#messages].content
+  return messages
 end
 
 function Chat:toOllama(messages)
@@ -805,8 +805,9 @@ function Chat:open()
         self:showProgess()
         local params = vim.tbl_extend("keep", {
           stream = true,
-          context = self.session:previous_context(),
-          prompt = self.messages[#self.messages].text,
+          -- context = self.session:previous_context(),
+          -- prompt = self.messages[#self.messages].text,
+          messages = self:toMessages(),
           system = self.system_message,
         }, Parameters.params)
         Api.chat_completions(params, function(answer, state, ctx)

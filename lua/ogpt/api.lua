@@ -44,10 +44,10 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
             ctx.context = _json.context
             cb(raw_chunks, "END", ctx)
           else
-            if _ok and _json ~= nil then
-              if _json and _json.response then
-                cb(_json.response, state, ctx)
-                raw_chunks = raw_chunks .. _json.response
+            if _ok and not vim.tbl_isempty(_json) then
+              if _json and _json.message then
+                cb(_json.message.content, state, ctx)
+                raw_chunks = raw_chunks .. _json.message.content
                 state = "CONTINUE"
               end
             end
@@ -86,8 +86,10 @@ end
 
 function Api.edits(custom_params, cb)
   local params = vim.tbl_extend("keep", custom_params, Config.options.api_edit_params)
-  params.stream = params.stream or false
-  Api.make_call(Api.CHAT_COMPLETIONS_URL, params, cb)
+  -- params.stream = params.stream or false
+  -- Api.make_call(Api.CHAT_COMPLETIONS_URL, params, cb)
+  params.stream = true
+  Api.chat_completions(params, cb)
 end
 
 function Api.make_call(url, params, cb)
@@ -134,10 +136,10 @@ Api.handle_response = vim.schedule_wrap(function(response, exit_code, cb)
   elseif json.error then
     cb("// API ERROR: " .. json.error)
   else
-    local message = json.response
+    local message = json.message
     if message ~= nil then
       local message_response
-      local first_message = json.response
+      local first_message = json.message.content
       if first_message.function_call then
         message_response = vim.fn.json_decode(first_message.function_call.arguments)
       else
@@ -276,7 +278,7 @@ function Api.setup()
     Api.OLLAMA_API_HOST = value
     Api.MODELS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/tags")
     Api.COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/generate")
-    Api.CHAT_COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/generate")
+    Api.CHAT_COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/chat")
   end, "http://localhost:11434")
 
   loadApiKey("OLLAMA_API_KEY", "OLLAMA_API_KEY", "api_key_cmd", function(value)
