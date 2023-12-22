@@ -16,7 +16,12 @@ local build_edit_messages = function(input, instructions, opts)
   if opts.edit_code then
     _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
   end
+  local system_msg = opts.params.system or ""
   local messages = {
+    {
+      role = "system",
+      content = system_msg,
+    },
     {
       role = "user",
       content = _input,

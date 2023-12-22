@@ -176,7 +176,6 @@ function M.defaults()
       temperature = 0.5,
       top_p = 1,
     },
-    use_openai_functions_for_edits = false,
     actions = {
 
       code_completion = {
