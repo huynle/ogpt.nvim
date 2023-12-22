@@ -356,4 +356,18 @@ function M.add_partial_completion(opts, text, state)
   end
 end
 
+function M.process_string(inputString)
+  -- Check if the inputString contains a comma
+  if inputString:find(",") then
+    local resultTable = {} -- Initialize an empty table to store split values
+    -- Iterate through inputString and split by commas, adding each part to the resultTable
+    for word in inputString:gmatch("[^,]+") do
+      table.insert(resultTable, word) -- Insert each part into the resultTable
+    end
+    return resultTable -- Return the resulting table
+  else
+    return inputString -- If no commas found, return the inputString as it is
+  end
+end
+
 return M

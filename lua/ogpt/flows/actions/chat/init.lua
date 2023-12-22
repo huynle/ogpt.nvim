@@ -273,10 +273,10 @@ function ChatAction:on_result(answer, usage)
       -- local popup = self:get_popup(answer)
       -- popup:mount()
     elseif self.strategy == STRATEGY_EDIT then
-      -- Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
-      --   instruction = self.template,
-      --   params = self:get_params(),
-      -- })
+      Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
+        instruction = self.template,
+        params = self:get_params(),
+      })
     elseif self.strategy == STRATEGY_EDIT_CODE then
       -- Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
       --   instruction = self.template,

@@ -12,11 +12,19 @@ local Spinner = require("ogpt.spinner")
 local Parameters = require("ogpt.parameters")
 
 local build_edit_messages = function(input, instructions, opts)
+  local system_message_content = ""
   local _input = input
   if opts.edit_code then
     _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
+
+    system_message_content =
+      "Apply the changes requested by the user to the {{filetype}} code. Output ONLY the changed code. DO NOT wrap the code in a formatting block. DO NOT provide other text or explanation."
   end
   local messages = {
+    {
+      role = "system",
+      content = system_message_content,
+    },
     {
       role = "user",
       content = _input,
