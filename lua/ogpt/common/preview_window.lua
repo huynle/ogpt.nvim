@@ -16,7 +16,7 @@ function PreviewWindow:mount(action)
   PreviewWindow.super.mount(self)
 
   -- close
-  local keys = Config.options.chat.keymaps.close
+  local keys = Config.options.preview_window.keymaps.close
   if type(keys) ~= "table" then
     keys = { keys }
   end
@@ -27,8 +27,14 @@ function PreviewWindow:mount(action)
     end)
   end
 
+  -- -- unmount component when cursor leaves buffer
+  -- self:on(event.BufLeave, function()
+  --   action.stop = true
+  --   self:unmount()
+  -- end)
+
   -- unmount component when cursor leaves buffer
-  self:on(event.BufLeave, function()
+  self:on(event.WinClosed, function()
     action.stop = true
     self:unmount()
   end)
