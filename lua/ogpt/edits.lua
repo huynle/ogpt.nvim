@@ -17,6 +17,23 @@ local build_edit_messages = function(input, instructions, opts)
     _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
   end
   local system_msg = opts.params.system or ""
+
+  -- local messages = opts.params.messages or {}
+  -- table.insert(messages, {
+  --   {
+  --     role = "system",
+  --     content = system_msg,
+  --   },
+  --   {
+  --     role = "user",
+  --     content = _input,
+  --   },
+  --   {
+  --     role = "user",
+  --     content = instructions,
+  --   },
+  -- })
+
   local messages = {
     {
       role = "system",
@@ -31,6 +48,7 @@ local build_edit_messages = function(input, instructions, opts)
       content = instructions,
     },
   }
+
   return messages
 end
 

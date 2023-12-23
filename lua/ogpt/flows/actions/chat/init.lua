@@ -171,30 +171,41 @@ function ChatAction:get_popup(opts)
   local popup = PreviewWindow(ui_opts)
   vim.api.nvim_buf_set_lines(popup.bufnr, 0, 1, false, lines)
 
-  local _replace = function(replace)
-    replace = replace or false
-    if replace then
-      vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
-    else
-      table.insert(lines, 1, "")
-      table.insert(lines, "")
-      vim.api.nvim_buf_set_text(bufnr, end_row - 1, start_col - 1, end_row - 1, start_col - 1, lines)
-    end
+  -- accept output and replace
+  popup:map("n", "r", function()
+    local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
+    vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, _lines)
+    vim.cmd("q")
+  end)
+
+  -- accept output and append
+  popup:map("n", "a", function()
+    local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
+    table.insert(_lines, 1, "")
+    table.insert(_lines, "")
+    vim.api.nvim_buf_set_text(bufnr, end_row, start_col - 1, end_row, start_col - 1, _lines)
+    vim.cmd("q")
+  end)
+
+  -- accept output and prepend
+  popup:map("n", "p", function()
+    local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
+    table.insert(_lines, "")
+    table.insert(_lines, "")
+    vim.api.nvim_buf_set_text(bufnr, start_row, start_col - 1, start_row, start_col - 1, _lines)
+    vim.cmd("q")
+  end)
+
+  -- yank output and close
+  popup:map("n", "c", function()
+    local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
+    local _code = Utils.getSelectedCode(_lines)
+    vim.fn.setreg(Config.options.yank_register, _code)
 
     if vim.fn.mode() == "i" then
       vim.api.nvim_command("stopinsert")
     end
     vim.cmd("q")
-  end
-
-  -- accept output and replace
-  popup:map("n", "r", function()
-    _replace(true)
-  end)
-
-  -- accept output and append
-  popup:map("n", "a", function()
-    _replace(false)
   end)
 
   -- yank output and close

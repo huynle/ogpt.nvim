@@ -354,4 +354,23 @@ function M.process_string(inputString)
   end
 end
 
+function M.getSelectedCode(lines)
+  local text = table.concat(lines, "\n")
+  -- Iterate through all code blocks in the message using a regular expression pattern
+  local lastCodeBlock
+  for codeBlock in text:gmatch("```.-```%s*") do
+    lastCodeBlock = codeBlock
+  end
+  -- If a code block was found, strip the delimiters and return the code
+  if lastCodeBlock then
+    local index = string.find(lastCodeBlock, "\n")
+    if index ~= nil then
+      lastCodeBlock = string.sub(lastCodeBlock, index + 1)
+    end
+    return lastCodeBlock:gsub("```\n", ""):gsub("```", ""):match("^%s*(.-)%s*$")
+  end
+  vim.notify("No codeblock found", vim.log.levels.INFO)
+  return nil
+end
+
 return M
