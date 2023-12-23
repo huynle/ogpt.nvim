@@ -198,6 +198,7 @@ function M.defaults()
         type = "chat",
         opts = {
           strategy = "edit_code",
+          template = "",
           delay = true,
           extract_codeblock = true,
           params = {
@@ -210,6 +211,7 @@ function M.defaults()
         type = "chat",
         opts = {
           strategy = "edit",
+          template = "",
           delay = true,
           params = {
             model = "mistral:7b",
