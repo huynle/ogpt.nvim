@@ -1,4 +1,4 @@
--- ChatAction that can be used for actions of type "chat" in actions.json
+-- ChatAction that can be used for actions of type "chat" in actions.PreviewWindowjson
 --
 -- This enables the use of mistral:7b in user defined actions,
 -- as this model only defines the chat endpoint and has no completions endpoint
@@ -20,6 +20,8 @@ local Api = require("ogpt.api")
 local Utils = require("ogpt.utils")
 local Config = require("ogpt.config")
 local Edits = require("ogpt.edits")
+local Spinner = require("ogpt.spinner")
+local PreviewWindow = require("ogpt.common.preview_window")
 
 local ChatAction = classes.class(BaseAction)
 
@@ -39,7 +41,15 @@ function ChatAction:init(opts)
   self.variables = opts.variables or {}
   self.strategy = opts.strategy or STRATEGY_APPEND
   self.ui = opts.ui or {}
-  self.main_winid = vim.api.nvim_get_current_win()
+  self.cur_win = vim.api.nvim_get_current_win()
+  self.popup = PreviewWindow()
+  self.stop = false
+  self.spinner = Spinner:new(function(state)
+    vim.schedule(function()
+      -- self:set_lines(self.popup.bufnr, -2, -1, false, { state .. " " .. Config.options.chat.loading_text })
+      self:display_input_suffix(state)
+    end)
+  end)
 end
 
 function ChatAction:render_template()
@@ -96,129 +106,30 @@ function ChatAction:run()
   end)
 end
 
-function ChatAction:update_popup_size(popup)
-  local lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
-  local ui_opts = self:calculate_size({
-    lines = lines,
-  })
-  popup:update_layout(ui_opts)
-end
-
-function ChatAction:calculate_size(opts)
-  opts = opts or {}
-  -- compute size
-  -- the width is calculated based on the maximum number of lines and the height is calculated based on the width
-  -- local cur_win = vim.api.nvim_get_current_win()
-  local cur_win = self.main_winid
-  local max_h = math.ceil(vim.api.nvim_win_get_height(cur_win) * 0.75)
-  local max_w = math.ceil(vim.api.nvim_win_get_width(cur_win) * 0.5)
-  local ui_w = 0
-  local len = 0
-  local ncount = 0
-  local lines = opts.lines or Utils.split_string_by_line(opts.text or "")
-  local _, start_row, start_col, end_row, end_col = self:get_visual_selection()
-
-  for _, v in ipairs(lines) do
-    local l = string.len(v)
-    if v == "" then
-      ncount = ncount + 1
-    end
-    ui_w = math.max(l, ui_w)
-    len = len + l
+function ChatAction:display_input_suffix(suffix)
+  if self.extmark_id and Utils.is_buf_exists(self.popup.bufnr) then
+    vim.api.nvim_buf_del_extmark(self.popup.bufnr, Config.namespace_id, self.extmark_id)
   end
-  ui_w = math.min(ui_w, max_w)
-  ui_w = math.max(ui_w, 10)
-  local ui_h = math.ceil(len / ui_w) + ncount
-  ui_h = math.min(ui_h, max_h)
-  ui_h = math.max(ui_h, 1)
 
-  -- use opts
-  ui_w = opts.ui_w or ui_w
-  ui_h = opts.ui_h or ui_h
-
-  -- build ui opts
-  local ui_opts = vim.tbl_deep_extend("keep", {
-    size = {
-      width = ui_w,
-      height = ui_h,
-    },
-    border = {
-      style = "rounded",
-      text = {
-        top = " " .. (self.opts.title or self.opts.args) .. " ",
-        top_align = "left",
+  if suffix and Utils.is_buf_exists(self.popup.bufnr) then
+    self.extmark_id = vim.api.nvim_buf_set_extmark(self.popup.bufnr, Config.namespace_id, 0, -1, {
+      virt_text = {
+        { Config.options.chat.border_left_sign, "OGPTTotalTokensBorder" },
+        { "" .. suffix, "OGPTTotalTokens" },
+        { Config.options.chat.border_right_sign, "OGPTTotalTokensBorder" },
+        { " ", "" },
       },
-    },
-    relative = {
-      type = "buf",
-      position = {
-        row = start_row,
-        col = start_col,
-      },
-    },
-  }, self.ui)
-  return ui_opts
+      virt_text_pos = "right_align",
+    })
+  end
 end
 
-function ChatAction:get_popup(opts)
-  opts = opts or {}
-  local bufnr = self:get_bufnr()
-  local lines = Utils.split_string_by_line(opts.answer or "")
-  local _, start_row, start_col, end_row, end_col = self:get_visual_selection()
-
-  local ui_opts = self:calculate_size(opts)
-  local PreviewWindow = require("ogpt.common.preview_window")
-  local popup = PreviewWindow(ui_opts)
-  vim.api.nvim_buf_set_lines(popup.bufnr, 0, 1, false, lines)
-
-  -- accept output and replace
-  popup:map("n", "r", function()
-    local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
-    vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, _lines)
-    vim.cmd("q")
-  end)
-
-  -- accept output and append
-  popup:map("n", "a", function()
-    local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
-    table.insert(_lines, 1, "")
-    table.insert(_lines, "")
-    vim.api.nvim_buf_set_text(bufnr, end_row, start_col - 1, end_row, start_col - 1, _lines)
-    vim.cmd("q")
-  end)
-
-  -- accept output and prepend
-  popup:map("n", "p", function()
-    local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
-    table.insert(_lines, "")
-    table.insert(_lines, "")
-    vim.api.nvim_buf_set_text(bufnr, start_row, start_col - 1, start_row, start_col - 1, _lines)
-    vim.cmd("q")
-  end)
-
-  -- yank output and close
-  popup:map("n", "c", function()
-    local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
-    local _code = Utils.getSelectedCode(_lines)
-    vim.fn.setreg(Config.options.yank_register, _code)
-
-    if vim.fn.mode() == "i" then
-      vim.api.nvim_command("stopinsert")
-    end
-    vim.cmd("q")
-  end)
-
-  -- yank output and close
-  popup:map("n", "y", function()
-    vim.fn.setreg(Config.options.yank_register, lines)
-
-    if vim.fn.mode() == "i" then
-      vim.api.nvim_command("stopinsert")
-    end
-    vim.cmd("q")
-  end)
-
-  return popup
+function ChatAction:set_lines(bufnr, start_idx, end_idx, strict_indexing, lines)
+  if Utils.is_buf_exists(bufnr) then
+    vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
+    vim.api.nvim_buf_set_lines(bufnr, start_idx, end_idx, strict_indexing, lines)
+    vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
+  end
 end
 
 function ChatAction:call_api(panel, params)
@@ -228,14 +139,14 @@ function ChatAction:call_api(panel, params)
       panel = panel,
       -- finalize_opts = opts,
       progress = function(flag)
-        self:set_loading(flag)
+        self:run_spinner(flag)
       end,
     }),
     function()
       -- should stop function
       if self.stop then
         self.stop = false
-        self:set_loading(false)
+        self:run_spinner(false)
         return true
       else
         return false
@@ -244,21 +155,53 @@ function ChatAction:call_api(panel, params)
   )
 end
 
+function ChatAction:run_spinner(flag)
+  if flag then
+    self.spinner:start()
+  else
+    self.spinner:stop()
+    self:set_lines(self.popup.bufnr, 0, -1, false, {})
+  end
+end
+
 function ChatAction:run_action()
-  self:set_loading(true)
-  self.stop = false
   local params = self:get_params()
+  local _, start_row, start_col, end_row, end_col = self:get_visual_selection()
 
   if self.strategy == STRATEGY_DISPLAY then
-    local popup = self:get_popup()
-    popup:mount(self)
+    self:run_spinner(true)
+    self.popup:mount({
+      cur_win = self.cur_win,
+      main_bufnr = self:get_bufnr(),
+      selection_idx = {
+        start_row = start_row,
+        start_col = start_col,
+        end_row = end_row,
+        end_col = end_col,
+      },
+      default_ui = self.ui,
+      title = self.opts.title,
+      args = self.opts.args,
+      stop = function()
+        self.stop = true
+      end,
+    })
     params.stream = true
-    self:call_api(popup, params)
-  -- elseif self.strategy == STRATEGY_APPEND then
-  --   -- answer = self:get_selected_text() .. "\n\n" .. answer .. "\n"
-  --   params.stream = true
-  --   self:call_api({ bufnr = self:get_bufnr() }, params)
+    self:call_api(self.popup, params)
+  elseif self.strategy == STRATEGY_EDIT then
+    Edits.edit_with_instructions({}, self:get_bufnr(), { self:get_visual_selection() }, {
+      instruction = self.template,
+      params = self:get_params(),
+    })
+  elseif self.strategy == STRATEGY_EDIT_CODE then
+    Edits.edit_with_instructions({}, self:get_bufnr(), { self:get_visual_selection() }, {
+      instruction = self.template,
+      params = self:get_params(),
+      edit_code = true,
+      filetype = self:get_filetype(),
+    })
   else
+    self:set_loading(true)
     Api.chat_completions(params, function(answer, usage)
       self:on_result(answer, usage)
     end)
@@ -274,28 +217,16 @@ function ChatAction:on_result(answer, usage)
       answer = answer .. "\n" .. self:get_selected_text()
     elseif self.strategy == STRATEGY_APPEND then
       answer = self:get_selected_text() .. "\n\n" .. answer .. "\n"
+    elseif self.strategy == STRATEGY_REPLACE then
+      answer = answer
     end
 
     local lines = Utils.split_string_by_line(answer)
     local _, start_row, start_col, end_row, end_col = self:get_visual_selection()
 
-    if self.strategy == STRATEGY_DISPLAY then
-      -- moved out
-      -- local popup = self:get_popup(answer)
-      -- popup:mount()
-    elseif self.strategy == STRATEGY_EDIT then
-      Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
-        instruction = self.template,
-        params = self:get_params(),
-      })
-    elseif self.strategy == STRATEGY_EDIT_CODE then
-      Edits.edit_with_instructions(lines, bufnr, { self:get_visual_selection() }, {
-        instruction = self.template,
-        params = self:get_params(),
-        edit_code = true,
-        filetype = self:get_filetype(),
-      })
-    elseif self.strategy == STRATEGY_QUICK_FIX then
+    vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
+
+    if self.strategy == STRATEGY_QUICK_FIX then
       if #lines == 1 and lines[1] == "<OK>" then
         vim.notify("Your Code looks fine, no issues.", vim.log.levels.INFO)
         return
@@ -310,14 +241,12 @@ function ChatAction:on_result(answer, usage)
       end
       vim.fn.setqflist(entries)
       vim.cmd(Config.options.show_quickfixes_cmd)
-    else
-      vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
+    end
 
-      -- set the cursor onto the answer
-      if self.strategy == STRATEGY_APPEND then
-        local target_line = end_row + 3
-        vim.api.nvim_win_set_cursor(0, { target_line, 0 })
-      end
+    -- set the cursor onto the answer
+    if self.strategy == STRATEGY_APPEND then
+      local target_line = end_row + 3
+      vim.api.nvim_win_set_cursor(0, { target_line, 0 })
     end
   end)
 end

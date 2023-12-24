@@ -294,6 +294,14 @@ function M.partial(func, ...)
   end
 end
 
+function M.is_buf_exists(bufnr)
+  return vim.fn.bufexists(bufnr) == 1
+end
+
+function M.trim(s)
+  return (s:gsub("^%s*(.-)%s*$", "%1"))
+end
+
 function M.add_partial_completion(opts, text, state)
   local panel = opts.panel
   local progress = opts.progress
@@ -318,20 +326,18 @@ function M.add_partial_completion(opts, text, state)
       progress(false)
     end
     vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
+    text = M.trim(text)
   end
 
   if state == "START" or state == "CONTINUE" then
     local lines = vim.split(text, "\n", {})
     local length = #lines
     local buffer = panel.bufnr
-    local win = panel.winid
 
-    if buffer then
+    if M.is_buf_exists(panel.bufnr) then
       for i, line in ipairs(lines) do
         local currentLine = vim.api.nvim_buf_get_lines(buffer, -2, -1, false)[1]
         vim.api.nvim_buf_set_lines(buffer, -2, -1, false, { currentLine .. line })
-
-        local last_line_num = vim.api.nvim_buf_line_count(buffer)
         if i == length and i > 1 then
           vim.api.nvim_buf_set_lines(buffer, -1, -1, false, { "" })
         end
