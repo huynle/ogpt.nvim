@@ -117,7 +117,7 @@ function M.defaults()
         style = "rounded",
         text = {
           top_align = "center",
-          top = " Prompt ",
+          top = " Instruction ",
         },
       },
       win_options = {
@@ -139,6 +139,7 @@ function M.defaults()
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
       },
     },
+
     preview_window = {
       position = 1,
       size = {
@@ -151,6 +152,9 @@ function M.defaults()
       zindex = 50,
       border = {
         style = "rounded",
+        -- text = {
+        --   top = "",
+        -- },
       },
       buf_options = {
         modifiable = false,
@@ -161,6 +165,14 @@ function M.defaults()
         wrap = true,
         linebreak = true,
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+      },
+      keymaps = {
+        close = { "<C-c>", "q" },
+        accept = "<C-CR>",
+        append = "a",
+        prepend = "p",
+        yank_code = "c",
+        yank_to_register = "y",
       },
     },
 
@@ -176,7 +188,6 @@ function M.defaults()
       temperature = 0.5,
       top_p = 1,
     },
-    use_openai_functions_for_edits = false,
     actions = {
 
       code_completion = {
@@ -195,21 +206,26 @@ function M.defaults()
         },
       },
 
+      -- all strategy "edit" have instruction as input
       edit_code_with_instructions = {
         type = "chat",
         opts = {
           strategy = "edit_code",
+          template = "Given the follow code snippet, {{instruction}}.\n\nCode:\n```{{filetype}}\n{{input}}\n```",
           delay = true,
+          extract_codeblock = true,
           params = {
             model = "deepseek-coder:6.7b",
           },
         },
       },
 
+      -- all strategy "edit" have instruction as input
       edit_with_instructions = {
         type = "chat",
         opts = {
           strategy = "edit",
+          template = "Given the follow snippet, {{instruction}}.\n\nSnippet:\n```{{filetype}}\n{{input}}\n```",
           delay = true,
           params = {
             model = "mistral:7b",

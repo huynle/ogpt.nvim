@@ -260,6 +260,7 @@ function Chat:addAnswerPartial(text, state, ctx)
   end
 
   if state == "START" or state == "CONTINUE" then
+    vim.api.nvim_buf_set_option(self.chat_window.bufnr, "modifiable", true)
     local lines = vim.split(text, "\n", {})
     local length = #lines
     local buffer = self.chat_window.bufnr

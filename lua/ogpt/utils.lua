@@ -294,26 +294,12 @@ function M.partial(func, ...)
   end
 end
 
--- use to extract code for diff
-local function _finalize_output(response, panel, opts)
-  local nlcount = M.count_newlines_at_end(response)
-  local output_txt = response
-  if opts.edit_code then
-    local code_response = M.extract_code(response)
-    -- if the chat is to edit code, it will try to extract out the code from response
-    output_txt = response
-    if code_response then
-      output_txt = M.match_indentation(response, code_response)
-    end
-    if response.applied_changes then
-      vim.notify(response.applied_changes, vim.log.levels.INFO)
-    end
-  end
-  local output_txt_nlfixed = M.replace_newlines_at_end(output_txt, nlcount)
-  local output = M.split_string_by_line(output_txt_nlfixed)
-  if panel.bufnr then
-    vim.api.nvim_buf_set_lines(panel.bufnr, 0, -1, false, output)
-  end
+function M.is_buf_exists(bufnr)
+  return vim.fn.bufexists(bufnr) == 1
+end
+
+function M.trim(s)
+  return (s:gsub("^%s*(.-)%s*$", "%1"))
 end
 
 function M.add_partial_completion(opts, text, state)
@@ -321,12 +307,18 @@ function M.add_partial_completion(opts, text, state)
   local progress = opts.progress
 
   if state == "ERROR" then
-    return _finalize_output(text, panel, opts.finalize_opts)
+    if not opts.on_complete then
+      return
+    end
+    return opts.on_complete(text)
   end
 
   local start_line = 0
   if state == "END" and text ~= "" then
-    return _finalize_output(text, panel, opts)
+    if not opts.on_complete then
+      return
+    end
+    return opts.on_complete(text)
   end
 
   if state == "START" then
@@ -334,26 +326,65 @@ function M.add_partial_completion(opts, text, state)
       progress(false)
     end
     vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
+    text = M.trim(text)
   end
 
   if state == "START" or state == "CONTINUE" then
     local lines = vim.split(text, "\n", {})
     local length = #lines
     local buffer = panel.bufnr
-    local win = panel.winid
 
-    if buffer then
+    if M.is_buf_exists(panel.bufnr) then
       for i, line in ipairs(lines) do
         local currentLine = vim.api.nvim_buf_get_lines(buffer, -2, -1, false)[1]
         vim.api.nvim_buf_set_lines(buffer, -2, -1, false, { currentLine .. line })
-
-        local last_line_num = vim.api.nvim_buf_line_count(buffer)
         if i == length and i > 1 then
           vim.api.nvim_buf_set_lines(buffer, -1, -1, false, { "" })
         end
       end
     end
   end
+end
+
+function M.process_string(inputString)
+  -- Check if the inputString contains a comma
+  if inputString:find(",") then
+    local resultTable = {} -- Initialize an empty table to store split values
+    -- Iterate through inputString and split by commas, adding each part to the resultTable
+    for word in inputString:gmatch("[^,]+") do
+      table.insert(resultTable, word) -- Insert each part into the resultTable
+    end
+    return resultTable -- Return the resulting table
+  else
+    return inputString -- If no commas found, return the inputString as it is
+  end
+end
+
+function M.getSelectedCode(lines)
+  local text = table.concat(lines, "\n")
+  -- Iterate through all code blocks in the message using a regular expression pattern
+  local lastCodeBlock
+  for codeBlock in text:gmatch("```.-```%s*") do
+    lastCodeBlock = codeBlock
+  end
+  -- If a code block was found, strip the delimiters and return the code
+  if lastCodeBlock then
+    local index = string.find(lastCodeBlock, "\n")
+    if index ~= nil then
+      lastCodeBlock = string.sub(lastCodeBlock, index + 1)
+    end
+    return lastCodeBlock:gsub("```\n", ""):gsub("```", ""):match("^%s*(.-)%s*$")
+  end
+  vim.notify("No codeblock found", vim.log.levels.INFO)
+  return nil
+end
+
+function M.render_template(data, template)
+  local result = template
+  for key, value in pairs(data) do
+    result = result:gsub("{{" .. key .. "}}", value)
+  end
+  return result
 end
 
 return M

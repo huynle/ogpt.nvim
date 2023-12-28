@@ -59,9 +59,9 @@ function M.run_action(opts)
     item.opts.variables = {}
     local i = 2
     for key, value in pairs(item.args) do
-      local arg = opts.fargs[i]
+      local arg = type(value.default) == "function" and value.default() or value.default or ""
       -- TODO: validataion
-      item.opts.variables[key] = arg or value.default or ""
+      item.opts.variables[key] = arg
       i = i + 1
     end
   end
