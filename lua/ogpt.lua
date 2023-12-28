@@ -5,7 +5,6 @@ local config = require("ogpt.config")
 local conf = require("telescope.config").values
 local signs = require("ogpt.signs")
 local pickers = require("telescope.pickers")
-local Utils = require("ogpt.utils")
 local Config = require("ogpt.config")
 local action_state = require("telescope.actions.state")
 local actions = require("telescope.actions")
