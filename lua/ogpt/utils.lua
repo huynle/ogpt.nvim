@@ -379,4 +379,12 @@ function M.getSelectedCode(lines)
   return nil
 end
 
+function M.render_template(data, template)
+  local result = template
+  for key, value in pairs(data) do
+    result = result:gsub("{{" .. key .. "}}", value)
+  end
+  return result
+end
+
 return M

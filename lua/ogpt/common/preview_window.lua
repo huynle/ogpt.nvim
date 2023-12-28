@@ -56,7 +56,7 @@ function PreviewWindow:calculate_size(opts)
     border = {
       style = "rounded",
       text = {
-        top = " " .. (opts.title or opts.args) .. " ",
+        top = " " .. (opts.title or opts.name or opts.args) .. " ",
         top_align = "left",
       },
     },
