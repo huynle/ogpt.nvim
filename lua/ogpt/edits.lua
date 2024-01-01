@@ -16,7 +16,10 @@ local build_edit_messages = function(input, instructions, opts)
   if opts.edit_code then
     _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
   end
-  local variables = vim.tbl_extend("force", {}, { instruction = instructions }, opts.variables)
+  local variables = vim.tbl_extend("force", {}, {
+    instruction = instructions,
+    input = input,
+  }, opts.variables)
   local system_msg = opts.params.system or ""
 
   -- local messages = opts.params.messages or {}
