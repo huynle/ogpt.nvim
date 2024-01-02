@@ -325,7 +325,9 @@ function M.add_partial_completion(opts, text, state)
     if progress then
       progress(false)
     end
-    vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
+    if M.is_buf_exists(panel.bufnr) then
+      vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
+    end
     text = M.trim(text)
   end
 
@@ -379,10 +381,17 @@ function M.getSelectedCode(lines)
   return nil
 end
 
+local function escapeString(inputString)
+  -- Escape backticks using the defined escape sequence
+  local escapedString = inputString:gsub("`", "\\`")
+
+  return escapedString
+end
+
 function M.render_template(data, template)
   local result = template
   for key, value in pairs(data) do
-    result = result:gsub("{{" .. key .. "}}", value)
+    result = result:gsub("{{" .. key .. "}}", escapeString(value))
   end
   return result
 end
