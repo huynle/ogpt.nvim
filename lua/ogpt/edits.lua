@@ -16,7 +16,11 @@ local build_edit_messages = function(input, instructions, opts)
   if opts.edit_code then
     _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
   end
-  local variables = vim.tbl_extend("force", {}, { instruction = instructions }, opts.variables)
+  local variables = vim.tbl_extend("force", {}, {
+    instruction = instructions,
+    input = _input,
+    filetype = opts.filetype,
+  }, opts.variables)
   local system_msg = opts.params.system or ""
 
   -- local messages = opts.params.messages or {}
@@ -58,23 +62,25 @@ local namespace_id = vim.api.nvim_create_namespace("OGPTNS")
 local instructions_input, layout, input_window, output_window, output, timer, filetype, bufnr, extmark_id
 
 local display_input_suffix = function(suffix)
-  if extmark_id then
-    vim.api.nvim_buf_del_extmark(instructions_input.bufnr, namespace_id, extmark_id)
-  end
+  if Utils.is_buf_exists(instructions_input.bufnr) then
+    if extmark_id then
+      vim.api.nvim_buf_del_extmark(instructions_input.bufnr, namespace_id, extmark_id)
+    end
 
-  if not suffix then
-    return
-  end
+    if not suffix then
+      return
+    end
 
-  extmark_id = vim.api.nvim_buf_set_extmark(instructions_input.bufnr, namespace_id, 0, -1, {
-    virt_text = {
-      { Config.options.chat.border_left_sign, "OGPTTotalTokensBorder" },
-      { "" .. suffix, "OGPTTotalTokens" },
-      { Config.options.chat.border_right_sign, "OGPTTotalTokensBorder" },
-      { " ", "" },
-    },
-    virt_text_pos = "right_align",
-  })
+    extmark_id = vim.api.nvim_buf_set_extmark(instructions_input.bufnr, namespace_id, 0, -1, {
+      virt_text = {
+        { Config.options.chat.border_left_sign, "OGPTTotalTokensBorder" },
+        { "" .. suffix, "OGPTTotalTokens" },
+        { Config.options.chat.border_right_sign, "OGPTTotalTokensBorder" },
+        { " ", "" },
+      },
+      virt_text_pos = "right_align",
+    })
+  end
 end
 
 local spinner = Spinner:new(function(state)
@@ -93,7 +99,9 @@ end
 local hide_progress = function()
   spinner:stop()
   display_input_suffix()
-  output_window.border:set_text("top", " Result ", "center")
+  if Utils.is_buf_exists(output_window.bufnr) then
+    output_window.border:set_text("top", " Result ", "center")
+  end
 end
 
 local show_process_flag = function(flag)
@@ -145,6 +153,9 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, opts, ...)
     prompt = Config.options.popup_input.prompt,
     default_value = opts.instruction or "",
     on_close = function()
+      if spinner:is_running() then
+        spinner:stop()
+      end
       if timer ~= nil then
         timer:stop()
       end
@@ -218,7 +229,7 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, opts, ...)
   for _, window in ipairs({ input_window, output_window, instructions_input }) do
     for _, mode in ipairs({ "n", "i" }) do
       window:map(mode, Config.options.edit_with_instructions.keymaps.accept, function()
-        window.input_props.on_close()
+        instructions_input.input_props.on_close()
         local lines = vim.api.nvim_buf_get_lines(output_window.bufnr, 0, -1, false)
         vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
         vim.notify("Successfully applied the change!", vim.log.levels.INFO)
@@ -241,6 +252,7 @@ M.edit_with_instructions = function(output_lines, bufnr, selection, opts, ...)
   for _, window in ipairs({ input_window, output_window, instructions_input }) do
     for _, mode in ipairs({ "n", "i" }) do
       window:map(mode, Config.options.edit_with_instructions.keymaps.close, function()
+        spinner:stop()
         if vim.fn.mode() == "i" then
           vim.api.nvim_command("stopinsert")
         end
