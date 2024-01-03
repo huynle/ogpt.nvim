@@ -20,20 +20,35 @@ For a comprehensive understanding of the extension's functionality, you can watc
 + [ ] clean up documentation
 + [x] original functionality of OGPT.nvim with Ollama
 + [x] Custom settings per session
-  + [ ] Add/remove settings as Ollama [request options](https://github.com/jmorganca/ollama/blob/main/docs/api.md#request-with-options)
-  + [ ] Change Settings -> [Parameters](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#parameter)
+  + [x] Add/remove settings as Ollama [request options](https://github.com/jmorganca/ollama/blob/main/docs/api.md#request-with-options)
+  + [x] Change Settings -> [Parameters](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#parameter)
 + [ ] Another Windows for [Template](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#template), [System](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#system)
-+ [ ] Query and Select model from Ollama
++ [x] Query and Select model from Ollama
 + [ ] Support model creation on the fly
 
+Change Model by Opening the Parameter panels default to (ctrl-o) and Tab your way to it
+then press Enter (<cr>) on the model field to change it. It should list all the available models on
+the your Ollama server.
+![Change Model](assets/images/change_model.png)
+
+Same with changing the model, add and delete parameters by using the keys "a" and "d" respectively
+![Additional Ollama Parameters](assets/images/addl_params.png)
+
+
+## OGPT Enhancement from Original ChatGPT.nvim
++ [x] additional actions can be added to config options
++ [x] running `OGPTRun` shows telescope picker
++ [x] for `type="chat"` and `strategy="display"`, "r" and "a" can be used to "replace the
+  highlighted text" or "append after the highlighted text", respectively. Otherwise, "esc" or
+"ctrl-c" would exit the popup
+
+
+## Installation
 
 `OGPT` is a Neovim plugin that allows you to effortlessly utilize the Ollama OGPT API,
 empowering you to generate natural language responses from Ollama's OGPT directly within the editor in response to your inquiries.
 
 ![preview image](https://github.com/jackMort/OGPT.nvim/blob/media/preview-2.png?raw=true)
-
-
-## Installation
 
 - Make sure you have `curl` installed.
 - Have a local instance of Ollama running.
@@ -90,8 +105,15 @@ model.
 
 ![preview image](https://github.com/jackmort/ChatGPT.nvim/blob/media/preview-3.png?raw=true)
 
-#### `OGPTEditWithInstructions`
-`OGPTEditWithInstructions` command which opens interactive window to edit selected text or whole window using the `codellama:13b` model (GPT 3.5 fine-tuned for coding).
+#### `OGPTRun edit_with_instructions`
+`OGPTRun edit_with_instructions` command which opens interactive window to edit selected text or
+whole window using the `deepseek-coder:6.7b` model, you can change in this in your config options
+
+#### `OGPTRun edit_code_with_instructions`
+This command opens an interactive window to edit selected text or the entire window using the
+`deepseek-coder:6.7b` model. You can modify this in your config options. The Ollama response will
+be extracted for its code content, and if it doesn't contain any codeblock, it will default back to
+the full response.
 
 You can map it using the Lua API, e.g. using `which-key.nvim`:
 ```lua
@@ -164,12 +186,11 @@ The `edit` strategy consists in showing the output side by side with the input a
 available for further editing requests
 For now, `edit` strategy is implemented for `chat` type only.
 
-The `display` strategy shows the output in a float window.
-
-`append` and `replace` modify the text directly in the buffer.
+The `display` strategy shows the output in a float window. 
+`append` and `replace` modify the text directly in the buffer with "a" or "r"
 
 ### Interactive popup
-When using `OGPT` and `OGPTEditWithInstructions`, the following
+When using `OGPT`, the following
 keybindings are available:
 - `<C-Enter>` [Both] to submit.
 - `<C-y>` [Both] to copy/yank last answer.
@@ -197,8 +218,8 @@ Add these to your [whichkey](https://github.com/folke/which-key.nvim) plugin map
 ```lua
 c = {
   name = "OGPT",
-    c = { "<cmd>OGPT<CR>", "OGPT" },
-    e = { "<cmd>OGPTEditWithInstruction<CR>", "Edit with instruction", mode = { "n", "v" } },
+    e = { "<cmd>OGPTRun edit_with_instructions<CR>", "Edit with instruction", mode = { "n", "v" } },
+    c = { "<cmd>OGPTRun edit_code_with_instructions<CR>", "Edit code with instruction", mode = { "n", "v" } },
     g = { "<cmd>OGPTRun grammar_correction<CR>", "Grammar Correction", mode = { "n", "v" } },
     t = { "<cmd>OGPTRun translate<CR>", "Translate", mode = { "n", "v" } },
     k = { "<cmd>OGPTRun keywords<CR>", "Keywords", mode = { "n", "v" } },

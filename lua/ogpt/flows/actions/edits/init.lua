@@ -42,7 +42,7 @@ function EditAction:render_template()
 end
 
 function EditAction:get_params()
-  return vim.tbl_extend("force", Config.options.api_edit_params, self.params, { input = self:render_template() })
+  return vim.tbl_extend("force", Config.options.api_edit_params, self.params, { prompt = self:render_template() })
 end
 
 function EditAction:run()
@@ -50,7 +50,7 @@ function EditAction:run()
     self:set_loading(true)
 
     local params = self:get_params()
-    params.stream = false
+    -- params.stream = false
     Api.edits(params, function(answer, usage)
       self:on_result(answer, usage)
     end)

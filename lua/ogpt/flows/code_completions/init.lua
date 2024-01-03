@@ -71,7 +71,7 @@ M.complete = function()
   set_loading(true)
 
   Api.completions({
-    model = "codellama:13b",
+    model = "deepseek-coder:33b",
     system = [[You are a CoPilot; a tool that uses natural language processing (NLP)
     techniques to generate and complete code based on user input. You help developers write code more quickly and efficiently by
     generating boilerplate code or completing partially written code. Respond with only the resulting code snippet. This means:
