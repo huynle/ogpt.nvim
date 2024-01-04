@@ -63,7 +63,8 @@ function ChatAction:render_template()
   data = vim.tbl_extend("force", {}, data, self.variables)
   local result = self.template
   for key, value in pairs(data) do
-    result = result:gsub("{{" .. key .. "}}", value)
+    local escaped_value = Utils.escape_pattern(value)
+    result = string.gsub(result, "{{" .. key .. "}}", escaped_value)
   end
   return result
 end
