@@ -381,19 +381,17 @@ function M.getSelectedCode(lines)
   return nil
 end
 
-local function escapeString(inputString)
-  -- Escape backticks using the defined escape sequence
-  local escapedString = inputString:gsub("`", "\\`")
-
-  return escapedString
-end
-
 function M.render_template(data, template)
   local result = template
   for key, value in pairs(data) do
-    result = result:gsub("{{" .. key .. "}}", escapeString(value))
+    result = result:gsub("{{" .. key .. "}}", M.escape_pattern(value))
   end
   return result
+end
+
+function M.escape_pattern(text)
+  -- https://stackoverflow.com/a/34953646/4780010
+  return text:gsub("([^%w])", "%%%1")
 end
 
 return M
