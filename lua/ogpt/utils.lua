@@ -38,6 +38,13 @@ M.ollama_options = {
   "num_thread",
 }
 
+M.textgenui_options = {
+  "seed",
+  "top_k",
+  "top_p",
+  "stop",
+}
+
 function M.split(text)
   local t = {}
   for str in string.gmatch(text, "%S+") do
@@ -241,6 +248,64 @@ function M.conform_to_ollama(params)
   return M._conform_to_ollama_api(params)
 end
 
+function M._conform_to_textgenui_api(params)
+  local textgenui_parameters = {
+    -- "model",
+    "inputs",
+    -- "messages",
+    -- "format",
+    -- "options",
+    "parameters",
+    -- "system",
+    -- "template",
+    -- "context",
+    "stream",
+    -- "raw",
+  }
+
+  -- https://github.com/jmorganca/textgenui/blob/main/docs/api.md#show-model-information
+
+  local param_options = {}
+
+  for key, value in pairs(params) do
+    if not vim.tbl_contains(textgenui_parameters, key) then
+      if vim.tbl_contains(M.textgenui_options, key) then
+        param_options[key] = value
+        params[key] = nil
+      else
+        params[key] = nil
+      end
+    end
+  end
+  local _options = vim.tbl_extend("keep", param_options, params.options or {})
+  if next(_options) ~= nil then
+    params.parameters = _options
+  end
+  return params
+end
+
+function M.conform_to_textgenui(params)
+  if params.messages then
+    local messages = params.messages
+    params.messages = nil
+    -- params.system = params.system or ""
+    params.inputs = params.inputs or ""
+    for _, message in ipairs(messages) do
+      if message.role == "system" then
+        params.system = params.system .. "\n" .. message.content .. "\n"
+      end
+    end
+
+    for _, message in ipairs(messages) do
+      if message.role == "user" then
+        params.inputs = params.inputs .. "\n" .. message.content .. "\n"
+      end
+    end
+  end
+
+  return M._conform_to_textgenui_api(params)
+end
+
 function M.extract_code(text)
   -- Iterate through all code blocks in the message using a regular expression pattern
   local lastCodeBlock
@@ -392,6 +457,13 @@ end
 function M.escape_pattern(text)
   -- https://stackoverflow.com/a/34953646/4780010
   return text:gsub("([^%w])", "%%%1")
+end
+
+function M.update_url_route(url, new_model)
+  local host = url:match("https?://([^/]+)")
+  local subdomain, domain, tld = host:match("([^.]+)%.([^.]+)%.([^.]+)")
+  local _new_url = url:gsub(host, new_model .. "." .. domain .. "." .. tld)
+  return _new_url
 end
 
 return M

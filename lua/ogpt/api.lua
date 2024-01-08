@@ -14,11 +14,12 @@ end
 function Api.chat_completions(custom_params, cb, should_stop, opts)
   local params = vim.tbl_extend("keep", custom_params, Config.options.api_params)
   local stream = params.stream or false
+  local _model = params.model
   local ctx = {}
   -- add params before conform
   ctx.params = params
   if stream then
-    params = Utils.conform_to_ollama(params)
+    params = Utils.conform_to_textgenui(params)
     local raw_chunks = ""
     local state = "START"
 
@@ -30,7 +31,7 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
         "--silent",
         "--show-error",
         "--no-buffer",
-        Api.CHAT_COMPLETIONS_URL,
+        Utils.update_url_route(Api.CHAT_COMPLETIONS_URL, _model),
         "-H",
         "Content-Type: application/json",
         "-H",
@@ -40,14 +41,17 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
       },
       function(chunk)
         local process_line = function(_ok, _json)
-          if _json and _json.done then
+          if not _ok then
+            return
+          end
+          if _json and (_json.details ~= vim.NIL) and (_json.details.finished_reason == "eos_token") then
             ctx.context = _json.context
             cb(raw_chunks, "END", ctx)
           else
             if _ok and not vim.tbl_isempty(_json) then
-              if _json and _json.message then
-                cb(_json.message.content, state, ctx)
-                raw_chunks = raw_chunks .. _json.message.content
+              if _json and _json.token then
+                cb(_json.token.text, state, ctx)
+                raw_chunks = raw_chunks .. _json.token.text
                 state = "CONTINUE"
               end
             end
@@ -63,7 +67,7 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
           process_line(ok, json)
         else
           for line in chunk:gmatch("[^\n]+") do
-            local raw_json = string.gsub(line, "^data: ", "")
+            local raw_json = string.gsub(line, "^data:", "")
             local _ok, _json = pcall(vim.json.decode, raw_json)
             process_line(_ok, _json)
           end
@@ -277,8 +281,10 @@ function Api.setup()
   loadApiHost("OLLAMA_API_HOST", "OLLAMA_API_HOST", "api_host_cmd", function(value)
     Api.OLLAMA_API_HOST = value
     Api.MODELS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/tags")
-    Api.COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/generate")
-    Api.CHAT_COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/chat")
+    -- Api.COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/generate")
+    -- Api.CHAT_COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/chat")
+    Api.COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/")
+    Api.CHAT_COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/")
   end, "http://localhost:11434")
 
   loadApiKey("OLLAMA_API_KEY", "OLLAMA_API_KEY", "api_key_cmd", function(value)
