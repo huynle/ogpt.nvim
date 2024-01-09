@@ -27,7 +27,8 @@ local read_actions_from_file = function(filename)
 end
 
 function M.read_actions()
-  local actions = {}
+  local actions = Config.options.actions
+  -- local actions = {}
   local paths = {}
 
   -- add default actions
@@ -45,7 +46,7 @@ function M.read_actions()
       end
     end
   end
-  return vim.tbl_extend("keep", Config.options.actions, actions)
+  return actions
 end
 
 function M.run_action(opts)

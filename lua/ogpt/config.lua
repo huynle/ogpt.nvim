@@ -8,6 +8,7 @@ WELCOME_MESSAGE = [[
 local M = {}
 function M.defaults()
   local defaults = {
+    debug = false,
     api_key_cmd = nil,
     default_provider = {
       -- can also support `textgenui`
@@ -275,6 +276,15 @@ M.namespace_id = vim.api.nvim_create_namespace("OGPTNS")
 function M.setup(options)
   options = options or {}
   M.options = vim.tbl_deep_extend("force", {}, M.defaults(), options)
+  local _complete_replace = {
+    "actions",
+  }
+
+  for _, to_replace in pairs(_complete_replace) do
+    for key, item in pairs(options[to_replace]) do
+      M.options[to_replace][key] = item
+    end
+  end
 end
 
 return M

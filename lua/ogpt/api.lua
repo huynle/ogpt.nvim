@@ -46,6 +46,10 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
 
   local ctx = {}
   ctx.params = params
+  if Config.options.debug then
+    vim.notify("Request to: " .. _completion_url, vim.log.levels.DEBUG, { title = "OGPT Debug" })
+  end
+
   if stream then
     local raw_chunks = ""
     local state = "START"
@@ -99,8 +103,6 @@ end
 
 function Api.edits(custom_params, cb)
   local params = vim.tbl_extend("keep", custom_params, Config.options.api_edit_params)
-  -- params.stream = params.stream or false
-  -- Api.make_call(Api.CHAT_COMPLETIONS_URL, params, cb)
   params.stream = true
   Api.chat_completions(params, cb)
 end
