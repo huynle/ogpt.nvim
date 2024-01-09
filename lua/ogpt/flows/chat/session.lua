@@ -27,8 +27,13 @@ local function read_session_file(filename)
   local jsonString = file:read("*a")
   file:close()
 
-  local data = vim.json.decode(jsonString)
-  return data.name, data.updated_at
+  local ok, data = pcall(vim.json.decode, jsonString)
+  -- local data = vim.fn.json_decode(jsonString)
+  if not ok then
+    return nil, nil
+  else
+    return data.name, data.updated_at
+  end
 end
 
 function Session:init(opts)

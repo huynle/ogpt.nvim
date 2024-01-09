@@ -24,6 +24,7 @@ function M.conform_to_textgenui_api(params)
     "top_k",
     "top_p",
     "stop",
+    "details",
   }
 
   local request_params = {
@@ -83,25 +84,23 @@ end
 
 function M.conform(params)
   params = params or {}
+  params.details = true
   params.inputs = M.update_messages(params.messages or {})
   return M.conform_to_textgenui_api(params)
 end
 
 function M.process_line(_ok, _json, ctx, raw_chunks, state, cb)
-  if not _ok then
-    return
-  end
-  if _json and (_json.details ~= vim.NIL) and (_json.details.finished_reason == "eos_token") then
-    ctx.context = _json.context
-    cb(raw_chunks, "END", ctx)
-  else
-    if _ok and not vim.tbl_isempty(_json) then
-      if _json and _json.token then
-        cb(_json.token.text, state, ctx)
-        raw_chunks = raw_chunks .. _json.token.text
-        state = "CONTINUE"
-      end
+  if _ok and not vim.tbl_isempty(_json) and _json and _json.token then
+    if _json.token.text == "</s>" then
+      ctx.context = _json.context
+      cb(raw_chunks, "END", ctx)
+    else
+      cb(_json.token.text, state, ctx)
+      raw_chunks = raw_chunks .. _json.token.text
+      state = "CONTINUE"
     end
+  else
+    return
   end
   return ctx, raw_chunks, state
 end
