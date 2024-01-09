@@ -72,21 +72,27 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
       },
       function(chunk)
         local ok, json = pcall(vim.json.decode, chunk)
-        if ok and json ~= nil then
+        if ok then
           if json.error ~= nil then
             cb(json.error, "ERROR", ctx)
             return
           end
-          ctx, raw_chunks, state = Api.provider.process_line(_ok, _json, ctx, raw_chunks, state, cb)
-        else
+          ctx, raw_chunks, state = Api.provider.process_line(ok, json, ctx, raw_chunks, state, cb)
+          return
+        end
+
+        if chunk:match("[^\n]+") then
           for line in chunk:gmatch("[^\n]+") do
             local raw_json = string.gsub(line, "^data:", "")
             local _ok, _json = pcall(vim.json.decode, raw_json)
-            ctx, raw_chunks, state = Api.provider.process_line(_ok, _json, ctx, raw_chunks, state, cb)
+            if _ok then
+              ctx, raw_chunks, state = Api.provider.process_line(_json, ctx, raw_chunks, state, cb)
+            end
           end
+        else
+          print("didnt get it")
         end
       end,
-
       function(err, _)
         cb(err, "ERROR", ctx)
       end,

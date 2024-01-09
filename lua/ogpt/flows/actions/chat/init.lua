@@ -143,9 +143,11 @@ function ChatAction:call_api(panel, params)
     params,
     Utils.partial(Utils.add_partial_completion, {
       panel = panel,
-      -- finalize_opts = opts,
       progress = function(flag)
         self:run_spinner(flag)
+      end,
+      on_complete = function(total_text)
+        -- print("completed: " .. total_text)
       end,
     }),
     function()

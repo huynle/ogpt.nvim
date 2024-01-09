@@ -23,8 +23,12 @@ function M.conform_to_textgenui_api(params)
     "seed",
     "top_k",
     "top_p",
+    "top_n_tokens",
+    "typical_p",
     "stop",
     "details",
+    "max_new_tokens",
+    "repetition_penalty",
   }
 
   local request_params = {
@@ -84,13 +88,14 @@ end
 
 function M.conform(params)
   params = params or {}
-  params.details = true
+  params.max_new_tokens = 1024
+
   params.inputs = M.update_messages(params.messages or {})
   return M.conform_to_textgenui_api(params)
 end
 
-function M.process_line(_ok, _json, ctx, raw_chunks, state, cb)
-  if _ok and not vim.tbl_isempty(_json) and _json and _json.token then
+function M.process_line(_json, ctx, raw_chunks, state, cb)
+  if _json.token then
     if _json.token.text == "</s>" then
       ctx.context = _json.context
       cb(raw_chunks, "END", ctx)
@@ -100,7 +105,7 @@ function M.process_line(_ok, _json, ctx, raw_chunks, state, cb)
       state = "CONTINUE"
     end
   else
-    return
+    print(_json)
   end
   return ctx, raw_chunks, state
 end

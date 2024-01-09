@@ -90,12 +90,12 @@ function M.conform(params)
   return params
 end
 
-function M.process_line(_ok, _json, ctx, raw_chunks, state, cb)
+function M.process_line(_json, ctx, raw_chunks, state, cb)
   if _json and _json.done then
     ctx.context = _json.context
     cb(raw_chunks, "END", ctx)
   else
-    if _ok and not vim.tbl_isempty(_json) then
+    if not vim.tbl_isempty(_json) then
       if _json and _json.message then
         cb(_json.message.content, state, ctx)
         raw_chunks = raw_chunks .. _json.message.content

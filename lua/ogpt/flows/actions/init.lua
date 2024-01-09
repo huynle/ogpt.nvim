@@ -23,7 +23,10 @@ local read_actions_from_file = function(filename)
   local json_string = file:read("*a")
   file:close()
 
-  return vim.json.decode(json_string)
+  local ok, json = pcall(vim.json.decode, json_string)
+  if ok then
+    return json
+  end
 end
 
 function M.read_actions()
