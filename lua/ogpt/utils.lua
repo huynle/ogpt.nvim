@@ -396,7 +396,6 @@ function M.add_partial_completion(opts, text, state)
   end
 
   if state == "START" or state == "CONTINUE" then
-    vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
     local lines = vim.split(text, "\n", {})
     local length = #lines
     local buffer = panel.bufnr
@@ -451,7 +450,8 @@ end
 function M.render_template(data, template)
   local result = template
   for key, value in pairs(data) do
-    result = result:gsub("{{" .. key .. "}}", M.escape_pattern(value))
+    local escaped_value = M.escape_pattern(value)
+    result = result:gsub("{{" .. key .. "}}", escaped_value)
   end
   return result
 end

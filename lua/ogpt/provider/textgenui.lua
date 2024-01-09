@@ -72,11 +72,9 @@ function M.update_messages(messages)
         table.insert(_input, tokens.INST_END)
       elseif message.role == "system" then
         table.insert(_input, message.content)
-        if i == #message - 1 then
-          table.insert(_input, tokens.EOS)
-        end
       end
     else
+      table.insert(_input, tokens.EOS)
       table.insert(_input, tokens.INST_START)
       table.insert(_input, message.content)
       table.insert(_input, tokens.INST_END)
@@ -88,8 +86,6 @@ end
 
 function M.conform(params)
   params = params or {}
-  params.max_new_tokens = 1024
-
   params.inputs = M.update_messages(params.messages or {})
   return M.conform_to_textgenui_api(params)
 end
@@ -104,6 +100,8 @@ function M.process_line(_json, ctx, raw_chunks, state, cb)
       raw_chunks = raw_chunks .. _json.token.text
       state = "CONTINUE"
     end
+  elseif _json.error then
+    cb(_json.error, "ERROR", ctx)
   else
     print(_json)
   end
