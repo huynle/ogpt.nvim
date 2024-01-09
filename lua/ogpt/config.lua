@@ -10,6 +10,7 @@ function M.defaults()
   local defaults = {
     api_key_cmd = nil,
     default_provider = {
+      -- can also support `textgenui`
       name = "ollama",
       api_host = os.getenv("OLLAMA_API_HOST"),
       api_key = os.getenv("OLLAMA_API_KEY"),
@@ -19,9 +20,9 @@ function M.defaults()
       diff = false,
       keymaps = {
         close = "<C-c>",
-        accept = "<C-y>",
-        toggle_diff = "<C-d>",
-        toggle_parameters = "<C-o>",
+        accept = "<C-y>", -- accept the output and write to original buffer
+        toggle_diff = "<C-d>", -- view the diff between left and right panes and use diff-mode
+        toggle_parameters = "<C-o>", -- Toggle parameters window
         cycle_windows = "<Tab>",
         use_output_as_input = "<C-u>",
       },
@@ -182,16 +183,38 @@ function M.defaults()
     },
 
     api_params = {
+      -- takes a string or a table
       model = "mistral:7b",
+      -- model = {
+      --   -- create a modify url specifically for mixtral to run
+      --   name = "mixtral-8-7b",
+      --   modify_url = function(url)
+      --     -- given a URL, this function modifies the URL specifically to the model
+      --     -- This is useful when you have different models hosted on different subdomains like
+      --     -- https://model1.yourdomain.com/
+      --     -- https://model2.yourdomain.com/
+      --     local new_model = "mixtral-8-7b"
+      --     local host = url:match("https?://([^/]+)")
+      --     local subdomain, domain, tld = host:match("([^.]+)%.([^.]+)%.([^.]+)")
+      --     local _new_url = url:gsub(host, new_model .. "." .. domain .. "." .. tld)
+      --     return _new_url
+      --   end,
+      --   conform_fn = function(params)
+      --     -- Different models might have different instruction format
+      --     -- for example, Mixtral operates on `<s> [INST] Instruction [/INST] Model answer</s> [INST] Follow-up instruction [/INST] `
+      --   end,
+      -- },
+
       temperature = 0.8,
-      top_p = 1,
+      top_p = 0.99,
     },
     api_edit_params = {
+      -- used for `edit` and `edit_code` strategy in the actions
       model = "mistral:7b",
       frequency_penalty = 0,
       presence_penalty = 0,
       temperature = 0.5,
-      top_p = 1,
+      top_p = 0.99,
     },
     actions = {
 
