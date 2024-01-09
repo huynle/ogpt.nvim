@@ -5,6 +5,19 @@ local Utils = require("ogpt.utils")
 
 local Api = {}
 
+function Api.get_provider()
+  local provider
+  if type(Config.options.default_provider) == "string" then
+    provider = require("ogpt.provider." .. Config.options.default_provider)
+  else
+    provider = require("ogpt.provider." .. Config.options.default_provider.name)
+    provider.envs = vim.tbl_extend("force", provider.envs, Config.options.default_provider)
+  end
+  local envs = provider.load_envs()
+  Api = vim.tbl_extend("force", Api, envs)
+  return provider
+end
+
 function Api.completions(custom_params, cb)
   local params = vim.tbl_extend("keep", custom_params, Config.options.api_params)
   params.stream = false
@@ -18,22 +31,22 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
 
   local _completion_url = Api.CHAT_COMPLETIONS_URL
   if type(_model) == "table" then
-    if _model.update_url and type(_model.update_url) == "function" then
-      _completion_url = _model.update_url(_completion_url)
+    if _model.modify_url and type(_model.modify_url) == "function" then
+      _completion_url = _model.modify_url(_completion_url)
     else
-      _completion_url = _model.update_url
-    end
-
-    if _model.conform then
-      params = _model.conform(params)
+      _completion_url = _model.modify_url
     end
   end
 
+  if _model and _model.conform_fn then
+    params = _model.conform_fn(params)
+  else
+    params = Api.provider.conform(params)
+  end
+
   local ctx = {}
-  -- add params before conform
   ctx.params = params
   if stream then
-    -- params = Utils.conform_to_textgenui(params)
     local raw_chunks = ""
     local state = "START"
 
@@ -54,36 +67,18 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
         vim.json.encode(params),
       },
       function(chunk)
-        local process_line = function(_ok, _json)
-          if not _ok then
-            return
-          end
-          if _json and (_json.details ~= vim.NIL) and (_json.details.finished_reason == "eos_token") then
-            ctx.context = _json.context
-            cb(raw_chunks, "END", ctx)
-          else
-            if _ok and not vim.tbl_isempty(_json) then
-              if _json and _json.token then
-                cb(_json.token.text, state, ctx)
-                raw_chunks = raw_chunks .. _json.token.text
-                state = "CONTINUE"
-              end
-            end
-          end
-        end
-
         local ok, json = pcall(vim.json.decode, chunk)
         if ok and json ~= nil then
           if json.error ~= nil then
             cb(json.error, "ERROR", ctx)
             return
           end
-          process_line(ok, json)
+          ctx, raw_chunks, state = Api.provider.process_line(_ok, _json, ctx, raw_chunks, state, cb)
         else
           for line in chunk:gmatch("[^\n]+") do
             local raw_json = string.gsub(line, "^data:", "")
             local _ok, _json = pcall(vim.json.decode, raw_json)
-            process_line(_ok, _json)
+            ctx, raw_chunks, state = Api.provider.process_line(_ok, _json, ctx, raw_chunks, state, cb)
           end
         end
       end,
@@ -111,8 +106,6 @@ function Api.edits(custom_params, cb)
 end
 
 function Api.make_call(url, params, cb)
-  params = Utils.conform_to_ollama(params)
-
   TMP_MSG_FILENAME = os.tmpname()
   local f = io.open(TMP_MSG_FILENAME, "w+")
   if f == nil then
@@ -292,25 +285,21 @@ local function ensureUrlProtocol(str)
 end
 
 function Api.setup()
-  loadApiHost("OLLAMA_API_HOST", "OLLAMA_API_HOST", "api_host_cmd", function(value)
-    Api.OLLAMA_API_HOST = value
-    Api.MODELS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/tags")
-    -- Api.COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/generate")
-    -- Api.CHAT_COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/api/chat")
-    Api.COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/")
-    Api.CHAT_COMPLETIONS_URL = ensureUrlProtocol(Api.OLLAMA_API_HOST .. "/")
-  end, "http://localhost:11434")
+  local provider = Api.get_provider()
+  Api.provider = provider
 
-  loadApiKey("OLLAMA_API_KEY", "OLLAMA_API_KEY", "api_key_cmd", function(value)
-    Api.OLLAMA_API_KEY = value
-    loadConfigFromEnv("OPENAI_API_TYPE", "OPENAI_API_TYPE")
-    if Api["OPENAI_API_TYPE"] == "azure" then
-      loadAzureConfigs()
-      Api.AUTHORIZATION_HEADER = "api-key: " .. Api.OLLAMA_API_KEY
-    else
-      Api.AUTHORIZATION_HEADER = "Authorization: Bearer " .. Api.OLLAMA_API_KEY
-    end
-  end, " ")
+  -- loadApiHost("OLLAMA_API_HOST", "OLLAMA_API_HOST", "api_host_cmd", provider.make_url, "http://localhost:11434")
+
+  -- loadApiKey("OLLAMA_API_KEY", "OLLAMA_API_KEY", "api_key_cmd", function(value)
+  --   Api.OLLAMA_API_KEY = value
+  --   loadConfigFromEnv("OPENAI_API_TYPE", "OPENAI_API_TYPE")
+  --   if Api["OPENAI_API_TYPE"] == "azure" then
+  --     loadAzureConfigs()
+  --     Api.AUTHORIZATION_HEADER = "api-key: " .. Api.OLLAMA_API_KEY
+  --   else
+  --     Api.AUTHORIZATION_HEADER = "Authorization: Bearer " .. Api.OLLAMA_API_KEY
+  --   end
+  -- end, " ")
 end
 
 function Api.exec(cmd, args, on_stdout_chunk, on_complete, should_stop, on_stop)

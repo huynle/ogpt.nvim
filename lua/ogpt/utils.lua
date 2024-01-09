@@ -249,34 +249,24 @@ function M.conform_to_ollama(params)
 end
 
 function M._conform_to_textgenui_api(params)
-  local textgenui_options = {
+  local model_params = {
     "seed",
     "top_k",
     "top_p",
     "stop",
   }
 
-  local textgenui_parameters = {
-    -- "model",
+  local request_params = {
     "inputs",
-    -- "messages",
-    -- "format",
-    -- "options",
     "parameters",
-    -- "system",
-    -- "template",
-    -- "context",
     "stream",
-    -- "raw",
   }
-
-  -- https://github.com/jmorganca/textgenui/blob/main/docs/api.md#show-model-information
 
   local param_options = {}
 
   for key, value in pairs(params) do
-    if not vim.tbl_contains(textgenui_parameters, key) then
-      if vim.tbl_contains(textgenui_options, key) then
+    if not vim.tbl_contains(request_params, key) then
+      if vim.tbl_contains(model_params, key) then
         param_options[key] = value
         params[key] = nil
       else
@@ -483,6 +473,18 @@ function M.to_model_string(messages)
     end
   end
   return output
+end
+
+function M.startsWith(str, start)
+  return string.sub(str, 1, string.len(start)) == start
+end
+
+function M.ensureUrlProtocol(str)
+  if M.startsWith(str, "https://") or M.startsWith(str, "http://") then
+    return str
+  end
+
+  return "https://" .. str
 end
 
 return M

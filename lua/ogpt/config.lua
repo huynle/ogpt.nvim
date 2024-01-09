@@ -9,6 +9,11 @@ local M = {}
 function M.defaults()
   local defaults = {
     api_key_cmd = nil,
+    default_provider = {
+      name = "ollama",
+      api_host = os.getenv("OLLAMA_API_HOST"),
+      api_key = os.getenv("OLLAMA_API_KEY"),
+    },
     yank_register = "+",
     edit_with_instructions = {
       diff = false,
