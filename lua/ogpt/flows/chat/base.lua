@@ -282,78 +282,6 @@ function Chat:addAnswerPartial(text, state, ctx)
   end
 end
 
--- function Chat:addAnswerPartial(text, state, ctx)
---   if state == "ERROR" then
---     return self:addAnswer(text, {})
---   end
---
---   local start_line = 0
---   if self.selectedIndex > 0 then
---     local prev = self.messages[self.selectedIndex]
---     start_line = prev.end_line + (prev.type == ANSWER and 2 or 1)
---   end
---
---   if state == "END" then
---     local usage = {}
---     local idx = self.session:add_item({
---       type = ANSWER,
---       text = text,
---       ctx = ctx or {},
---       usage = usage,
---     })
---
---     local lines = {}
---     local nr_of_lines = 0
---     for line in string.gmatch(text, "[^\n]+") do
---       nr_of_lines = nr_of_lines + 1
---       table.insert(lines, line)
---     end
---
---     local end_line = start_line + nr_of_lines - 1
---     table.insert(self.messages, {
---       idx = idx,
---       usage = usage or {},
---       type = ANSWER,
---       text = text,
---       lines = lines,
---       nr_of_lines = nr_of_lines,
---       start_line = start_line,
---       end_line = end_line,
---       context = ctx.context,
---     })
---     self.selectedIndex = self.selectedIndex + 1
---     vim.api.nvim_buf_set_lines(self.chat_window.bufnr, -1, -1, false, { "", "" })
---     Signs.set_for_lines(self.chat_window.bufnr, start_line, end_line, "chat")
---   end
---
---   if state == "START" then
---     self:stopSpinner()
---     self:set_lines(-2, -1, false, { "" })
---     vim.api.nvim_buf_set_option(self.chat_window.bufnr, "modifiable", true)
---   end
---
---   if state == "START" or state == "CONTINUE" then
---     local lines = vim.split(text, "\n", {})
---     local length = #lines
---     local buffer = self.chat_window.bufnr
---     local win = self.chat_window.winid
---
---     for i, line in ipairs(lines) do
---       local currentLine = vim.api.nvim_buf_get_lines(buffer, -2, -1, false)[1]
---       vim.api.nvim_buf_set_lines(buffer, -2, -1, false, { currentLine .. line })
---
---       local last_line_num = vim.api.nvim_buf_line_count(buffer)
---       Signs.set_for_lines(self.chat_window.bufnr, start_line, last_line_num - 1, "chat")
---       if i == length and i > 1 then
---         vim.api.nvim_buf_set_lines(buffer, -1, -1, false, { "" })
---       end
---       if self:is_buf_visiable() then
---         vim.api.nvim_win_set_cursor(win, { last_line_num, 0 })
---       end
---     end
---   end
--- end
-
 function Chat:get_total_tokens()
   local total_tokens = 0
   for i = 1, #self.messages, 1 do
@@ -565,16 +493,6 @@ function Chat:toMessages()
   end
   -- return messages[#messages].content
   return messages
-end
-
-function Chat:toOllama(messages)
-  local output = ""
-  for _, entry in ipairs(messages) do
-    if entry.content then
-      output = output .. entry.role .. ": " .. entry.content .. "\n\n"
-    end
-  end
-  return output
 end
 
 function Chat:count()

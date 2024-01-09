@@ -249,6 +249,13 @@ function M.conform_to_ollama(params)
 end
 
 function M._conform_to_textgenui_api(params)
+  local textgenui_options = {
+    "seed",
+    "top_k",
+    "top_p",
+    "stop",
+  }
+
   local textgenui_parameters = {
     -- "model",
     "inputs",
@@ -269,7 +276,7 @@ function M._conform_to_textgenui_api(params)
 
   for key, value in pairs(params) do
     if not vim.tbl_contains(textgenui_parameters, key) then
-      if vim.tbl_contains(M.textgenui_options, key) then
+      if vim.tbl_contains(textgenui_options, key) then
         param_options[key] = value
         params[key] = nil
       else
@@ -285,16 +292,18 @@ function M._conform_to_textgenui_api(params)
 end
 
 function M.conform_to_textgenui(params)
+  -- conform to mixtral
+  -- <s> [INST] Instruction [/INST] Model answer</s> [INST] Follow-up instruction [/INST]
   if params.messages then
     local messages = params.messages
     params.messages = nil
     -- params.system = params.system or ""
     params.inputs = params.inputs or ""
-    for _, message in ipairs(messages) do
-      if message.role == "system" then
-        params.system = params.system .. "\n" .. message.content .. "\n"
-      end
-    end
+    -- for _, message in ipairs(messages) do
+    --   if message.role == "system" then
+    --     params.system = params.system .. "\n" .. message.content .. "\n"
+    --   end
+    -- end
 
     for _, message in ipairs(messages) do
       if message.role == "user" then
@@ -464,6 +473,16 @@ function M.update_url_route(url, new_model)
   local subdomain, domain, tld = host:match("([^.]+)%.([^.]+)%.([^.]+)")
   local _new_url = url:gsub(host, new_model .. "." .. domain .. "." .. tld)
   return _new_url
+end
+
+function M.to_model_string(messages)
+  local output = ""
+  for _, entry in ipairs(messages) do
+    if entry.content then
+      output = output .. entry.role .. ": " .. entry.content .. "\n\n"
+    end
+  end
+  return output
 end
 
 return M

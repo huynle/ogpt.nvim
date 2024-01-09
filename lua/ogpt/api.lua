@@ -15,11 +15,25 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
   local params = vim.tbl_extend("keep", custom_params, Config.options.api_params)
   local stream = params.stream or false
   local _model = params.model
+
+  local _completion_url = Api.CHAT_COMPLETIONS_URL
+  if type(_model) == "table" then
+    if _model.update_url and type(_model.update_url) == "function" then
+      _completion_url = _model.update_url(_completion_url)
+    else
+      _completion_url = _model.update_url
+    end
+
+    if _model.conform then
+      params = _model.conform(params)
+    end
+  end
+
   local ctx = {}
   -- add params before conform
   ctx.params = params
   if stream then
-    params = Utils.conform_to_textgenui(params)
+    -- params = Utils.conform_to_textgenui(params)
     local raw_chunks = ""
     local state = "START"
 
@@ -31,7 +45,7 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
         "--silent",
         "--show-error",
         "--no-buffer",
-        Utils.update_url_route(Api.CHAT_COMPLETIONS_URL, _model),
+        _completion_url,
         "-H",
         "Content-Type: application/json",
         "-H",
