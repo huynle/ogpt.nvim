@@ -17,8 +17,9 @@
 For a comprehensive understanding of the extension's functionality, you can watch a plugin showcase [video](https://www.youtube.com/watch?v=7k0KZsheLP4)
 
 ## OGPT Specific Features:
++ [x] original functionality of ChatGPT.nvim to work with Ollama, TextGenUI(huggingface) via `providers`
+  + Look at the "default_provider" in the `config.lua`, default is `ollama`
 + [x] clean up documentation
-+ [x] original functionality of ChatGPT.nvim with Ollama, TextGenUI via `providers`
 + [x] Custom settings per session
   + [x] Add/remove settings as Ollama [request options](https://github.com/jmorganca/ollama/blob/main/docs/api.md#request-with-options)
   + [x] Change Settings -> [Parameters](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#parameter)
@@ -206,6 +207,7 @@ When the setting window is opened (with `<C-o>`), settings can be modified by
 pressing `Enter` on the related config. Settings are saved across sessions.
 
 ### Example Lazy Configuration
+
 
 ```lua
 return {
@@ -486,6 +488,52 @@ return {
       "nvim-lua/plenary.nvim",
       "nvim-telescope/telescope.nvim",
     },
+  },
+}
+```
+
+### Advanced setup
+
+`config.params.model` and `api_params.model` and `api_edit_params.model` can take a table instead
+of a string.
+
+```lua
+-- advanced model, can take the following structure
+local advanced_model = {
+  -- create a modify url specifically for mixtral to run
+  name = "mixtral-8-7b",
+  -- name = "mistral-7b-tgi-predictor-ai-factory",
+  modify_url = function(url)
+    -- given a URL, this function modifies the URL specifically to the model
+    -- This is useful when you have different models hosted on different subdomains like
+    -- https://model1.yourdomain.com/
+    -- https://model2.yourdomain.com/
+    local new_model = "mixtral-8-7b"
+    -- local new_model = "mistral-7b-tgi-predictor-ai-factory"
+    local host = url:match("https?://([^/]+)")
+    local subdomain, domain, tld = host:match("([^.]+)%.([^.]+)%.([^.]+)")
+    local _new_url = url:gsub(host, new_model .. "." .. domain .. "." .. tld)
+    return _new_url
+  end,
+  -- conform_fn = function(params)
+  --   -- Different models might have different instruction format
+  --   -- for example, Mixtral operates on `<s> [INST] Instruction [/INST] Model answer</s> [INST] Follow-up instruction [/INST] `
+  -- end,
+}
+
+```
+
+After defining the advanced model can, you can place it directly into your previous model location
+in the configuration.
+
+```lua
+opts = {
+  ...
+  api_params = {
+    -- so now call actions will use this model, unless explicitly overridden in the action itself
+    model = advanced_model,
+    temperature = 0.8,
+    top_p = 0.9,
   },
 }
 ```
