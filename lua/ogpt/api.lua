@@ -77,7 +77,7 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
             cb(json.error, "ERROR", ctx)
             return
           end
-          ctx, raw_chunks, state = Api.provider.process_line(ok, json, ctx, raw_chunks, state, cb)
+          ctx, raw_chunks, state = Api.provider.process_line(json, ctx, raw_chunks, state, cb)
           return
         end
 
