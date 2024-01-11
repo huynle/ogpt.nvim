@@ -23,11 +23,15 @@ local read_actions_from_file = function(filename)
   local json_string = file:read("*a")
   file:close()
 
-  return vim.json.decode(json_string)
+  local ok, json = pcall(vim.json.decode, json_string)
+  if ok then
+    return json
+  end
 end
 
 function M.read_actions()
-  local actions = {}
+  local actions = Config.options.actions
+  -- local actions = {}
   local paths = {}
 
   -- add default actions
@@ -55,14 +59,13 @@ function M.run_action(opts)
   local item = ACTIONS[action_name]
 
   -- parse args
-  --
   if item.args then
     item.opts.variables = {}
     local i = 2
     for key, value in pairs(item.args) do
-      local arg = opts.fargs[i]
+      local arg = type(value.default) == "function" and value.default() or value.default or ""
       -- TODO: validataion
-      item.opts.variables[key] = arg or value.default or ""
+      item.opts.variables[key] = arg
       i = i + 1
     end
   end

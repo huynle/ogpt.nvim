@@ -3,14 +3,10 @@
     "type": "chat",
     "opts": {
       "template": "Complete the following code written in {{lang}} by pasting the existing code and continuing it.\n\nExisting code:\n```{{filetype}}\n{{input}}\n```\n\n```{{filetype}}\n",
-      "strategy": "replace",
+      "strategy": "display",
       "params": {
-        "model": "codellama:13b",
-        "options": {
-          "stop": [
-            "```"
-          ]
-        }
+        "model": "deepseek-coder:6.7b",
+        "options": {}
       }
     }
   },
@@ -18,7 +14,7 @@
     "type": "chat",
     "opts": {
       "template": "Correct this to standard {{lang}}:\n\n{{input}}",
-      "strategy": "replace",
+      "strategy": "display",
       "params": {
         "model": "mistral:7b"
       }
@@ -35,7 +31,7 @@
     "type": "chat",
     "opts": {
       "template": "Translate this into {{lang}}:\n\n{{input}}",
-      "strategy": "replace",
+      "strategy": "display",
       "params": {
         "model": "mistral:7b",
         "temperature": 0.3
@@ -53,7 +49,7 @@
     "type": "chat",
     "opts": {
       "template": "Extract the main keywords from the following text.\n\n{{input}}",
-      "strategy": "replace",
+      "strategy": "display",
       "params": {
         "model": "mistral:7b",
         "temperature": 0.5,
@@ -68,11 +64,7 @@
       "strategy": "edit",
       "params": {
         "model": "mistral:7b",
-        "options": {
-          "stop": [
-            "```"
-          ]
-        }
+        "options": {}
       }
     }
   },
@@ -80,14 +72,10 @@
     "type": "chat",
     "opts": {
       "template": "Implement tests for the following code.\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nTests:\n```{{filetype}}",
-      "strategy": "append",
+      "strategy": "display",
       "params": {
-        "model": "codellama:13b",
-        "options": {
-          "stop": [
-            "```"
-          ]
-        }
+        "model": "deepseek-coder:6.7b",
+        "options": {}
       }
     }
   },
@@ -97,10 +85,7 @@
       "template": "Optimize the following code.\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nOptimized version:\n```{{filetype}}",
       "strategy": "edit",
       "params": {
-        "model": "codellama:13b",
-        "stop": [
-          "```"
-        ]
+        "model": "deepseek-coder:6.7b"
       }
     }
   },
@@ -108,7 +93,7 @@
     "type": "chat",
     "opts": {
       "template": "Summarize the following text.\n\nText:\n\"\"\"\n{{input}}\n\"\"\"\n\nSummary:",
-      "strategy": "edit",
+      "strategy": "display",
       "params": {
         "model": "mistral:7b"
       }
@@ -120,10 +105,7 @@
       "template": "Fix bugs in the below code\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nFixed code:\n```{{filetype}}",
       "strategy": "edit",
       "params": {
-        "model": "codellama:13b",
-        "stop": [
-          "```"
-        ]
+        "model": "deepseek-coder:6.7b"
       }
     }
   },
@@ -134,7 +116,7 @@
       "template": "Explain the following code:\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nUse markdown format.\nHere's what the above code is doing:\n```",
       "strategy": "display",
       "params": {
-        "model": "codellama:13b",
+        "model": "deepseek-coder:6.7b",
         "stop": [
           "```"
         ]
@@ -145,7 +127,7 @@
     "type": "chat",
     "opts": {
       "template": "Insert a roxygen skeleton to document this R function:\n\n```{{filetype}}\n[insert]\n\n{{input}}\n\n```",
-      "strategy": "prepend",
+      "strategy": "display",
       "params": {
         "model": "mistral:7b",
         "temperature": 0.5,

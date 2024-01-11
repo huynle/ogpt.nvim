@@ -28,6 +28,7 @@ function Chat:init()
 
   -- quit indicator
   self.active = true
+  self.focused = true
 
   -- UI ELEMENTS
   self.layout = nil
@@ -219,13 +220,13 @@ function Chat:addAnswerPartial(text, state, ctx)
     start_line = prev.end_line + (prev.type == ANSWER and 2 or 1)
   end
 
-  if state == "END" then
+  if state == "END" and text ~= "" then
     local usage = {}
     local idx = self.session:add_item({
       type = ANSWER,
       text = text,
-      ctx = ctx or {},
       usage = usage,
+      ctx = ctx or {},
     })
 
     local lines = {}
@@ -259,6 +260,7 @@ function Chat:addAnswerPartial(text, state, ctx)
   end
 
   if state == "START" or state == "CONTINUE" then
+    vim.api.nvim_buf_set_option(self.chat_window.bufnr, "modifiable", true)
     local lines = vim.split(text, "\n", {})
     local length = #lines
     local buffer = self.chat_window.bufnr
@@ -489,18 +491,8 @@ function Chat:toMessages()
     end
     table.insert(messages, { role = role, content = msg.text })
   end
-  -- return self:toOllama(messages)
-  return messages[#messages].content
-end
-
-function Chat:toOllama(messages)
-  local output = ""
-  for _, entry in ipairs(messages) do
-    if entry.content then
-      output = output .. entry.role .. ": " .. entry.content .. "\n\n"
-    end
-  end
-  return output
+  -- return messages[#messages].content
+  return messages
 end
 
 function Chat:count()
@@ -732,8 +724,9 @@ function Chat:open()
         self:showProgess()
         local params = vim.tbl_extend("keep", {
           stream = true,
-          context = self.session:previous_context(),
-          prompt = self.messages[#self.messages].text,
+          -- context = self.session:previous_context(),
+          -- prompt = self.messages[#self.messages].text,
+          messages = self:toMessages(),
           system = self.system_message,
         }, Parameters.params)
         Api.chat_completions(params, function(answer, state, ctx)
@@ -749,11 +742,24 @@ function Chat:open()
   -- initialize
   self.layout:mount()
   self:welcome()
+  self:set_events()
+end
 
+function Chat:set_events()
   local event = require("nui.utils.autocmd").event
-  self.chat_input:on(event.QuitPre, function()
-    self.active = false
-  end)
+  local windows = { self.parameters_panel, self.chat_input, self.chat_window }
+
+  for _, popup in ipairs(windows) do
+    popup:on(event.QuitPre, function()
+      self.active = false
+    end)
+    popup:on(event.WinLeave, function()
+      self.focused = false
+    end)
+    popup:on(event.WinEnter, function()
+      self.focused = true
+    end)
+  end
 end
 
 function Chat:set_keymaps()

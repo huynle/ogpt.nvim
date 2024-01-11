@@ -38,6 +38,13 @@ M.ollama_options = {
   "num_thread",
 }
 
+M.textgenui_options = {
+  "seed",
+  "top_k",
+  "top_p",
+  "stop",
+}
+
 function M.split(text)
   local t = {}
   for str in string.gmatch(text, "%S+") do
@@ -48,8 +55,10 @@ end
 
 function M.split_string_by_line(text)
   local lines = {}
-  for line in (text .. "\n"):gmatch("(.-)\n") do
-    table.insert(lines, line)
+  if text then
+    for line in (text .. "\n"):gmatch("(.-)\n") do
+      table.insert(lines, line)
+    end
   end
   return lines
 end
@@ -185,12 +194,13 @@ end
 function M._conform_to_ollama_api(params)
   local ollama_parameters = {
     "model",
-    "prompt",
+    -- "prompt",
+    "messages",
     "format",
     "options",
     "system",
     "template",
-    "context",
+    -- "context",
     "stream",
     "raw",
   }
@@ -200,35 +210,99 @@ function M._conform_to_ollama_api(params)
   local param_options = {}
 
   for key, value in pairs(params) do
-    if not vim.tbl_contains(ollama_parameters, key) and vim.tbl_contains(M.ollama_options, key) then
-      param_options[key] = value
-      params[key] = nil
+    if not vim.tbl_contains(ollama_parameters, key) then
+      if vim.tbl_contains(M.ollama_options, key) then
+        param_options[key] = value
+        params[key] = nil
+      else
+        params[key] = nil
+      end
     end
   end
-  params.options = vim.tbl_extend("keep", param_options, params.options or {})
+  local _options = vim.tbl_extend("keep", param_options, params.options or {})
+  if next(_options) ~= nil then
+    params.options = _options
+  end
   return params
 end
 
 function M.conform_to_ollama(params)
   if params.messages then
-    local messages = params.messages
-    params.messages = nil
-    params.system = ""
-    params.prompt = ""
-    for _, message in ipairs(messages) do
-      if message.role == "system" then
-        params.system = params.system .. message.content .. "\n"
+    --   local messages = params.messages
+    --   params.messages = nil
+    --   params.system = params.system or ""
+    --   params.prompt = params.prompt or ""
+    --   for _, message in ipairs(messages) do
+    --     if message.role == "system" then
+    --       params.system = params.system .. "\n" .. message.content .. "\n"
+    --     end
+    --   end
+    --
+    --   for _, message in ipairs(messages) do
+    --     if message.role == "user" then
+    --       params.prompt = params.prompt .. "\n" .. message.content .. "\n"
+    --     end
+    --   end
+  end
+
+  return M._conform_to_ollama_api(params)
+end
+
+function M._conform_to_textgenui_api(params)
+  local model_params = {
+    "seed",
+    "top_k",
+    "top_p",
+    "stop",
+  }
+
+  local request_params = {
+    "inputs",
+    "parameters",
+    "stream",
+  }
+
+  local param_options = {}
+
+  for key, value in pairs(params) do
+    if not vim.tbl_contains(request_params, key) then
+      if vim.tbl_contains(model_params, key) then
+        param_options[key] = value
+        params[key] = nil
+      else
+        params[key] = nil
       end
     end
+  end
+  local _options = vim.tbl_extend("keep", param_options, params.options or {})
+  if next(_options) ~= nil then
+    params.parameters = _options
+  end
+  return params
+end
+
+function M.conform_to_textgenui(params)
+  -- conform to mixtral
+  -- <s> [INST] Instruction [/INST] Model answer</s> [INST] Follow-up instruction [/INST]
+  if params.messages then
+    local messages = params.messages
+    params.messages = nil
+    -- params.system = params.system or ""
+    params.inputs = params.inputs or ""
+    -- for _, message in ipairs(messages) do
+    --   if message.role == "system" then
+    --     params.system = params.system .. "\n" .. message.content .. "\n"
+    --   end
+    -- end
 
     for _, message in ipairs(messages) do
       if message.role == "user" then
-        params.prompt = params.prompt .. message.content .. "\n"
+        params.inputs = params.inputs .. "\n" .. message.content .. "\n"
       end
     end
   end
 
-  return M._conform_to_ollama_api(params)
+  return M._conform_to_textgenui_api(params)
 end
 
 function M.extract_code(text)
@@ -246,6 +320,174 @@ function M.extract_code(text)
     return lastCodeBlock:gsub("```\n", ""):gsub("```", ""):match("^%s*(.-)%s*$")
   end
   return nil
+end
+
+function M.write_virtual_text(bufnr, ns, line, chunks, mode)
+  mode = mode or "extmark"
+  if mode == "extmark" then
+    return vim.api.nvim_buf_set_extmark(bufnr, ns, line, 0, { virt_text = chunks, virt_text_pos = "overlay" })
+  elseif mode == "vt" then
+    pcall(vim.api.nvim_buf_set_virtual_text, bufnr, ns, line, chunks, {})
+  end
+end
+
+-- Function to convert a nested table to a string
+function M.tableToString(tbl, indent)
+  indent = indent or 0
+  local str = ""
+  for k, v in pairs(tbl) do
+    if type(v) == "table" then
+      str = str .. string.rep("  ", indent) .. k .. ":\n"
+      str = str .. M.tableToString(v, indent + 1)
+    else
+      str = str .. string.rep("  ", indent) .. k .. ": " .. tostring(v) .. "\n"
+    end
+  end
+  return str
+end
+
+-- Partial application of arguments using closures
+function M.partial(func, ...)
+  local capturedArgs = { ... }
+  return function(...)
+    local args = { unpack(capturedArgs) } -- Captured arguments
+    for _, v in ipairs({ ... }) do
+      table.insert(args, v) -- Appending new arguments
+    end
+    return func(unpack(args))
+  end
+end
+
+function M.is_buf_exists(bufnr)
+  return vim.fn.bufexists(bufnr) == 1
+end
+
+function M.trim(s)
+  return (s:gsub("^%s*(.-)%s*$", "%1"))
+end
+
+function M.add_partial_completion(opts, text, state)
+  local panel = opts.panel
+  local progress = opts.progress
+
+  if state == "ERROR" then
+    if not opts.on_complete then
+      return
+    end
+    return opts.on_complete(text)
+  end
+
+  local start_line = 0
+  if state == "END" and text ~= "" then
+    if not opts.on_complete then
+      return
+    end
+    return opts.on_complete(text)
+  end
+
+  if state == "START" then
+    if progress then
+      progress(false)
+    end
+    if M.is_buf_exists(panel.bufnr) then
+      vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
+    end
+    text = M.trim(text)
+  end
+
+  if state == "START" or state == "CONTINUE" then
+    local lines = vim.split(text, "\n", {})
+    local length = #lines
+    local buffer = panel.bufnr
+
+    if M.is_buf_exists(panel.bufnr) then
+      for i, line in ipairs(lines) do
+        local currentLine = vim.api.nvim_buf_get_lines(buffer, -2, -1, false)[1]
+        vim.api.nvim_buf_set_lines(buffer, -2, -1, false, { currentLine .. line })
+        if i == length and i > 1 then
+          vim.api.nvim_buf_set_lines(buffer, -1, -1, false, { "" })
+        end
+      end
+    end
+  else
+    print("stuc")
+  end
+end
+
+function M.process_string(inputString)
+  -- Check if the inputString contains a comma
+  if inputString:find(",") then
+    local resultTable = {} -- Initialize an empty table to store split values
+    -- Iterate through inputString and split by commas, adding each part to the resultTable
+    for word in inputString:gmatch("[^,]+") do
+      table.insert(resultTable, word) -- Insert each part into the resultTable
+    end
+    return resultTable -- Return the resulting table
+  else
+    return inputString -- If no commas found, return the inputString as it is
+  end
+end
+
+function M.getSelectedCode(lines)
+  local text = table.concat(lines, "\n")
+  -- Iterate through all code blocks in the message using a regular expression pattern
+  local lastCodeBlock
+  for codeBlock in text:gmatch("```.-```%s*") do
+    lastCodeBlock = codeBlock
+  end
+  -- If a code block was found, strip the delimiters and return the code
+  if lastCodeBlock then
+    local index = string.find(lastCodeBlock, "\n")
+    if index ~= nil then
+      lastCodeBlock = string.sub(lastCodeBlock, index + 1)
+    end
+    return lastCodeBlock:gsub("```\n", ""):gsub("```", ""):match("^%s*(.-)%s*$")
+  end
+  vim.notify("No codeblock found", vim.log.levels.INFO)
+  return nil
+end
+
+function M.render_template(data, template)
+  local result = template
+  for key, value in pairs(data) do
+    local escaped_value = M.escape_pattern(value)
+    result = result:gsub("{{" .. key .. "}}", escaped_value)
+  end
+  return result
+end
+
+function M.escape_pattern(text)
+  -- https://stackoverflow.com/a/34953646/4780010
+  return text:gsub("([^%w])", "%%%1")
+end
+
+function M.update_url_route(url, new_model)
+  local host = url:match("https?://([^/]+)")
+  local subdomain, domain, tld = host:match("([^.]+)%.([^.]+)%.([^.]+)")
+  local _new_url = url:gsub(host, new_model .. "." .. domain .. "." .. tld)
+  return _new_url
+end
+
+function M.to_model_string(messages)
+  local output = ""
+  for _, entry in ipairs(messages) do
+    if entry.content then
+      output = output .. entry.role .. ": " .. entry.content .. "\n\n"
+    end
+  end
+  return output
+end
+
+function M.startsWith(str, start)
+  return string.sub(str, 1, string.len(start)) == start
+end
+
+function M.ensureUrlProtocol(str)
+  if M.startsWith(str, "https://") or M.startsWith(str, "http://") then
+    return str
+  end
+
+  return "https://" .. str
 end
 
 return M

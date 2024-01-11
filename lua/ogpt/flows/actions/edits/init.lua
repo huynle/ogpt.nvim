@@ -36,13 +36,13 @@ function EditAction:render_template()
   data = vim.tbl_extend("force", {}, data, self.variables)
   local result = self.template
   for key, value in pairs(data) do
-    result = result:gsub("{{" .. key .. "}}", value)
+    result = result:gsub("{{" .. key .. "}}", Utils.escape_pattern(value))
   end
   return result
 end
 
 function EditAction:get_params()
-  return vim.tbl_extend("force", Config.options.api_edit_params, self.params, { input = self:render_template() })
+  return vim.tbl_extend("force", Config.options.api_edit_params, self.params, { prompt = self:render_template() })
 end
 
 function EditAction:run()
@@ -50,7 +50,7 @@ function EditAction:run()
     self:set_loading(true)
 
     local params = self:get_params()
-    params.stream = false
+    -- params.stream = false
     Api.edits(params, function(answer, usage)
       self:on_result(answer, usage)
     end)
