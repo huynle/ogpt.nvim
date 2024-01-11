@@ -23,11 +23,15 @@ local read_actions_from_file = function(filename)
   local json_string = file:read("*a")
   file:close()
 
-  return vim.json.decode(json_string)
+  local ok, json = pcall(vim.json.decode, json_string)
+  if ok then
+    return json
+  end
 end
 
 function M.read_actions()
-  local actions = {}
+  local actions = Config.options.actions
+  -- local actions = {}
   local paths = {}
 
   -- add default actions
@@ -45,7 +49,7 @@ function M.read_actions()
       end
     end
   end
-  return vim.tbl_extend("keep", Config.options.actions, actions)
+  return actions
 end
 
 function M.run_action(opts)

@@ -27,8 +27,13 @@ local function read_session_file(filename)
   local jsonString = file:read("*a")
   file:close()
 
-  local data = vim.json.decode(jsonString)
-  return data.name, data.updated_at
+  local ok, data = pcall(vim.json.decode, jsonString)
+  -- local data = vim.fn.json_decode(jsonString)
+  if not ok then
+    return nil, nil
+  else
+    return data.name, data.updated_at
+  end
 end
 
 function Session:init(opts)
@@ -56,12 +61,14 @@ function Session:delete()
 end
 
 function Session:to_export()
-  return {
+  local _val = {
     name = self.name,
     updated_at = self.updated_at,
     parameters = self.parameters,
     conversation = self.conversation,
   }
+  _val.parameters.model = self.parameters.model and self.parameters.model.name or self.parameters.model
+  return _val
 end
 
 function Session:previous_context()
@@ -139,11 +146,13 @@ function Session:load()
   local jsonString = file:read("*a")
   file:close()
 
-  local data = vim.json.decode(jsonString)
-  self.name = data.name
-  self.updated_at = data.updated_at or get_current_date()
-  self.parameters = data.parameters
-  self.conversation = data.conversation
+  local ok, data = pcall(vim.json.decode, jsonString)
+  if ok then
+    self.name = data.name
+    self.updated_at = data.updated_at or get_current_date()
+    self.parameters = data.parameters
+    self.conversation = data.conversation
+  end
 end
 
 --
@@ -168,12 +177,14 @@ function Session.list_sessions()
     if updated_at == nil then
       updated_at = filename
     end
-
-    table.insert(sessions, {
-      filename = filename,
-      name = name,
-      ts = parse_date_time(updated_at),
-    })
+    local ok, ts = pcall(parse_date_time, updated_at)
+    if ok then
+      table.insert(sessions, {
+        filename = filename,
+        name = name,
+        ts = ts,
+      })
+    end
   end
 
   table.sort(sessions, function(a, b)

@@ -51,18 +51,21 @@ function ChatAction:init(opts)
       self:display_input_suffix(state)
     end)
   end)
+
+  self:update_variables()
+end
+
+function ChatAction:update_variables()
+  self.variables = vim.tbl_extend("force", self.variables, {
+    filetype = self:get_filetype(),
+    input = self.strategy == STRATEGY_QUICK_FIX and self:get_selected_text_with_line_numbers()
+      or self:get_selected_text(),
+  })
 end
 
 function ChatAction:render_template()
-  local input = self.strategy == STRATEGY_QUICK_FIX and self:get_selected_text_with_line_numbers()
-    or self:get_selected_text()
-  local data = {
-    filetype = self:get_filetype(),
-    input = input,
-  }
-  data = vim.tbl_extend("force", {}, data, self.variables)
   local result = self.template
-  for key, value in pairs(data) do
+  for key, value in pairs(self.variables) do
     local escaped_value = Utils.escape_pattern(value)
     result = string.gsub(result, "{{" .. key .. "}}", escaped_value)
   end
@@ -140,9 +143,11 @@ function ChatAction:call_api(panel, params)
     params,
     Utils.partial(Utils.add_partial_completion, {
       panel = panel,
-      -- finalize_opts = opts,
       progress = function(flag)
         self:run_spinner(flag)
+      end,
+      on_complete = function(total_text)
+        -- print("completed: " .. total_text)
       end,
     }),
     function()
