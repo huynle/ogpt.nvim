@@ -17,7 +17,7 @@
 For a comprehensive understanding of the extension's functionality, you can watch a plugin showcase [video](https://www.youtube.com/watch?v=7k0KZsheLP4)
 
 ## OGPT Specific Features:
-+ [x] original functionality of ChatGPT.nvim to work with Ollama, TextGenUI(huggingface) via `providers`
++ [x] original functionality of ChatGPT.nvim to work with Ollama, TextGenUI(huggingface), OpenAI via `providers`
   + Look at the "default_provider" in the `config.lua`, default is `ollama`
 + [x] clean up documentation
 + [x] Custom settings per session
