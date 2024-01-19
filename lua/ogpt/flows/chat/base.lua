@@ -211,6 +211,7 @@ end
 
 function Chat:addAnswerPartial(text, state, ctx)
   if state == "ERROR" then
+    self:stopSpinner()
     return self:addAnswer(text, {})
   end
 

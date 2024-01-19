@@ -2,15 +2,12 @@ local utils = require("ogpt.utils")
 
 local M = {}
 
-M.envs = {
-  api_host = os.getenv("OGPT_API_HOST"),
-  api_key = os.getenv("OGPT_API_KEY"),
-}
+M.envs = {}
 
 function M.load_envs()
   local _envs = {}
-  _envs.OLLAMA_API_HOST = M.envs.api_host
-  _envs.OLLAMA_API_KEY = M.envs.api_key
+  _envs.OLLAMA_API_HOST = M.envs.api_host or os.getenv("OLLAMA_API_HOST") or "http://localhost:11434"
+  _envs.OLLAMA_API_KEY = M.envs.api_key or os.getenv("OLLAMA_API_KEY") or ""
   _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.OLLAMA_API_HOST .. "/api/tags")
   _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OLLAMA_API_HOST .. "/api/generate")
   _envs.CHAT_COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OLLAMA_API_HOST .. "/api/chat")
@@ -55,16 +52,22 @@ M.ollama_options = {
   "num_thread",
 }
 
+function M.process_model(json, cb)
+  for _, model in ipairs(json.models) do
+    cb({
+      name = model.name,
+    })
+  end
+end
+
 function M.conform(params)
   local ollama_parameters = {
     "model",
-    -- "prompt",
     "messages",
     "format",
     "options",
     "system",
     "template",
-    -- "context",
     "stream",
     "raw",
   }
