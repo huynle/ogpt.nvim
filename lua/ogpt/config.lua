@@ -187,6 +187,7 @@ function M.defaults()
     api_params = {
       -- takes a string or a table
       model = nil,
+      -- model = "mistral:7b",
       -- model = {
       --   -- create a modify url specifically for mixtral to run
       --   name = "mixtral-8-7b",
@@ -213,6 +214,7 @@ function M.defaults()
     api_edit_params = {
       -- used for `edit` and `edit_code` strategy in the actions
       model = nil,
+      -- model = "mistral:7b",
       frequency_penalty = 0,
       presence_penalty = 0,
       temperature = 0.5,
@@ -283,8 +285,6 @@ function M.setup(options)
 
   -- allow to use a default provider model
   M.options.api_params.model = M.options.api_params.model or M.options.default_provider.model
-  M.options.api_edit_params.model = M.options.api_edit_params.model or M.options.default_provider.model
-
   for _, to_replace in pairs(_complete_replace) do
     for key, item in pairs(options[to_replace]) do
       M.options[to_replace][key] = item
