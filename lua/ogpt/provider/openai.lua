@@ -2,16 +2,13 @@ local utils = require("ogpt.utils")
 
 local M = {}
 
-M.envs = {
-  api_host = os.getenv("OPENAI_API_HOST") or "https://api.openai.com",
-  api_key = os.getenv("OPENAI_API_KEY"),
-}
+M.envs = {}
 
 function M.load_envs()
   local _envs = {}
-  _envs.OPENAI_API_HOST = M.envs.api_host
-  _envs.OPENAI_API_KEY = M.envs.api_key
-  -- _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.OPENAI_API_HOST .. "/api/tags")
+  _envs.OPENAI_API_HOST = M.envs.api_host or os.getenv("OPENAI_API_HOST") or "https://api.openai.com"
+  _envs.OPENAI_API_KEY = M.envs.api_key or os.getenv("OPENAI_API_KEY") or ""
+  _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.OPENAI_API_HOST .. "/v1/models")
   _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OPENAI_API_HOST .. "/v1/completions")
   _envs.CHAT_COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OPENAI_API_HOST .. "/v1/chat/completions")
   _envs.AUTHORIZATION_HEADER = "Authorization: Bearer " .. (_envs.OPENAI_API_KEY or " ")
@@ -20,6 +17,15 @@ function M.load_envs()
 end
 
 M.openai_options = {}
+
+function M.process_model(json, cb)
+  local data = json.data or {}
+  for _, model in ipairs(data) do
+    cb({
+      name = model.id,
+    })
+  end
+end
 
 function M.conform(params)
   local openai_parameters = {
