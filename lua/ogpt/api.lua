@@ -74,7 +74,8 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
         local ok, json = pcall(vim.json.decode, chunk)
         if ok then
           if json.error ~= nil then
-            cb(json.error, "ERROR", ctx)
+            local error_msg = "OGPT ERROR: " .. (json.error.message or "Something went wrong")
+            cb(error_msg, "ERROR", ctx)
             return
           end
           ctx, raw_chunks, state = Api.provider.process_line(json, ctx, raw_chunks, state, cb)

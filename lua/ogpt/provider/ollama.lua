@@ -58,13 +58,11 @@ M.ollama_options = {
 function M.conform(params)
   local ollama_parameters = {
     "model",
-    -- "prompt",
     "messages",
     "format",
     "options",
     "system",
     "template",
-    -- "context",
     "stream",
     "raw",
   }
