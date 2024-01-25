@@ -18,15 +18,17 @@ function M.defaults()
       model = "mistral:7b",
     },
     yank_register = "+",
-    edit_with_instructions = {
-      diff = false,
-      keymaps = {
-        close = "<C-c>",
-        accept = "<C-y>", -- accept the output and write to original buffer
-        toggle_diff = "<C-d>", -- view the diff between left and right panes and use diff-mode
-        toggle_parameters = "<C-o>", -- Toggle parameters window
-        cycle_windows = "<Tab>",
-        use_output_as_input = "<C-u>",
+    actions_opts = {
+      edit = {
+        diff = false,
+        keymaps = {
+          close = "<C-c>",
+          accept = "<C-y>", -- accept the output and write to original buffer
+          toggle_diff = "<C-d>", -- view the diff between left and right panes and use diff-mode
+          toggle_parameters = "<C-o>", -- Toggle parameters window
+          cycle_windows = "<Tab>",
+          use_output_as_input = "<C-u>",
+        },
       },
     },
     chat = {
@@ -232,36 +234,38 @@ function M.defaults()
     2. Only place comments in the code snippets
     ]],
           strategy = "display",
-          params = {
-            model = "deepseek-coder:6.7b",
-          },
+          -- -- override 'api_params' here
+          -- params = {
+          --   model = "deepseek-coder:6.7b",
+          -- },
         },
       },
 
       -- all strategy "edit" have instruction as input
       edit_code_with_instructions = {
-        type = "chat",
+        type = "edit",
         opts = {
           strategy = "edit_code",
           template = "Given the follow code snippet, {{instruction}}.\n\nCode:\n```{{filetype}}\n{{input}}\n```",
           delay = true,
           extract_codeblock = true,
-          params = {
-            model = "deepseek-coder:6.7b",
-          },
+          -- -- override 'api_edit_params' here
+          -- params = {
+          --   model = "deepseek-coder:6.7b",
+          -- },
         },
       },
 
       -- all strategy "edit" have instruction as input
       edit_with_instructions = {
-        type = "chat",
+        type = "edit",
         opts = {
           strategy = "edit",
           template = "Given the follow snippet, {{instruction}}.\n\nSnippet:\n```{{filetype}}\n{{input}}\n```",
           delay = true,
-          params = {
-            model = "mistral:7b",
-          },
+          -- params = {
+          --   model = "mistral:7b",
+          -- },
         },
       },
     },
