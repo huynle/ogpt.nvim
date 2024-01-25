@@ -19,8 +19,6 @@ local BaseAction = require("ogpt.flows.actions.base")
 local Api = require("ogpt.api")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
-local Spinner = require("ogpt.spinner")
-local PreviewWindow = require("ogpt.common.preview_window")
 local Layout = require("nui.layout")
 local Popup = require("nui.popup")
 local ChatInput = require("ogpt.input")
@@ -107,35 +105,6 @@ local display_input_suffix = function(suffix)
     })
   end
 end
-
--- local spinner = Spinner:new(function(state)
---   vim.schedule(function()
---     output_window.border:set_text("top", " " .. state .. " ", "center")
---     display_input_suffix(state)
---   end)
--- end, {
---   text = Config.options.loading_text,
--- })
-
--- local show_progress = function()
---   spinner:start()
--- end
---
--- local hide_progress = function()
---   spinner:stop()
---   display_input_suffix()
---   if utils.is_buf_exists(output_window.bufnr) then
---     output_window.border:set_text("top", " Result ", "center")
---   end
--- end
---
--- local show_process_flag = function(flag)
---   if flag then
---     show_progress()
---   else
---     hide_progress()
---   end
--- end
 
 local setup_and_mount = vim.schedule_wrap(function(lines, output_lines, ...)
   layout:mount()
