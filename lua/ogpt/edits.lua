@@ -15,6 +15,8 @@ local build_edit_messages = function(input, instructions, opts)
   local _input = input
   if opts.edit_code then
     _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
+  else
+    _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
   end
   local variables = vim.tbl_extend("force", {}, {
     instruction = instructions,
@@ -126,7 +128,7 @@ local setup_and_mount = vim.schedule_wrap(function(lines, output_lines, ...)
 
   -- set input and output settings
   for _, window in ipairs({ input_window, output_window }) do
-    vim.api.nvim_buf_set_option(window.bufnr, "filetype", filetype)
+    vim.api.nvim_buf_set_option(window.bufnr, "filetype", "markdown")
     vim.api.nvim_win_set_option(window.winid, "number", true)
   end
 end)
