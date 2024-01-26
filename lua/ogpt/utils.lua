@@ -490,4 +490,52 @@ function M.ensureUrlProtocol(str)
   return "https://" .. str
 end
 
+function M.build_edit_messages(input, instructions, opts)
+  local _input = input
+  if opts.edit_code then
+    _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
+  else
+    _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
+  end
+  local variables = vim.tbl_extend("force", {}, {
+    instruction = instructions,
+    input = _input,
+    filetype = opts.filetype,
+  }, opts.variables)
+  local system_msg = opts.params.system or ""
+
+  -- local messages = opts.params.messages or {}
+  -- table.insert(messages, {
+  --   {
+  --     role = "system",
+  --     content = system_msg,
+  --   },
+  --   {
+  --     role = "user",
+  --     content = _input,
+  --   },
+  --   {
+  --     role = "user",
+  --     content = instructions,
+  --   },
+  -- })
+
+  local messages = {
+    {
+      role = "system",
+      content = system_msg,
+    },
+    -- {
+    --   role = "user",
+    --   content = _input,
+    -- },
+    {
+      role = "user",
+      content = M.render_template(variables, opts.template),
+    },
+  }
+
+  return messages
+end
+
 return M

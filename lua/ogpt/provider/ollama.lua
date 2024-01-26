@@ -2,6 +2,8 @@ local utils = require("ogpt.utils")
 
 local M = {}
 
+M.name = "ollama"
+
 M.envs = {}
 
 function M.load_envs()

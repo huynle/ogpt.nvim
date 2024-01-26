@@ -20,7 +20,7 @@ ROLE_USER = "user"
 
 local Chat = classes.class()
 
-function Chat:init()
+function Chat:init(opts)
   self.input_extmark_id = nil
 
   self.active_panel = nil
@@ -46,7 +46,7 @@ function Chat:init()
   self.prompt_lines = 1
 
   self.display_mode = Config.options.popup_layout.default
-  self.params = Config.options.api_params
+  self.params = Config.get_chat_params(opts.provider)
 
   self.session = Session.latest()
   self.selectedIndex = 0

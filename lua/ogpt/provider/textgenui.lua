@@ -1,6 +1,8 @@
 local utils = require("ogpt.utils")
 local M = {}
 
+M.name = "textgenui"
+
 M.envs = {
   api_host = os.getenv("OGPT_API_HOST"),
   api_key = os.getenv("OGPT_API_KEY"),
@@ -8,6 +10,8 @@ M.envs = {
 
 function M.load_envs()
   local _envs = {}
+  _envs.TEXTGEN_API_HOST = M.envs.api_host or os.getenv("TEXTGEN_API_HOST") or "https://api.textgen.com"
+  _envs.TEXTGEN_API_KEY = M.envs.api_key or os.getenv("TEXTGEN_API_KEY") or ""
   _envs.MODELS_URL = utils.ensureUrlProtocol(M.envs.api_host .. "/api/tags")
   _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(M.envs.api_host)
   _envs.CHAT_COMPLETIONS_URL = utils.ensureUrlProtocol(M.envs.api_host)

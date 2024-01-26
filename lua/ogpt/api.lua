@@ -1,7 +1,6 @@
 local job = require("plenary.job")
 local Config = require("ogpt.config")
 local logger = require("ogpt.common.logger")
-local Utils = require("ogpt.utils")
 
 local Api = {}
 
@@ -25,24 +24,8 @@ function Api.completions(custom_params, cb)
 end
 
 function Api.chat_completions(custom_params, cb, should_stop, opts)
-  local params = vim.tbl_extend("keep", custom_params, Config.options.api_params)
-  local stream = params.stream or false
-  local _model = params.model
-
-  local _completion_url = Api.CHAT_COMPLETIONS_URL
-  if type(_model) == "table" then
-    if _model.modify_url and type(_model.modify_url) == "function" then
-      _completion_url = _model.modify_url(_completion_url)
-    else
-      _completion_url = _model.modify_url
-    end
-  end
-
-  if _model and _model.conform_fn then
-    params = _model.conform_fn(params)
-  else
-    params = Api.provider.conform(params)
-  end
+  local stream = custom_params.stream or false
+  local params, _completion_url = Config.expand_model(Api, custom_params)
 
   local ctx = {}
   ctx.params = params
@@ -105,7 +88,7 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
 end
 
 function Api.edits(custom_params, cb)
-  local params = vim.tbl_extend("keep", custom_params, Config.options.api_edit_params)
+  local params = Config.get_edit_params(nil, custom_params)
   params.stream = true
   Api.chat_completions(params, cb)
 end

@@ -2,6 +2,8 @@ local utils = require("ogpt.utils")
 
 local M = {}
 
+M.name = "openai"
+
 M.envs = {}
 
 function M.load_envs()

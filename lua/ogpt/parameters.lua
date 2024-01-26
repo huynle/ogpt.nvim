@@ -212,7 +212,11 @@ M.refresh_panel = function()
     if M.params[key] ~= nil then
       local display_text = M.params[key]
       if type(display_text) == "table" then
-        display_text = table.concat(M.params[key], ", ")
+        if display_text.name then
+          display_text = display_text.name
+        else
+          display_text = table.concat(M.params[key], ", ")
+        end
       end
 
       local vt = {

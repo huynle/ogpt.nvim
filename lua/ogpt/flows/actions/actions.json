@@ -1,23 +1,16 @@
 {
   "complete_code": {
-    "type": "chat",
+    "type": "popup",
     "opts": {
       "template": "Complete the following code written in {{lang}} by pasting the existing code and continuing it.\n\nExisting code:\n```{{filetype}}\n{{input}}\n```\n\n```{{filetype}}\n",
       "strategy": "display",
-      "params": {
-        "model": "deepseek-coder:6.7b",
-        "options": {}
-      }
     }
   },
   "grammar_correction": {
-    "type": "chat",
+    "type": "popup",
     "opts": {
       "template": "Correct this to standard {{lang}}:\n\n{{input}}",
       "strategy": "display",
-      "params": {
-        "model": "mistral:7b"
-      }
     },
     "args": {
       "lang": {
@@ -28,12 +21,11 @@
     }
   },
   "translate": {
-    "type": "chat",
+    "type": "popup",
     "opts": {
       "template": "Translate this into {{lang}}:\n\n{{input}}",
       "strategy": "display",
       "params": {
-        "model": "mistral:7b",
         "temperature": 0.3
       }
     },
@@ -46,77 +38,61 @@
     }
   },
   "keywords": {
-    "type": "chat",
+    "type": "popup",
     "opts": {
       "template": "Extract the main keywords from the following text.\n\n{{input}}",
       "strategy": "display",
       "params": {
-        "model": "mistral:7b",
         "temperature": 0.5,
         "frequency_penalty": 0.8
       }
     }
   },
   "docstring": {
-    "type": "chat",
+    "type": "popup",
     "opts": {
       "template": "# An elaborate, high quality docstring for the above function:\n# Writing a good docstring\n\nThis is an example of writing a really good docstring that follows a best practice for the given language. Attention is paid to detailing things like\n* parameter and return types (if applicable)\n* any errors that might be raised or returned, depending on the language\n\nI received the following code:\n\n```{{filetype}}\n{{input}}\n```\n\nThe code with a really good docstring added is below:\n\n```{{filetype}}",
       "strategy": "edit",
       "params": {
-        "model": "mistral:7b",
-        "options": {}
       }
     }
   },
   "add_tests": {
-    "type": "chat",
+    "type": "popup",
     "opts": {
       "template": "Implement tests for the following code.\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nTests:\n```{{filetype}}",
       "strategy": "display",
       "params": {
-        "model": "deepseek-coder:6.7b",
-        "options": {}
       }
     }
   },
   "optimize_code": {
-    "type": "chat",
+    "type": "popup",
     "opts": {
       "template": "Optimize the following code.\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nOptimized version:\n```{{filetype}}",
       "strategy": "edit",
-      "params": {
-        "model": "deepseek-coder:6.7b"
-      }
     }
   },
   "summarize": {
-    "type": "chat",
+    "type": "popup",
     "opts": {
       "template": "Summarize the following text.\n\nText:\n\"\"\"\n{{input}}\n\"\"\"\n\nSummary:",
       "strategy": "display",
-      "params": {
-        "model": "mistral:7b"
-      }
     }
   },
   "fix_bugs": {
-    "type": "chat",
+    "type": "edit",
     "opts": {
       "template": "Fix bugs in the below code\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nFixed code:\n```{{filetype}}",
-      "strategy": "edit",
-      "params": {
-        "model": "deepseek-coder:6.7b"
-      }
     }
   },
   "explain_code": {
-    "type": "chat",
+    "type": "popup",
     "opts": {
       "title": " Explain Code",
       "template": "Explain the following code:\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nUse markdown format.\nHere's what the above code is doing:\n```",
       "strategy": "display",
       "params": {
-        "model": "deepseek-coder:6.7b",
         "stop": [
           "```"
         ]
@@ -124,24 +100,22 @@
     }
   },
   "roxygen_edit": {
-    "type": "chat",
+    "type": "popup",
     "opts": {
       "template": "Insert a roxygen skeleton to document this R function:\n\n```{{filetype}}\n[insert]\n\n{{input}}\n\n```",
       "strategy": "display",
       "params": {
-        "model": "mistral:7b",
         "temperature": 0.5,
         "max_tokens": 1024
       }
     }
   },
   "code_readability_analysis": {
-    "type": "chat",
+    "type": "popup",
     "opts": {
       "strategy": "quick_fix",
       "template": "{{input}}",
       "params": {
-        "model": "mistral:7b",
         "max_tokens": 2048,
         "messages": [
           {

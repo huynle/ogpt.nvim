@@ -291,7 +291,7 @@ return {
           use_output_as_input = "<C-u>",
         },
       },
-      preview_window = {
+      popup = {
         keymaps = {
           close = { "<C-c>", "q" },
           accept = "<M-CR>",
