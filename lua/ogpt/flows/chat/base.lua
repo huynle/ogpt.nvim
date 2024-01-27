@@ -3,7 +3,6 @@ local Layout = require("nui.layout")
 local Popup = require("nui.popup")
 
 local ChatInput = require("ogpt.input")
-local Api = require("ogpt.api")
 local Config = require("ogpt.config")
 local Parameters = require("ogpt.parameters")
 local Sessions = require("ogpt.flows.chat.sessions")
@@ -21,6 +20,8 @@ ROLE_USER = "user"
 local Chat = classes.class()
 
 function Chat:init(opts)
+  self.provider = Config.get_provider(opts.provider, self)
+
   self.input_extmark_id = nil
 
   self.active_panel = nil
@@ -680,7 +681,7 @@ end
 
 function Chat:open()
   self.session.parameters = vim.tbl_extend("keep", self.session.parameters, self.params)
-  self.parameters_panel = Parameters.get_panel(self.session)
+  self.parameters_panel = Parameters.get_panel(self.session, self)
   self.sessions_panel = Sessions.get_panel(function(session)
     self:set_session(session)
   end)
@@ -730,7 +731,7 @@ function Chat:open()
           messages = self:toMessages(),
           system = self.system_message,
         }, Parameters.params)
-        Api.chat_completions(params, function(answer, state, ctx)
+        self.provider.api:chat_completions(params, function(answer, state, ctx)
           self:addAnswerPartial(answer, state, ctx)
         end, self.should_stop)
       end

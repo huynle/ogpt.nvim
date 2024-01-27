@@ -28,10 +28,11 @@ local STRATEGY_PREPEND = "prepend"
 local STRATEGY_DISPLAY = "display"
 local STRATEGY_QUICK_FIX = "quick_fix"
 
-function PopupAction:init(opts)
+function PopupAction:init(name, opts)
+  self.name = name or ""
   self.super:init(opts)
-  self.provider = opts.provider or Config.options.default_provider
-  self.params = Config.get_edit_params(self.provider, opts.params or {})
+  self.provider = Config.get_provider(opts.provider, self)
+  self.params = Config.get_edit_params(self.provider.name, opts.params or {})
   self.system = type(opts.system) == "function" and opts.system() or opts.system or ""
   self.template = type(opts.template) == "function" and opts.template() or opts.template or "{{input}}"
   self.variables = opts.variables or {}
@@ -50,7 +51,7 @@ function PopupAction:run()
   if self.strategy == STRATEGY_DISPLAY then
     self:run_spinner(true)
     self.popup:mount({
-      name = self.opts.fargs[1],
+      name = self.name,
       cur_win = self.cur_win,
       main_bufnr = self:get_bufnr(),
       selection_idx = {
@@ -70,14 +71,14 @@ function PopupAction:run()
     self:call_api(self.popup, params)
   else
     self:set_loading(true)
-    Api.chat_completions(params, function(answer, usage)
+    self.provider.api:chat_completions(params, function(answer, usage)
       self:on_result(answer, usage)
     end)
   end
 end
 
 function PopupAction:call_api(panel, params)
-  Api.chat_completions(
+  self.provider.api:chat_completions(
     params,
     utils.partial(utils.add_partial_completion, {
       panel = panel,

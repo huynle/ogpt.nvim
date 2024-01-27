@@ -6,24 +6,24 @@ local M = {
   chat = nil,
 }
 
-M.open = function()
+M.open = function(opts)
   if M.chat ~= nil and M.chat.active then
     M.chat:toggle()
   else
-    M.chat = Chat:new()
-    M.chat:open()
+    M.chat = Chat.new(opts)
+    M.chat:open(opts)
   end
 end
 
-M.focus = function()
+M.focus = function(opts)
   if M.chat ~= nil then
     if not M.chat.focused then
-      M.chat:hide()
-      M.chat:show()
+      M.chat:hide(opts)
+      M.chat:show(opts)
     end
   else
-    M.chat = Chat:new()
-    M.chat:open()
+    M.chat = Chat.new(opts)
+    M.chat:open(opts)
   end
 end
 

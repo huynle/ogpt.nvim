@@ -14,11 +14,15 @@ function M.defaults()
     default_provider = "ollama",
     providers = {
       openai = {
+        enabled = true,
         model = "gpt-4",
         api_host = os.getenv("OPENAI_API_HOST") or "https://api.openai.com",
         api_key = os.getenv("OPENAI_API_KEY") or "",
+        api_params = {},
+        api_edit_params = {},
       },
       textgenui = {
+        enabled = true,
         api_host = os.getenv("OGPT_API_HOST"),
         api_key = os.getenv("OGPT_API_KEY"),
         model = {
@@ -44,8 +48,11 @@ function M.defaults()
           --   end,
           -- },
         },
+        api_params = {},
+        api_edit_params = {},
       },
       ollama = {
+        enabled = true,
         api_host = os.getenv("OLLAMA_API_HOST") or "http://localhost:11434",
         api_key = os.getenv("OLLAMA_API_KEY") or "",
         models = {
@@ -249,47 +256,43 @@ function M.defaults()
 
       code_completion = {
         type = "chat",
-        opts = {
-          system = [[You are a CoPilot; a tool that uses natural language processing (NLP)
+        system = [[You are a CoPilot; a tool that uses natural language processing (NLP)
     techniques to generate and complete code based on user input. You help developers write code more quickly and efficiently by
     generating boilerplate code or completing partially written code. Respond with only the resulting code snippet. This means:
     1. Do not include the code context that was given
     2. Only place comments in the code snippets
     ]],
-          strategy = "display",
-          -- -- override 'api_params' here
-          -- params = {
-          --   model = "deepseek-coder:6.7b",
-          -- },
-        },
+        strategy = "display",
+        -- -- override 'api_params' here
+        -- params = {
+        --   model = "deepseek-coder:6.7b",
+        -- },
       },
 
       -- all strategy "edit" have instruction as input
       edit_code_with_instructions = {
         type = "edit",
-        opts = {
-          strategy = "edit_code",
-          template = "Given the follow code snippet, {{instruction}}.\n\nCode:\n```{{filetype}}\n{{input}}\n```",
-          delay = true,
-          extract_codeblock = true,
-          -- -- override 'api_edit_params' here
-          -- params = {
-          --   model = "deepseek-coder:6.7b",
-          -- },
-        },
+        strategy = "edit_code",
+        template = "Given the follow code snippet, {{instruction}}.\n\nCode:\n```{{filetype}}\n{{input}}\n```",
+        delay = true,
+        extract_codeblock = true,
+        -- -- override 'api_edit_params' here
+        -- params = {
+        --   model = "deepseek-coder:6.7b",
+        -- },
       },
 
       -- all strategy "edit" have instruction as input
       edit_with_instructions = {
+        provider = "ollama",
+        model = "mistral:7b",
         type = "edit",
-        opts = {
-          strategy = "edit",
-          template = "Given the follow snippet, {{instruction}}.\n\nSnippet:\n```{{filetype}}\n{{input}}\n```",
-          delay = true,
-          -- params = {
-          --   model = "mistral:7b",
-          -- },
-        },
+        strategy = "edit",
+        template = "Given the follow snippet, {{instruction}}.\n\nSnippet:\n```{{filetype}}\n{{input}}\n```",
+        delay = true,
+        -- params = {
+        --   model = "mistral:7b",
+        -- },
       },
     },
     actions_paths = {},
@@ -320,26 +323,39 @@ function M.setup(options)
   end
 end
 
+function M.get_provider(provider_name, action, override)
+  local Api = require("ogpt.api")
+  override = override or {}
+  provider_name = provider_name or M.options.default_provider
+  local provider = require("ogpt.provider." .. provider_name)
+  local envs = provider.load_envs(override.envs)
+  provider = vim.tbl_extend("force", provider, override)
+  provider.envs = envs
+  provider.api = Api.new(provider, action, {})
+  return provider
+end
+
 function M.get_edit_params(provider, override)
   provider = provider or M.options.default_provider
   local default_params = M.options.providers[provider].api_edit_params
-  default_params.model = M.options.providers[provider].api_edit_params.model or M.options.providers[provider].model
+  default_params.model = default_params.model or M.options.providers[provider].model
   return vim.tbl_extend("force", default_params, override or {})
 end
 
 function M.get_chat_params(provider, override)
   provider = provider or M.options.default_provider
-  local default_params = M.options.providers[provider].api_params
-  default_params.model = M.options.providers[provider].api_params.model or M.options.providers[provider].model
+  local default_params = M.options.providers[provider].api_params or {}
+  default_params.model = default_params.model or M.options.providers[provider].model
+  default_params.provider = provider
   return vim.tbl_extend("force", default_params, override or {})
 end
 
-function M.expand_model(Api, params)
-  local provider_models = M.options.providers[Api.provider.name].models or {}
-  params = M.get_edit_params(Api.provider.name, params)
+function M.expand_model(api, params)
+  local provider_models = M.options.providers[api.provider.name].models or {}
+  params = M.get_edit_params(api.provider.name, params)
   local _model = params.model
 
-  local _completion_url = Api.CHAT_COMPLETIONS_URL
+  local _completion_url = api.provider.envs.CHAT_COMPLETIONS_URL
 
   local function _expand(_m)
     if type(_m) == "table" then
@@ -369,20 +385,20 @@ function M.expand_model(Api, params)
 
   _expand(_model)
 
-  params = M.expand_url(Api, params)
+  params = M.expand_url(api, params)
 
   return params, _completion_url
 end
 
-function M.expand_url(Api, params)
-  params = M.get_edit_params(Api.provider.name, params)
+function M.expand_url(api, params)
+  params = M.get_edit_params(api.provider.name, params)
   local _model = params.model
   local _conform_fn = _model and _model.conform_fn
 
   if _conform_fn then
     params = _conform_fn(params)
   else
-    params = Api.provider.conform(params)
+    params = api.provider.conform(params)
   end
   return params
 end

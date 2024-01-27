@@ -3,7 +3,6 @@ local conf = require("telescope.config").values
 local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
 local job = require("plenary.job")
-local Api = require("ogpt.api")
 
 local Utils = require("ogpt.utils")
 local Config = require("ogpt.config")
@@ -106,9 +105,8 @@ end
 --
 
 local M = {}
-function M.select_model(opts)
+function M.select_model(provider, opts)
   opts = opts or {}
-  local provider = Api.get_provider()
   pickers
     .new(opts, {
       sorting_strategy = "ascending",

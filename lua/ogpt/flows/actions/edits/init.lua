@@ -16,7 +16,6 @@
 --   }
 local classes = require("ogpt.common.classes")
 local BaseAction = require("ogpt.flows.actions.base")
-local Api = require("ogpt.api")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
 local Layout = require("nui.layout")
@@ -29,10 +28,12 @@ local EditAction = classes.class(BaseAction)
 local STRATEGY_EDIT = "edit"
 local STRATEGY_EDIT_CODE = "edit_code"
 
-function EditAction:init(opts)
+function EditAction:init(name, opts)
+  self.name = name or ""
+  opts = opts or {}
   self.super:init(opts)
-  self.provider = opts.provider or Config.options.default_provider
-  self.params = Config.get_edit_params(self.provider, opts.params or {})
+  self.provider = Config.get_provider(opts.provider, self)
+  self.params = Config.get_edit_params(self.provider.name, opts.params or {})
   self.system = type(opts.system) == "function" and opts.system() or opts.system or ""
   self.template = type(opts.template) == "function" and opts.template() or opts.template or "{{input}}"
   self.variables = opts.variables or {}
@@ -165,7 +166,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       end
       local messages = utils.build_edit_messages(input, instruction, opts)
       local params = vim.tbl_extend("keep", { messages = messages }, Parameters.params)
-      Api.edits(
+      self.provider.api:edits(
         params,
         utils.partial(utils.add_partial_completion, {
           panel = output_window,

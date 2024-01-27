@@ -56,6 +56,8 @@ end
 function M.run_action(opts)
   local ACTIONS = M.read_actions()
 
+  local action_opts = loadstring("return " .. opts.args)() or {}
+
   local action_name = opts.fargs[1]
   local item = ACTIONS[action_name]
 
@@ -71,9 +73,9 @@ function M.run_action(opts)
     end
   end
 
-  opts = vim.tbl_extend("force", {}, opts, item.opts)
+  opts = vim.tbl_extend("force", {}, action_opts, item)
   local class = classes_by_type[item.type]
-  local action = class.new(opts)
+  local action = class.new(action_name, opts)
   action:run()
 end
 

@@ -1,10 +1,17 @@
 local job = require("plenary.job")
 local Config = require("ogpt.config")
 local logger = require("ogpt.common.logger")
+local classes = require("ogpt.common.classes")
 
-local Api = {}
+local Api = classes.class()
 
-function Api.get_provider()
+function Api:init(provider, action, opts)
+  self.opts = opts
+  self.provider = provider
+  self.action = action
+end
+
+function Api:get_provider()
   local provider
   if type(Config.options.default_provider) == "string" then
     provider = require("ogpt.provider." .. Config.options.default_provider)
@@ -17,15 +24,15 @@ function Api.get_provider()
   return provider
 end
 
-function Api.completions(custom_params, cb)
+function Api:completions(custom_params, cb)
   local params = vim.tbl_extend("keep", custom_params, Config.options.api_params)
   params.stream = false
-  Api.make_call(Api.COMPLETIONS_URL, params, cb)
+  self:make_call(self.COMPLETIONS_URL, params, cb)
 end
 
-function Api.chat_completions(custom_params, cb, should_stop, opts)
+function Api:chat_completions(custom_params, cb, should_stop, opts)
   local stream = custom_params.stream or false
-  local params, _completion_url = Config.expand_model(Api, custom_params)
+  local params, _completion_url = Config.expand_model(self, custom_params)
 
   local ctx = {}
   ctx.params = params
@@ -39,7 +46,7 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
 
     cb = vim.schedule_wrap(cb)
 
-    Api.exec(
+    self:exec(
       "curl",
       {
         "--silent",
@@ -49,7 +56,7 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
         "-H",
         "Content-Type: application/json",
         "-H",
-        Api.AUTHORIZATION_HEADER,
+        self.provider.envs.AUTHORIZATION_HEADER,
         "-d",
         vim.json.encode(params),
       },
@@ -61,7 +68,7 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
             cb(error_msg, "ERROR", ctx)
             return
           end
-          ctx, raw_chunks, state = Api.provider.process_line(json, ctx, raw_chunks, state, cb)
+          ctx, raw_chunks, state = self.provider.process_line(json, ctx, raw_chunks, state, cb)
           return
         end
 
@@ -69,7 +76,7 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
           local raw_json = string.gsub(line, "^data:", "")
           local _ok, _json = pcall(vim.json.decode, raw_json)
           if _ok then
-            ctx, raw_chunks, state = Api.provider.process_line(_json, ctx, raw_chunks, state, cb)
+            ctx, raw_chunks, state = self.provider.process_line(_json, ctx, raw_chunks, state, cb)
           end
         end
       end,
@@ -83,17 +90,18 @@ function Api.chat_completions(custom_params, cb, should_stop, opts)
     )
   else
     params.stream = false
-    Api.make_call(Api.CHAT_COMPLETIONS_URL, params, cb)
+    self:make_call(self.provider.envs.CHAT_COMPLETIONS_URL, params, cb)
   end
 end
 
-function Api.edits(custom_params, cb)
-  local params = Config.get_edit_params(nil, custom_params)
+function Api:edits(custom_params, cb)
+  local params = self.action.params
   params.stream = true
-  Api.chat_completions(params, cb)
+  params = vim.tbl_extend("force", params, custom_params)
+  self:chat_completions(params, cb)
 end
 
-function Api.make_call(url, params, cb)
+function Api:make_call(url, params, cb)
   TMP_MSG_FILENAME = os.tmpname()
   local f = io.open(TMP_MSG_FILENAME, "w+")
   if f == nil then
@@ -102,7 +110,7 @@ function Api.make_call(url, params, cb)
   end
   f:write(vim.fn.json_encode(params))
   f:close()
-  Api.job = job
+  self.job = job
     :new({
       command = "curl",
       args = {
@@ -110,58 +118,54 @@ function Api.make_call(url, params, cb)
         "-H",
         "Content-Type: application/json",
         "-H",
-        Api.AUTHORIZATION_HEADER,
+        self.AUTHORIZATION_HEADER,
         "-d",
         "@" .. TMP_MSG_FILENAME,
       },
       on_exit = vim.schedule_wrap(function(response, exit_code)
-        Api.handle_response(response, exit_code, cb)
+        os.remove(TMP_MSG_FILENAME)
+        if exit_code ~= 0 then
+          vim.notify("An Error Occurred ...", vim.log.levels.ERROR)
+          cb("ERROR: API Error")
+        end
+
+        local result = table.concat(response:result(), "\n")
+        local json = vim.fn.json_decode(result)
+        if json == nil then
+          cb("No Response.")
+        elseif json.error then
+          cb("// API ERROR: " .. json.error)
+        else
+          local message = json.message
+          if message ~= nil then
+            local message_response
+            local first_message = json.message.content
+            if first_message.function_call then
+              message_response = vim.fn.json_decode(first_message.function_call.arguments)
+            else
+              message_response = first_message
+            end
+            if (type(message_response) == "string" and message_response ~= "") or type(message_response) == "table" then
+              cb(message_response, "CONTINUE")
+            else
+              cb("...")
+            end
+          else
+            local response_text = json.response
+            if type(response_text) == "string" and response_text ~= "" then
+              cb(response_text, "CONTINUE")
+            else
+              cb("...")
+            end
+          end
+        end
       end),
     })
     :start()
 end
 
-Api.handle_response = vim.schedule_wrap(function(response, exit_code, cb)
-  os.remove(TMP_MSG_FILENAME)
-  if exit_code ~= 0 then
-    vim.notify("An Error Occurred ...", vim.log.levels.ERROR)
-    cb("ERROR: API Error")
-  end
-
-  local result = table.concat(response:result(), "\n")
-  local json = vim.fn.json_decode(result)
-  if json == nil then
-    cb("No Response.")
-  elseif json.error then
-    cb("// API ERROR: " .. json.error)
-  else
-    local message = json.message
-    if message ~= nil then
-      local message_response
-      local first_message = json.message.content
-      if first_message.function_call then
-        message_response = vim.fn.json_decode(first_message.function_call.arguments)
-      else
-        message_response = first_message
-      end
-      if (type(message_response) == "string" and message_response ~= "") or type(message_response) == "table" then
-        cb(message_response, "CONTINUE")
-      else
-        cb("...")
-      end
-    else
-      local response_text = json.response
-      if type(response_text) == "string" and response_text ~= "" then
-        cb(response_text, "CONTINUE")
-      else
-        cb("...")
-      end
-    end
-  end
-end)
-
-function Api.close()
-  if Api.job then
+function Api:close()
+  if self.job then
     job:shutdown()
   end
 end
@@ -237,26 +241,26 @@ end
 
 local function loadAzureConfigs()
   loadApiKey("OPENAI_API_BASE", "OPENAI_API_BASE", "azure_api_base_cmd", function(value)
-    Api.OPENAI_API_BASE = value
+    self.OPENAI_API_BASE = value
   end)
   loadApiKey("OPENAI_API_AZURE_ENGINE", "OPENAI_API_AZURE_ENGINE", "azure_api_engine_cmd", function(value)
-    Api.OPENAI_API_AZURE_ENGINE = value
+    self.OPENAI_API_AZURE_ENGINE = value
   end)
   loadApiHost("OPENAI_API_AZURE_VERSION", "OPENAI_API_AZURE_VERSION", "azure_api_version_cmd", function(value)
-    Api.OPENAI_API_AZURE_VERSION = value
+    self.OPENAI_API_AZURE_VERSION = value
   end, "2023-05-15")
 
   if Api["OPENAI_API_BASE"] and Api["OPENAI_API_AZURE_ENGINE"] then
-    Api.COMPLETIONS_URL = Api.OPENAI_API_BASE
+    self.COMPLETIONS_URL = self.OPENAI_API_BASE
       .. "/openai/deployments/"
-      .. Api.OPENAI_API_AZURE_ENGINE
+      .. self.OPENAI_API_AZURE_ENGINE
       .. "/completions?api-version="
-      .. Api.OPENAI_API_AZURE_VERSION
-    Api.CHAT_COMPLETIONS_URL = Api.OPENAI_API_BASE
+      .. self.OPENAI_API_AZURE_VERSION
+    self.CHAT_COMPLETIONS_URL = self.OPENAI_API_BASE
       .. "/openai/deployments/"
-      .. Api.OPENAI_API_AZURE_ENGINE
+      .. self.OPENAI_API_AZURE_ENGINE
       .. "/chat/completions?api-version="
-      .. Api.OPENAI_API_AZURE_VERSION
+      .. self.OPENAI_API_AZURE_VERSION
   end
 end
 
@@ -272,25 +276,7 @@ local function ensureUrlProtocol(str)
   return "https://" .. str
 end
 
-function Api.setup()
-  local provider = Api.get_provider()
-  Api.provider = provider
-
-  -- loadApiHost("OLLAMA_API_HOST", "OLLAMA_API_HOST", "api_host_cmd", provider.make_url, "http://localhost:11434")
-
-  -- loadApiKey("OLLAMA_API_KEY", "OLLAMA_API_KEY", "api_key_cmd", function(value)
-  --   Api.OLLAMA_API_KEY = value
-  --   loadConfigFromEnv("OPENAI_API_TYPE", "OPENAI_API_TYPE")
-  --   if Api["OPENAI_API_TYPE"] == "azure" then
-  --     loadAzureConfigs()
-  --     Api.AUTHORIZATION_HEADER = "api-key: " .. Api.OLLAMA_API_KEY
-  --   else
-  --     Api.AUTHORIZATION_HEADER = "Authorization: Bearer " .. Api.OLLAMA_API_KEY
-  --   end
-  -- end, " ")
-end
-
-function Api.exec(cmd, args, on_stdout_chunk, on_complete, should_stop, on_stop)
+function Api:exec(cmd, args, on_stdout_chunk, on_complete, should_stop, on_stop)
   local stdout = vim.loop.new_pipe()
   local stderr = vim.loop.new_pipe()
   local stderr_chunks = {}

@@ -3,10 +3,10 @@ local utils = require("ogpt.utils")
 local M = {}
 
 M.name = "ollama"
-
 M.envs = {}
+M.models = {}
 
-function M.load_envs()
+function M.load_envs(envs)
   local _envs = {}
   _envs.OLLAMA_API_HOST = M.envs.api_host or os.getenv("OLLAMA_API_HOST") or "http://localhost:11434"
   _envs.OLLAMA_API_KEY = M.envs.api_key or os.getenv("OLLAMA_API_KEY") or ""
@@ -15,6 +15,7 @@ function M.load_envs()
   _envs.CHAT_COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OLLAMA_API_HOST .. "/api/chat")
   _envs.AUTHORIZATION_HEADER = "Authorization: Bearer " .. (_envs.OLLAMA_API_KEY or " ")
   M.envs = vim.tbl_extend("force", M.envs, _envs)
+  M.envs = vim.tbl_extend("force", M.envs, envs or {})
   return M.envs
 end
 
