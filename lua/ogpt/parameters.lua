@@ -305,7 +305,7 @@ M.get_parameters_panel = function(type, default_params, session, parent)
       provider.select_provider({
         cb = function(display, value)
           M.update_property(key, row, value, session)
-          parent:init({ provider = value })
+          parent.provider = Config.get_provider(value)
         end,
       })
     else
