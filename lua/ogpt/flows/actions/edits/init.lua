@@ -19,6 +19,7 @@ local BaseAction = require("ogpt.flows.actions.base")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
 local Layout = require("nui.layout")
+local Split = require("nui.split")
 local Popup = require("nui.popup")
 local ChatInput = require("ogpt.input")
 local Parameters = require("ogpt.parameters")
@@ -201,7 +202,15 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
     end),
   })
 
+  local split = Split({
+    -- relative = "editor",
+    position = "right",
+    -- size = "20%",
+  })
+
   layout = Layout(
+    -- split,
+
     {
       relative = "editor",
       position = "50%",
