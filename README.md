@@ -6,78 +6,61 @@
 ![Lua](https://img.shields.io/badge/Made%20with%20Lua-blueviolet.svg?style=for-the-badge&logo=lua)
 
 ## Features
-**Again Credits goes to `jackMort/ChatGPT.nvim` For these Awesome features**
-
+- **Multiple Providers**: OGPT.nvim can take multiple providers. Ollama, OpenAI, textgenui, more if there are pull requests
+- **Mix-match Provider**: default provider is used, but you can mix and match different provider AND specific model to different actions.
 - **Interactive Q&A**: Engage in interactive question-and-answer sessions with the powerful gpt model (OGPT) using an intuitive interface.
 - **Persona-based Conversations**: Explore various perspectives and have conversations with different personas by selecting prompts from Awesome ChatGPT Prompts.
-- **Code Editing Assistance**: Enhance your coding experience with an interactive editing window powered by the gpt model, offering instructions tailored for coding tasks.
-- **Code Completion**: Enjoy the convenience of code completion similar to GitHub Copilot, leveraging the capabilities of the gpt model to suggest code snippets and completions based on context and programming patterns.
 - **Customizable Actions**: Execute a range of actions utilizing the gpt model, such as grammar correction, translation, keyword generation, docstring creation, test addition, code optimization, summarization, bug fixing, code explanation, Roxygen editing, and code readability analysis. Additionally, you can define your own custom actions using a JSON file.
 
 For a comprehensive understanding of the extension's functionality, you can watch a plugin showcase [video](https://www.youtube.com/watch?v=7k0KZsheLP4)
 
 ## OGPT Specific Features:
++ [x] Use default provider, but can be overriden at anytime for specific action
 + [x] original functionality of ChatGPT.nvim to work with Ollama, TextGenUI(huggingface), OpenAI via `providers`
   + Look at the "default_provider" in the `config.lua`, default is `ollama`
-+ [x] clean up documentation
+  + look at "providers" for the provider default options
++ [x] Choose different provider and model for "edit" and "chat"
 + [x] Custom settings per session
-  + [x] Add/remove settings as Ollama [request options](https://github.com/jmorganca/ollama/blob/main/docs/api.md#request-with-options)
-  + [x] Change Settings -> [Parameters](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#parameter)
-+ [-] Another Windows for [Template](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#template), [System](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#system)
-  + [x] Support custom "conform function", read `config.lua` for more information
-+ [x] Query and Select model from Ollama
+  + [x] Add/remove parameters in Chat and Edit
+  + [x] Choose provider, as well as model for Chat and Edit
+  + [x] Customizable actions, with specific provider and model
++ [ ] Another Windows for [Template](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#template), [System](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#system)
++ [x] Framework to add more providers
++ [x] clean up documentation
++ [x] additional actions can be added to config options, or additional json. Look in "config.actions", and "config.actions_paths"
++ [x] running `OGPTRun` shows telescope picker
++ [x] for `type="popup"` and `strategy="display"`, "r" and "a" can be used to "replace the
+  highlighted text" or "append after the highlighted text", respectively. Otherwise, "esc" or
+"ctrl-c" would exit the popup. You can update the mapping in your config options.
 
 Change Model by Opening the Parameter panels default to (ctrl-o) and Tab your way to it
 then press Enter (<cr>) on the model field to change it. It should list all the available models on
-the your Ollama server.
+from your LLM provider.
 ![Change Model](assets/images/change_model.png)
 
 Same with changing the model, add and delete parameters by using the keys "a" and "d" respectively
-![Additional Ollama Parameters](assets/images/addl_params.png)
-
-
-## OGPT Enhancement from Original ChatGPT.nvim
-+ [x] additional actions can be added to config options
-+ [x] running `OGPTRun` shows telescope picker
-+ [x] for `type="chat"` and `strategy="display"`, "r" and "a" can be used to "replace the
-  highlighted text" or "append after the highlighted text", respectively. Otherwise, "esc" or
-"ctrl-c" would exit the popup
-
+![Additional Parameters](assets/images/addl_params.png)
 
 ## Installation
 
-`OGPT` is a Neovim plugin that allows you to effortlessly utilize the Ollama OGPT API,
-empowering you to generate natural language responses from Ollama's OGPT directly within the editor in response to your inquiries.
-
-![preview image](https://github.com/jackMort/OGPT.nvim/blob/media/preview-2.png?raw=true)
-
-- Make sure you have `curl` installed.
-- Have a local instance of Ollama running.
-
-Custom Ollama API host with the configuration option `api_host_cmd` or
-environment variable called `$OLLAMA_API_HOST`. It's useful if you run Ollama remotely 
+if you dont specify a provider, "ollama" will be the default provider. "http://localhost:11434" is
+your endpoint.
 
 ```lua
--- Packer
-use({
-  "huynle/ogpt.nvim",
-    config = function()
-      require("ogpt").setup()
-    end,
-    requires = {
-      "MunifTanjim/nui.nvim",
-      "nvim-lua/plenary.nvim",
-      "nvim-telescope/telescope.nvim"
-    }
-})
 
 -- Lazy
 {
   "huynle/ogpt.nvim",
     event = "VeryLazy",
-    config = function()
-      require("ogpt").setup()
-    end,
+    opts = {
+      default_provider = "ollama",
+      providers = {
+        ollama = {
+          api_host = os.getenv("OLLAMA_API_HOST") or "http://localhost:11434",
+          api_key = os.getenv("OLLAMA_API_KEY") or "",
+        }
+      }
+    },
     dependencies = {
       "MunifTanjim/nui.nvim",
       "nvim-lua/plenary.nvim",
@@ -91,6 +74,20 @@ use({
 `OGPT.nvim` comes with the following defaults, you can override them by passing config as setup param
 
 https://github.com/huynle/ogpt.nvim/blob/main/lua/ogpt/config.lua
+
+
+### Ollama Setup
+
+`OGPT` is a Neovim plugin that allows you to effortlessly utilize the Ollama OGPT API,
+empowering you to generate natural language responses from Ollama's OGPT directly within the editor in response to your inquiries.
+
+- Make sure you have `curl` installed.
+- Have a local instance of Ollama running.
+
+Custom Ollama API host with the configuration option `api_host_cmd` or
+environment variable called `$OLLAMA_API_HOST`. It's useful if you run Ollama remotely 
+
+
 
 ## Usage
 
@@ -544,9 +541,6 @@ to interact with OGPT in neovim!
 
 **THIS IS A FORK of the original ChatGPT.nvim that supports Ollama (<https://ollama.ai/>), which
 allows you to run complete local LLMs.**
-
-Buy Jack(Original creator) a Coffee
-[!["Buy Jack A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/jackMort)
 
 Buy Me a Coffee
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/huynle)

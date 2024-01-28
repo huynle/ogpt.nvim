@@ -1,13 +1,13 @@
 local M = {}
 
-local CompletionAction = require("ogpt.flows.actions.completions")
+-- local CompletionAction = require("ogpt.flows.actions.completions")
 local EditAction = require("ogpt.flows.actions.edits")
 local PopupAction = require("ogpt.flows.actions.popup")
 local Config = require("ogpt.config")
 
 local classes_by_type = {
   chat = PopupAction,
-  completion = CompletionAction,
+  -- completion = CompletionAction,
   edit = EditAction,
   popup = PopupAction,
 }
@@ -60,12 +60,12 @@ function M.run_action(opts)
 
   -- parse args
   if item.args then
-    item.opts.variables = {}
+    item.variables = {}
     local i = 2
     for key, value in pairs(item.args) do
       local arg = type(value.default) == "function" and value.default() or value.default or ""
       -- TODO: validataion
-      item.opts.variables[key] = arg
+      item.variables[key] = arg
       i = i + 1
     end
   end

@@ -57,7 +57,7 @@ function Api:chat_completions(custom_params, cb, should_stop, opts)
               json.error.message or "",
               "Something went wrong.",
             }
-            error_msg = table.insert(error_msg, vim.tbl_flatten(params))
+            error_msg = table.insert(error_msg, vim.inspect(params))
             -- local error_msg = "OGPT ERROR: " .. (json.error.message or "Something went wrong")
             cb(table.concat(error_msg, " "), "ERROR", ctx)
             return
@@ -124,11 +124,13 @@ function Api:make_call(url, params, cb)
         end
 
         local result = table.concat(response:result(), "\n")
-        local json = vim.fn.json_decode(result)
-        if json == nil then
-          cb("No Response.")
-        elseif json.error then
+        local ok, json = pcall(vim.fn.json_decode, result)
+        if not ok then
+          cb("// API ERROR: turn on debug ")
+        elseif ok and json.error then
           cb("// API ERROR: " .. json.error)
+        elseif json == nil then
+          cb("No Response.")
         else
           local message = json.message
           if message ~= nil then

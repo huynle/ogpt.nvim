@@ -115,6 +115,7 @@ function M.defaults()
     },
 
     edit = {
+      layout = "default",
       diff = false,
       keymaps = {
         close = "<C-c>",

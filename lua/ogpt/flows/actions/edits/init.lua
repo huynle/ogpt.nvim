@@ -1,19 +1,3 @@
--- EditAction that can be used for actions of type "chat" in actions.PreviewWindowjson
---
--- This enables the use of mistral:7b in user defined actions,
--- as this model only defines the chat endpoint and has no completions endpoint
---
--- Example action for your local actions.json:
---
---   "turbo-summary": {
---     "type": "chat",
---     "opts": {
---       "template": "Summarize the following text.\n\nText:\n\"\"\"\n{{input}}\n\"\"\"\n\nSummary:",
---       "params": {
---         "model": "mistral:7b"
---       }
---     }
---   }
 local classes = require("ogpt.common.classes")
 local BaseAction = require("ogpt.flows.actions.base")
 local utils = require("ogpt.utils")
@@ -77,31 +61,7 @@ function EditAction:run()
   end)
 end
 
-local namespace_id = vim.api.nvim_create_namespace("OGPTNS")
-
 local instructions_input, layout, input_window, output_window, output, timer, filetype, bufnr, extmark_id
-
-local display_input_suffix = function(suffix)
-  if utils.is_buf_exists(instructions_input.bufnr) then
-    if extmark_id then
-      vim.api.nvim_buf_del_extmark(instructions_input.bufnr, namespace_id, extmark_id)
-    end
-
-    if not suffix then
-      return
-    end
-
-    extmark_id = vim.api.nvim_buf_set_extmark(instructions_input.bufnr, namespace_id, 0, -1, {
-      virt_text = {
-        { Config.options.chat.border_left_sign, "OGPTTotalTokensBorder" },
-        { "" .. suffix, "OGPTTotalTokens" },
-        { Config.options.chat.border_right_sign, "OGPTTotalTokensBorder" },
-        { " ", "" },
-      },
-      virt_text_pos = "right_align",
-    })
-  end
-end
 
 local setup_and_mount = vim.schedule_wrap(function(lines, output_lines, ...)
   layout:mount()
@@ -202,23 +162,23 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
     end),
   })
 
-  local split = Split({
-    -- relative = "editor",
-    position = "right",
-    -- size = "20%",
-  })
-
-  layout = Layout(
-    -- split,
-
-    {
+  local _layout
+  if Config.options.edit.layout == "default" then
+    _layout = {
       relative = "editor",
       position = "50%",
       size = {
         width = Config.options.popup_layout.center.width,
         height = Config.options.popup_layout.center.height,
       },
-    },
+    }
+  else
+    _layout = Split(Config.options.edit.layout)
+  end
+
+  layout = Layout(
+    _layout,
+
     Layout.Box({
       Layout.Box({
         Layout.Box(input_window, { grow = 1 }),
