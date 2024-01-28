@@ -6,6 +6,10 @@ WELCOME_MESSAGE = [[
 ]]
 
 local M = {}
+
+-- adding a place to store some log, temp
+M.logs = {}
+
 function M.defaults()
   local defaults = {
     debug = false,
@@ -18,8 +22,18 @@ function M.defaults()
         model = "gpt-4",
         api_host = os.getenv("OPENAI_API_HOST") or "https://api.openai.com",
         api_key = os.getenv("OPENAI_API_KEY") or "",
-        api_params = {},
-        api_edit_params = {},
+        api_params = {
+          frequency_penalty = 0,
+          presence_penalty = 0,
+          temperature = 0.5,
+          top_p = 0.99,
+        },
+        api_chat_params = {
+          frequency_penalty = 0.8,
+          presence_penalty = 0.5,
+          temperature = 0.8,
+          top_p = 0.99,
+        },
       },
       textgenui = {
         enabled = true,
@@ -48,8 +62,18 @@ function M.defaults()
           --   end,
           -- },
         },
-        api_params = {},
-        api_edit_params = {},
+        api_params = {
+          frequency_penalty = 0,
+          presence_penalty = 0,
+          temperature = 0.5,
+          top_p = 0.99,
+        },
+        api_chat_params = {
+          frequency_penalty = 0.8,
+          presence_penalty = 0.5,
+          temperature = 0.8,
+          top_p = 0.99,
+        },
       },
       ollama = {
         enabled = true,
@@ -73,18 +97,18 @@ function M.defaults()
           system_message = nil,
         },
         api_params = {
-          -- use default ollama model
-          model = nil,
-          temperature = 0.8,
-          top_p = 0.99,
-        },
-        api_edit_params = {
           -- used for `edit` and `edit_code` strategy in the actions
           model = nil,
           -- model = "mistral:7b",
           frequency_penalty = 0,
           presence_penalty = 0,
           temperature = 0.5,
+          top_p = 0.99,
+        },
+        api_chat_params = {
+          -- use default ollama model
+          model = nil,
+          temperature = 0.8,
           top_p = 0.99,
         },
       },
@@ -253,22 +277,6 @@ function M.defaults()
       },
     },
     actions = {
-
-      code_completion = {
-        type = "chat",
-        system = [[You are a CoPilot; a tool that uses natural language processing (NLP)
-    techniques to generate and complete code based on user input. You help developers write code more quickly and efficiently by
-    generating boilerplate code or completing partially written code. Respond with only the resulting code snippet. This means:
-    1. Do not include the code context that was given
-    2. Only place comments in the code snippets
-    ]],
-        strategy = "display",
-        -- -- override 'api_params' here
-        -- params = {
-        --   model = "deepseek-coder:6.7b",
-        -- },
-      },
-
       -- all strategy "edit" have instruction as input
       edit_code_with_instructions = {
         type = "edit",
@@ -276,26 +284,34 @@ function M.defaults()
         template = "Given the follow code snippet, {{instruction}}.\n\nCode:\n```{{filetype}}\n{{input}}\n```",
         delay = true,
         extract_codeblock = true,
-        -- -- override 'api_edit_params' here
-        -- params = {
-        --   model = "deepseek-coder:6.7b",
-        -- },
+        params = {
+          frequency_penalty = 0,
+          presence_penalty = 0,
+          temperature = 0.5,
+          top_p = 0.99,
+        },
       },
 
       -- all strategy "edit" have instruction as input
       edit_with_instructions = {
-        provider = "ollama",
-        model = "mistral:7b",
+        -- if not specified, will use default provider
+        -- provider = "ollama",
+        -- model = "mistral:7b",
         type = "edit",
         strategy = "edit",
         template = "Given the follow snippet, {{instruction}}.\n\nSnippet:\n```{{filetype}}\n{{input}}\n```",
         delay = true,
-        -- params = {
-        --   model = "mistral:7b",
-        -- },
+        params = {
+          temperature = 0.5,
+          top_p = 0.99,
+        },
       },
     },
-    actions_paths = {},
+
+    actions_paths = {
+      -- default action that comes with ogpt/lua/flow/actions
+      debug.getinfo(1, "S").source:sub(2):match("(.*/)") .. "actions.json",
+    },
     show_quickfixes_cmd = "Trouble quickfix",
     predefined_chat_gpt_prompts = "https://raw.githubusercontent.com/f/awesome-chatgpt-prompts/main/prompts.csv",
   }
@@ -335,16 +351,16 @@ function M.get_provider(provider_name, action, override)
   return provider
 end
 
-function M.get_edit_params(provider, override)
+function M.get_action_params(provider, override)
   provider = provider or M.options.default_provider
-  local default_params = M.options.providers[provider].api_edit_params
+  local default_params = M.options.providers[provider].api_params
   default_params.model = default_params.model or M.options.providers[provider].model
   return vim.tbl_extend("force", default_params, override or {})
 end
 
 function M.get_chat_params(provider, override)
   provider = provider or M.options.default_provider
-  local default_params = M.options.providers[provider].api_params or {}
+  local default_params = M.options.providers[provider].api_chat_params or {}
   default_params.model = default_params.model or M.options.providers[provider].model
   default_params.provider = provider
   return vim.tbl_extend("force", default_params, override or {})
@@ -352,7 +368,7 @@ end
 
 function M.expand_model(api, params)
   local provider_models = M.options.providers[api.provider.name].models or {}
-  params = M.get_edit_params(api.provider.name, params)
+  params = M.get_action_params(api.provider.name, params)
   local _model = params.model
 
   local _completion_url = api.provider.envs.CHAT_COMPLETIONS_URL
@@ -391,7 +407,7 @@ function M.expand_model(api, params)
 end
 
 function M.expand_url(api, params)
-  params = M.get_edit_params(api.provider.name, params)
+  params = M.get_action_params(api.provider.name, params)
   local _model = params.model
   local _conform_fn = _model and _model.conform_fn
 

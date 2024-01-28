@@ -33,7 +33,7 @@ function EditAction:init(name, opts)
   opts = opts or {}
   self.super:init(opts)
   self.provider = Config.get_provider(opts.provider, self)
-  self.params = Config.get_edit_params(self.provider.name, opts.params or {})
+  self.params = Config.get_action_params(self.provider.name, opts.params or {})
   self.system = type(opts.system) == "function" and opts.system() or opts.system or ""
   self.template = type(opts.template) == "function" and opts.template() or opts.template or "{{input}}"
   self.variables = opts.variables or {}
@@ -164,7 +164,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       if instruction == "" then
         instruction = opts.instruction or ""
       end
-      local messages = utils.build_edit_messages(input, instruction, opts)
+      local messages = self:build_edit_messages(input, instruction, opts)
       local params = vim.tbl_extend("keep", { messages = messages }, Parameters.params)
       self.provider.api:edits(
         params,
@@ -350,6 +350,33 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   end
 
   setup_and_mount(visual_lines, output_lines)
+end
+
+function EditAction:build_edit_messages(input, instructions, opts)
+  local _input = input
+  if opts.edit_code then
+    _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
+  else
+    _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
+  end
+  local variables = vim.tbl_extend("force", {}, {
+    instruction = instructions,
+    input = _input,
+    filetype = opts.filetype,
+  }, opts.variables)
+  local system_msg = opts.params.system or ""
+  local messages = {
+    {
+      role = "system",
+      content = system_msg,
+    },
+    {
+      role = "user",
+      content = self:render_template(variables, opts.template),
+    },
+  }
+
+  return messages
 end
 
 return EditAction

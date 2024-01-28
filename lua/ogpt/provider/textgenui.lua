@@ -3,10 +3,25 @@ local M = {}
 
 M.name = "textgenui"
 
-M.envs = {
-  api_host = os.getenv("OGPT_API_HOST"),
-  api_key = os.getenv("OGPT_API_KEY"),
+M.request_params = {
+  "inputs",
+  "parameters",
+  "stream",
 }
+
+M.model_params = {
+  "seed",
+  "top_k",
+  "top_p",
+  "top_n_tokens",
+  "typical_p",
+  "stop",
+  "details",
+  "max_new_tokens",
+  "repetition_penalty",
+}
+
+M.envs = {}
 
 function M.load_envs()
   local _envs = {}
@@ -22,30 +37,17 @@ end
 
 M.textgenui_options = { "seed", "top_k", "top_p", "stop" }
 
-function M.conform_to_textgenui_api(params)
-  local model_params = {
-    "seed",
-    "top_k",
-    "top_p",
-    "top_n_tokens",
-    "typical_p",
-    "stop",
-    "details",
-    "max_new_tokens",
-    "repetition_penalty",
-  }
+function M.conform(params)
+  params = params or {}
 
-  local request_params = {
-    "inputs",
-    "parameters",
-    "stream",
-  }
+  -- textgenui uses "inputs"
+  params.inputs = M._conform_messages(params.messages or {})
 
   local param_options = {}
 
   for key, value in pairs(params) do
-    if not vim.tbl_contains(request_params, key) then
-      if vim.tbl_contains(model_params, key) then
+    if not vim.tbl_contains(M.request_params, key) then
+      if vim.tbl_contains(M.model_params, key) then
         param_options[key] = value
         params[key] = nil
       else
@@ -59,7 +61,8 @@ function M.conform_to_textgenui_api(params)
   end
   return params
 end
-function M.update_messages(messages)
+
+function M._conform_messages(messages)
   -- https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1
   local tokens = {
     BOS = "<s>",
@@ -86,12 +89,6 @@ function M.update_messages(messages)
   end
   local final_string = table.concat(_input, " ")
   return final_string
-end
-
-function M.conform(params)
-  params = params or {}
-  params.inputs = M.update_messages(params.messages or {})
-  return M.conform_to_textgenui_api(params)
 end
 
 function M.process_line(_json, ctx, raw_chunks, state, cb)

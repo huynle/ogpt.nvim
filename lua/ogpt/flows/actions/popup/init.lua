@@ -16,7 +16,6 @@
 --   }
 local classes = require("ogpt.common.classes")
 local BaseAction = require("ogpt.flows.actions.base")
-local Api = require("ogpt.api")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
 
@@ -32,19 +31,19 @@ function PopupAction:init(name, opts)
   self.name = name or ""
   self.super:init(opts)
   self.provider = Config.get_provider(opts.provider, self)
-  self.params = Config.get_edit_params(self.provider.name, opts.params or {})
+  self.params = Config.get_action_params(self.provider.name, opts.params or {})
   self.system = type(opts.system) == "function" and opts.system() or opts.system or ""
   self.template = type(opts.template) == "function" and opts.template() or opts.template or "{{input}}"
   self.variables = opts.variables or {}
   self.strategy = opts.strategy or STRATEGY_APPEND
   self.ui = opts.ui or {}
   self.cur_win = vim.api.nvim_get_current_win()
-  self.stop = false
 
   self:post_init()
 end
 
 function PopupAction:run()
+  self.stop = false
   local params = self:get_params()
   local _, start_row, start_col, end_row, end_col = self:get_visual_selection()
 

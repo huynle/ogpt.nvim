@@ -2,6 +2,7 @@ local job = require("plenary.job")
 local Config = require("ogpt.config")
 local logger = require("ogpt.common.logger")
 local classes = require("ogpt.common.classes")
+local utils = require("ogpt.utils")
 
 local Api = classes.class()
 
@@ -9,19 +10,6 @@ function Api:init(provider, action, opts)
   self.opts = opts
   self.provider = provider
   self.action = action
-end
-
-function Api:get_provider()
-  local provider
-  if type(Config.options.default_provider) == "string" then
-    provider = require("ogpt.provider." .. Config.options.default_provider)
-  else
-    provider = require("ogpt.provider." .. Config.options.default_provider.name)
-    provider.envs = vim.tbl_extend("force", provider.envs, Config.options.default_provider)
-  end
-  local envs = provider.load_envs()
-  Api = vim.tbl_extend("force", Api, envs)
-  return provider
 end
 
 function Api:completions(custom_params, cb)
@@ -36,9 +24,8 @@ function Api:chat_completions(custom_params, cb, should_stop, opts)
 
   local ctx = {}
   ctx.params = params
-  if Config.options.debug then
-    vim.notify("Request to: " .. _completion_url, vim.log.levels.DEBUG, { title = "OGPT Debug" })
-  end
+  utils.log("Request to: " .. _completion_url)
+  utils.log(params)
 
   if stream then
     local raw_chunks = ""
@@ -64,8 +51,15 @@ function Api:chat_completions(custom_params, cb, should_stop, opts)
         local ok, json = pcall(vim.json.decode, chunk)
         if ok then
           if json.error ~= nil then
-            local error_msg = "OGPT ERROR: " .. (json.error.message or "Something went wrong")
-            cb(error_msg, "ERROR", ctx)
+            local error_msg = {
+              "OGPT ERROR:",
+              self.provider.name,
+              json.error.message or "",
+              "Something went wrong.",
+            }
+            error_msg = table.insert(error_msg, vim.tbl_flatten(params))
+            -- local error_msg = "OGPT ERROR: " .. (json.error.message or "Something went wrong")
+            cb(table.concat(error_msg, " "), "ERROR", ctx)
             return
           end
           ctx, raw_chunks, state = self.provider.process_line(json, ctx, raw_chunks, state, cb)

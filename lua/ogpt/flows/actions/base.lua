@@ -19,6 +19,7 @@ end
 
 function BaseAction:init(opts)
   self.opts = opts
+  self.stop = true
 end
 
 function BaseAction:post_init()
@@ -174,11 +175,11 @@ function BaseAction:set_lines(bufnr, start_idx, end_idx, strict_indexing, lines)
 end
 
 function BaseAction:display_input_suffix(suffix)
-  if self.extmark_id and utils.is_buf_exists(self.popup.bufnr) then
+  if self.stop and self.extmark_id and utils.is_buf_exists(self.popup.bufnr) then
     vim.api.nvim_buf_del_extmark(self.popup.bufnr, Config.namespace_id, self.extmark_id)
   end
 
-  if suffix and vim.fn.bufexists(self.popup.bufnr) then
+  if not self.stop and suffix and vim.fn.bufexists(self.popup.bufnr) then
     self.extmark_id = vim.api.nvim_buf_set_extmark(self.popup.bufnr, Config.namespace_id, 0, -1, {
       virt_text = {
         { Config.options.chat.border_left_sign, "OGPTTotalTokensBorder" },

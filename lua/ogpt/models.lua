@@ -81,8 +81,8 @@ local finder = function(provider, opts)
                 process_result(v)
               end
 
-              if provider.process_model then
-                provider.process_model(json, process_single_model)
+              if provider.parse_api_model_response then
+                provider.parse_api_model_response(json, process_single_model)
               else
                 -- default processor for a REST response from a curl for models
                 for _, model in ipairs(json.models) do
