@@ -19,7 +19,7 @@ function PopupAction:init(name, opts)
   self.system = type(opts.system) == "function" and opts.system() or opts.system or ""
   self.template = type(opts.template) == "function" and opts.template() or opts.template or "{{input}}"
   self.variables = opts.variables or {}
-  self.strategy = opts.strategy or STRATEGY_APPEND
+  self.strategy = opts.strategy or STRATEGY_DISPLAY
   self.ui = opts.ui or {}
   self.cur_win = vim.api.nvim_get_current_win()
 

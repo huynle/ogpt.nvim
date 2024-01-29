@@ -13,7 +13,6 @@ M.logs = {}
 function M.defaults()
   local defaults = {
     debug = false,
-    api_key_cmd = nil,
     yank_register = "+",
     default_provider = "ollama",
     providers = {
@@ -374,7 +373,7 @@ function M.expand_model(api, params)
 
   local _completion_url = api.provider.envs.CHAT_COMPLETIONS_URL
 
-  local function _expand(_m)
+  local function _expand(name, _m)
     if type(_m) == "table" then
       if _m.modify_url and type(_m.modify_url) == "function" then
         _completion_url = _m.modify_url(_completion_url)
@@ -389,18 +388,22 @@ function M.expand_model(api, params)
           end
         end
       end
-      params.model = _m.name
+      params.model = _m.name or name
     else
-      for _, model in ipairs(provider_models) do
-        if model.name == _m then
-          _expand(model)
-          break
+      for _name, model in pairs(provider_models) do
+        if _name == _m then
+          if type(model) == "table" then
+            _expand(_name, model)
+            break
+          elseif type(model) == "string" then
+            params.model = model
+          end
         end
       end
     end
   end
 
-  _expand(_model)
+  _expand(nil, _model)
 
   params = M.expand_url(api, params)
 

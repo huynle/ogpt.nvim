@@ -258,10 +258,12 @@ function M.add_partial_completion(opts, text, state)
   local progress = opts.progress
 
   if state == "ERROR" then
-    if not opts.on_complete then
-      return
+    if progress then
+      progress(false)
     end
-    return opts.on_complete(text)
+    M.log("An Error Occurred: " .. text, vim.log.levels.ERROR)
+    panel:unmount()
+    return
   end
 
   local start_line = 0
@@ -296,8 +298,6 @@ function M.add_partial_completion(opts, text, state)
         end
       end
     end
-  else
-    print("stuc")
   end
 end
 

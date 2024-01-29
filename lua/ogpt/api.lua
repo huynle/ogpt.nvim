@@ -54,10 +54,10 @@ function Api:chat_completions(custom_params, cb, should_stop, opts)
             local error_msg = {
               "OGPT ERROR:",
               self.provider.name,
-              json.error.message or "",
+              vim.inspect(json.error) or "",
               "Something went wrong.",
             }
-            error_msg = table.insert(error_msg, vim.inspect(params))
+            table.insert(error_msg, vim.inspect(params))
             -- local error_msg = "OGPT ERROR: " .. (json.error.message or "Something went wrong")
             cb(table.concat(error_msg, " "), "ERROR", ctx)
             return
@@ -104,22 +104,28 @@ function Api:make_call(url, params, cb)
   end
   f:write(vim.fn.json_encode(params))
   f:close()
+
+  local curl_args = {
+    url,
+    "-H",
+    "Content-Type: application/json",
+    "-H",
+    self.provider.envs.AUTHORIZATION_HEADER,
+    "-d",
+    "@" .. TMP_MSG_FILENAME,
+  }
+
   self.job = job
     :new({
       command = "curl",
-      args = {
-        url,
-        "-H",
-        "Content-Type: application/json",
-        "-H",
-        self.AUTHORIZATION_HEADER,
-        "-d",
-        "@" .. TMP_MSG_FILENAME,
-      },
+      args = curl_args,
       on_exit = vim.schedule_wrap(function(response, exit_code)
         os.remove(TMP_MSG_FILENAME)
         if exit_code ~= 0 then
-          vim.notify("An Error Occurred ...", vim.log.levels.ERROR)
+          utils.log(
+            "An Error Occurred, when calling `curl " .. table.concat(curl_args, " ") .. "`",
+            vim.log.levels.ERROR
+          )
           cb("ERROR: API Error")
         end
 

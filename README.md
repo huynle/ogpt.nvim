@@ -29,7 +29,8 @@ For a comprehensive understanding of the extension's functionality, you can watc
 + [x] clean up documentation
 + [x] additional actions can be added to config options, or additional json. Look in "config.actions", and "config.actions_paths"
 + [x] running `OGPTRun` shows telescope picker
-+ [x] for `type="popup"` and `strategy="display"`, "r" and "a" can be used to "replace the
++ [x] for `type="popup"` and `strategy="display" -- or append, prepend, replace, quick_fix`, "r" and "a" can be used to "replace the
++ [x] model alias for each provider
   highlighted text" or "append after the highlighted text", respectively. Otherwise, "esc" or
 "ctrl-c" would exit the popup. You can update the mapping in your config options.
 
@@ -126,17 +127,15 @@ An example of custom action may look like this: (`#` marks comments)
 ```python
 {
   "action_name": {
-    "type": "chat", # or "completion" or "edit"
-    "opts": {
-      "template": "A template using possible variable: {{filetype}} (neovim filetype), {{input}} (the selected text) an {{argument}} (provided on the command line)",
-      "strategy": "replace", # or "display" or "append" or "edit"
-      "params": { # parameters according to the official Ollama API
-        "model": "mistral:7b", # or any other model supported by `"type"` in the Ollama API, use the playground for reference
-        "stop": [
-          "```" # a string used to stop the model
-        ]
-      }
-    },
+    "type": "popup", # "popup" or "edit"
+    "template": "A template using possible variable: {{filetype}} (neovim filetype), {{input}} (the selected text) an {{argument}} (provided on the command line)",
+    "strategy": "replace", # or "display" or "append" or "edit"
+    "params": { # parameters according to the official Ollama API
+      "model": "mistral:7b", # or any other model supported by `"type"` in the Ollama API, use the playground for reference
+      "stop": [
+        "```" # a string used to stop the model
+      ]
+    }
     "args": {
       "argument": {
           "type": "strig",
@@ -156,14 +155,12 @@ opts = {
   ...
   actions = {
     grammar_correction = {
-      type = "chat",
-      opts = {
-        template = "Correct the given text to standard {{lang}}:\n\n```{{input}}```",
-        system = "You are a helpful note writing assistant, given a text input, correct the text only for grammar and spelling error. You are to keep all formatting the same, e.g. markdown bullets, should stay as a markdown bullet in the result, and indents should stay the same. Return ONLY the corrected text.",
-        strategy = "replace",
-        params = {
-          temperature = 0.3,
-        },
+      type = "popup",
+      template = "Correct the given text to standard {{lang}}:\n\n```{{input}}```",
+      system = "You are a helpful note writing assistant, given a text input, correct the text only for grammar and spelling error. You are to keep all formatting the same, e.g. markdown bullets, should stay as a markdown bullet in the result, and indents should stay the same. Return ONLY the corrected text.",
+      strategy = "replace",
+      params = {
+        temperature = 0.3,
       },
       args = {
         lang = {
@@ -179,10 +176,8 @@ opts = {
 
 ```
 
-
-The `edit` strategy consists in showing the output side by side with the input and
+The `edit` type consists in showing the output side by side with the input and
 available for further editing requests
-For now, `edit` strategy is implemented for `chat` type only.
 
 The `display` strategy shows the output in a float window. 
 `append` and `replace` modify the text directly in the buffer with "a" or "r"
@@ -270,14 +265,74 @@ return {
     },
 
     opts = {
-      default_provider = {
-        name = "textgenui",
-        api_host = os.getenv("OGPT_API_HOST"),
-        api_key = os.getenv("OGPT_API_KEY"),
+      default_provider = "ollama"
+      providers = {
+        ollama= {
+          api_host = os.getenv("OLLAMA_API_HOST"),
+          -- default model
+          model = "mistral:7b"
+          -- model definitions
+          models = {
+            coder = "deepseek-coder:6.7b",
+            custom_coder = {
+              name = "deepseek-coder:6.7b",
+              modify_url = function(url)
+                return url
+              end,
+              -- custom conform function
+              -- conform_fn = function(ogpt_params)
+              --   return provider_specific_params
+              -- end,
+            },
+          },
+          api_params = {
+            model = "mistral:7b",
+            temperature = 0.8,
+            top_p = 0.9,
+          },
+          api_chat_params = {
+            model = "mistral:7b",
+            frequency_penalty = 0,
+            presence_penalty = 0,
+            temperature = 0.5,
+            top_p = 0.9,
+          },
+        },
+        openai= {
+          api_host = os.getenv("OPENAI_API_HOST"),
+          api_key = os.getenv("OPENAI_API_KEY"),
+          api_params = {
+            model = "gpt-4",
+            temperature = 0.8,
+            top_p = 0.9,
+          },
+          api_chat_params = {
+            model = "gpt-4",
+            frequency_penalty = 0,
+            presence_penalty = 0,
+            temperature = 0.5,
+            top_p = 0.9,
+          },
+        },
+        textgenui = {
+          api_host = os.getenv("TEXTGEN_API_HOST"),
+          api_key = os.getenv("TEXTGEN_API_KEY"),
+          api_params = {
+            model = "mixtral-8-7b",
+            temperature = 0.8,
+            top_p = 0.9,
+          },
+          api_chat_params = {
+            model = "mixtral-8-7b",
+            frequency_penalty = 0,
+            presence_penalty = 0,
+            temperature = 0.5,
+            top_p = 0.9,
+          },
+        },
       },
-      api_key_cmd = nil,
       yank_register = "+",
-      edit_with_instructions = {
+      edit = {
         diff = false,
         keymaps = {
           close = "<C-c>",
@@ -344,40 +399,14 @@ return {
         },
       },
 
-      popup_layout = {
-        default = "right",
-        center = {
-          width = "80%",
-          height = "80%",
-        },
-        right = {
-          width = "40%",
-          width_parameters_open = "50%",
-        },
-      },
-      api_params = {
-        model = "mistral:7b",
-        temperature = 0.8,
-        top_p = 0.9,
-      },
-      api_edit_params = {
-        model = "mistral:7b",
-        frequency_penalty = 0,
-        presence_penalty = 0,
-        temperature = 0.5,
-        top_p = 0.9,
-      },
-
       actions = {
         grammar_correction = {
-          type = "chat",
-          opts = {
-            template = "Correct the given text to standard {{lang}}:\n\n```{{input}}```",
-            system = "You are a helpful note writing assistant, given a text input, correct the text only for grammar and spelling error. You are to keep all formatting the same, e.g. markdown bullets, should stay as a markdown bullet in the result, and indents should stay the same. Return ONLY the corrected text.",
-            strategy = "replace",
-            params = {
-              temperature = 0.3,
-            },
+          type = "popup",
+          template = "Correct the given text to standard {{lang}}:\n\n```{{input}}```",
+          system = "You are a helpful note writing assistant, given a text input, correct the text only for grammar and spelling error. You are to keep all formatting the same, e.g. markdown bullets, should stay as a markdown bullet in the result, and indents should stay the same. Return ONLY the corrected text.",
+          strategy = "replace",
+          params = {
+            temperature = 0.3,
           },
           args = {
             lang = {
@@ -388,13 +417,11 @@ return {
           },
         },
         translate = {
-          type = "chat",
-          opts = {
-            template = "Translate this into {{lang}}:\n\n{{input}}",
-            strategy = "display",
-            params = {
-              temperature = 0.3,
-            },
+          type = "popup",
+          template = "Translate this into {{lang}}:\n\n{{input}}",
+          strategy = "display",
+          params = {
+            temperature = 0.3,
           },
           args = {
             lang = {
@@ -405,33 +432,29 @@ return {
           },
         },
         keywords = {
-          type = "chat",
-          opts = {
-            template = "Extract the main keywords from the following text to be used as document tags.\n\n```{{input}}```",
-            strategy = "display",
-            params = {
-              -- model = "mistral:7b",
-              temperature = 0.5,
-              frequency_penalty = 0.8,
-            },
+          type = "popup",
+          template = "Extract the main keywords from the following text to be used as document tags.\n\n```{{input}}```",
+          strategy = "display",
+          params = {
+            -- model = "mistral:7b",
+            temperature = 0.5,
+            frequency_penalty = 0.8,
           },
         },
         do_complete_code = {
-          type = "chat",
-          opts = {
-            template = "Code:\n```{{filetype}}\n{{input}}\n```\n\nCompleted Code:\n```{{filetype}}",
-            strategy = "display",
-            params = {
-              model = "deepseek-coder:6.7b",
-              stop = {
-                "```",
-              },
+          type = "popup",
+          template = "Code:\n```{{filetype}}\n{{input}}\n```\n\nCompleted Code:\n```{{filetype}}",
+          strategy = "display",
+          params = {
+            model = "coder",
+            stop = {
+              "```",
             },
           },
         },
 
         quick_question = {
-          type = "chat",
+          type = "popup",
           args = {
             question = {
               type = "string",
@@ -441,15 +464,13 @@ return {
               end,
             },
           },
-          opts = {
-            system = "You are a helpful assistant",
-            template = "{{question}}",
-            strategy = "display",
-          },
+          system = "You are a helpful assistant",
+          template = "{{question}}",
+          strategy = "display",
         },
 
         custom_input = {
-          type = "chat",
+          type = "popup",
           args = {
             instruction = {
               type = "string",
@@ -459,24 +480,20 @@ return {
               end,
             },
           },
-          opts = {
-            system = "You are a helpful assistant",
-            template = "Given the follow snippet, {{instruction}}.\n\nsnippet:\n```{{filetype}}\n{{input}}\n```",
-            strategy = "display",
-          },
+          system = "You are a helpful assistant",
+          template = "Given the follow snippet, {{instruction}}.\n\nsnippet:\n```{{filetype}}\n{{input}}\n```",
+          strategy = "display",
         },
 
         optimize_code = {
-          type = "chat",
-          opts = {
-            system = "You are a helpful coding assistant. Complete the given prompt.",
-            template = "Optimize the code below, following these instructions:\n\n{{instruction}}.\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nOptimized version:\n```{{filetype}}",
-            strategy = "edit_code",
-            params = {
-              model = "deepseek-coder:6.7b",
-              stop = {
-                "```",
-              },
+          type = "popup",
+          system = "You are a helpful coding assistant. Complete the given prompt.",
+          template = "Optimize the code below, following these instructions:\n\n{{instruction}}.\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nOptimized version:\n```{{filetype}}",
+          strategy = "edit_code",
+          params = {
+            model = "coder",
+            stop = {
+              "```",
             },
           },
         },
@@ -491,7 +508,7 @@ return {
 
 ### Advanced setup
 
-`config.params.model` and `api_params.model` and `api_edit_params.model` can take a table instead
+`config.params.model` and `api_params.model` and `api_chat_params.model` can take a table instead
 of a string.
 
 ```lua
@@ -536,11 +553,8 @@ opts = {
 ```
 
 # Credits
-First of all, thank you to the author of `jackMort/ChatGPT.nvim` for creating a seamless framework
+Thank you to the author of `jackMort/ChatGPT.nvim` for creating a seamless framework
 to interact with OGPT in neovim!
-
-**THIS IS A FORK of the original ChatGPT.nvim that supports Ollama (<https://ollama.ai/>), which
-allows you to run complete local LLMs.**
 
 Buy Me a Coffee
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/huynle)
