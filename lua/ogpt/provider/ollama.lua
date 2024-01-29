@@ -1,3 +1,4 @@
+local Config = require("ogpt.config")
 local utils = require("ogpt.utils")
 
 local M = {}
@@ -8,8 +9,10 @@ M.models = {}
 
 function M.load_envs(envs)
   local _envs = {}
-  _envs.OLLAMA_API_HOST = M.envs.api_host or os.getenv("OLLAMA_API_HOST") or "http://localhost:11434"
-  _envs.OLLAMA_API_KEY = M.envs.api_key or os.getenv("OLLAMA_API_KEY") or ""
+  _envs.OLLAMA_API_HOST = Config.options.providers.ollama.api_host
+    or os.getenv("OLLAMA_API_HOST")
+    or "http://localhost:11434"
+  _envs.OLLAMA_API_KEY = Config.options.providers.ollama.api_key or os.getenv("OLLAMA_API_KEY") or ""
   _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.OLLAMA_API_HOST .. "/api/tags")
   _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OLLAMA_API_HOST .. "/api/generate")
   _envs.CHAT_COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OLLAMA_API_HOST .. "/api/chat")
