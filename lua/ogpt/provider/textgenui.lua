@@ -27,10 +27,10 @@ function M.load_envs()
   local _envs = {}
   _envs.TEXTGEN_API_HOST = M.envs.api_host or os.getenv("TEXTGEN_API_HOST") or "https://api.textgen.com"
   _envs.TEXTGEN_API_KEY = M.envs.api_key or os.getenv("TEXTGEN_API_KEY") or ""
-  _envs.MODELS_URL = utils.ensureUrlProtocol(M.envs.api_host .. "/api/tags")
-  _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(M.envs.api_host)
-  _envs.CHAT_COMPLETIONS_URL = utils.ensureUrlProtocol(M.envs.api_host)
-  _envs.AUTHORIZATION_HEADER = "Authorization: Bearer " .. (M.envs.api_key or " ")
+  _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.TEXTGEN_API_HOST .. "/api/tags")
+  _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.TEXTGEN_API_HOST)
+  _envs.CHAT_COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.TEXTGEN_API_HOST)
+  _envs.AUTHORIZATION_HEADER = "Authorization: Bearer " .. (_envs.TEXTGEN_API_HOST or " ")
   M.envs = vim.tbl_extend("force", M.envs, _envs)
   return M.envs
 end
