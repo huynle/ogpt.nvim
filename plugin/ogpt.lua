@@ -1,12 +1,14 @@
-vim.api.nvim_create_user_command("OGPT", function()
-  require("ogpt").openChat()
-end, {})
+vim.api.nvim_create_user_command("OGPT", function(opts)
+  opts = loadstring("return " .. opts.args)() or {}
+  require("ogpt").openChat(opts)
+end, { nargs = "?", force = true, complete = "lua" })
 
-vim.api.nvim_create_user_command("OGPTFocus", function()
-  require("ogpt").focusChat()
-end, {})
+vim.api.nvim_create_user_command("OGPTFocus", function(opts)
+  opts = loadstring("return " .. opts.args)() or {}
+  require("ogpt").focusChat(opts)
+end, { nargs = "?", force = true, complete = "lua" })
 
-vim.api.nvim_create_user_command("OGPTActAs", function()
+vim.api.nvim_create_user_command("OGPTActAs", function(opts)
   require("ogpt").selectAwesomePrompt()
 end, {})
 
@@ -30,5 +32,6 @@ end, {
 })
 
 vim.api.nvim_create_user_command("OGPTCompleteCode", function(opts)
+  opts = loadstring("return " .. opts.args)() or {}
   require("ogpt").complete_code(opts)
-end, {})
+end, { nargs = "?", force = true, complete = "lua" })

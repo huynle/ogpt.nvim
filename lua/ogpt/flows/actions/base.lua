@@ -3,7 +3,7 @@ local Signs = require("ogpt.signs")
 local Spinner = require("ogpt.spinner")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
-local PreviewWindow = require("ogpt.common.preview_window")
+local PopupWindow = require("ogpt.common.popup_window")
 
 local BaseAction = classes.class()
 
@@ -19,10 +19,11 @@ end
 
 function BaseAction:init(opts)
   self.opts = opts
+  self.stop = true
 end
 
 function BaseAction:post_init()
-  self.popup = PreviewWindow()
+  self.popup = PopupWindow()
   self.spinner = Spinner:new(function(state)
     vim.schedule(function()
       self:display_input_suffix(state)
@@ -150,7 +151,7 @@ function BaseAction:get_params()
     content = self:render_template(),
   }
   table.insert(messages, message)
-  return vim.tbl_extend("force", Config.options.api_params, self.params, {
+  return vim.tbl_extend("force", self.params, {
     messages = messages,
     system = self.system and "" == self.system and nil or self.system,
   })
@@ -174,11 +175,11 @@ function BaseAction:set_lines(bufnr, start_idx, end_idx, strict_indexing, lines)
 end
 
 function BaseAction:display_input_suffix(suffix)
-  if self.extmark_id and utils.is_buf_exists(self.popup.bufnr) then
+  if self.stop and self.extmark_id and utils.is_buf_exists(self.popup.bufnr) then
     vim.api.nvim_buf_del_extmark(self.popup.bufnr, Config.namespace_id, self.extmark_id)
   end
 
-  if suffix and vim.fn.bufexists(self.popup.bufnr) then
+  if not self.stop and suffix and vim.fn.bufexists(self.popup.bufnr) then
     self.extmark_id = vim.api.nvim_buf_set_extmark(self.popup.bufnr, Config.namespace_id, 0, -1, {
       virt_text = {
         { Config.options.chat.border_left_sign, "OGPTTotalTokensBorder" },

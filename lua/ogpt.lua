@@ -1,5 +1,4 @@
 -- main module file
-local api = require("ogpt.api")
 local module = require("ogpt.module")
 local config = require("ogpt.config")
 local conf = require("telescope.config").values
@@ -27,7 +26,6 @@ M.setup = function(options)
   vim.cmd("highlight default link OGPTSelectedMessage ColorColumn")
 
   config.setup(options)
-  api.setup()
   signs.setup()
 end
 
@@ -82,12 +80,12 @@ end
 -- public methods for the plugin
 --
 
-M.openChat = function()
-  module.open_chat()
+M.openChat = function(opts)
+  module.open_chat(opts)
 end
 
-M.focusChat = function()
-  module.focus_chat()
+M.focusChat = function(opts)
+  module.focus_chat(opts)
 end
 
 M.selectAwesomePrompt = function()

@@ -1,25 +1,9 @@
--- EditAction that can be used for actions of type "chat" in actions.PreviewWindowjson
---
--- This enables the use of mistral:7b in user defined actions,
--- as this model only defines the chat endpoint and has no completions endpoint
---
--- Example action for your local actions.json:
---
---   "turbo-summary": {
---     "type": "chat",
---     "opts": {
---       "template": "Summarize the following text.\n\nText:\n\"\"\"\n{{input}}\n\"\"\"\n\nSummary:",
---       "params": {
---         "model": "mistral:7b"
---       }
---     }
---   }
 local classes = require("ogpt.common.classes")
 local BaseAction = require("ogpt.flows.actions.base")
-local Api = require("ogpt.api")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
 local Layout = require("nui.layout")
+local Split = require("nui.split")
 local Popup = require("nui.popup")
 local ChatInput = require("ogpt.input")
 local Parameters = require("ogpt.parameters")
@@ -29,9 +13,12 @@ local EditAction = classes.class(BaseAction)
 local STRATEGY_EDIT = "edit"
 local STRATEGY_EDIT_CODE = "edit_code"
 
-function EditAction:init(opts)
+function EditAction:init(name, opts)
+  self.name = name or ""
+  opts = opts or {}
   self.super:init(opts)
-  self.params = opts.params or {}
+  self.provider = Config.get_provider(opts.provider, self)
+  self.params = Config.get_action_params(self.provider.name, opts.params or {})
   self.system = type(opts.system) == "function" and opts.system() or opts.system or ""
   self.template = type(opts.template) == "function" and opts.template() or opts.template or "{{input}}"
   self.variables = opts.variables or {}
@@ -43,15 +30,10 @@ end
 
 function EditAction:run()
   vim.schedule(function()
-    local _params = vim.tbl_extend("force", Config.options.api_params, self.params, {
-      system = self.system,
-    })
-
     if self.strategy == STRATEGY_EDIT_CODE and self.opts.delay then
       self:edit_with_instructions({}, { self:get_visual_selection() }, {
         template = self.template,
         variables = self.variables,
-        params = _params,
         edit_code = true,
         filetype = self:get_filetype(),
       })
@@ -59,20 +41,19 @@ function EditAction:run()
       self:edit_with_instructions({}, { self:get_visual_selection() }, {
         template = self.template,
         variables = self.variables,
-        params = _params,
         edit_code = false,
       })
     elseif self.strategy == STRATEGY_EDIT then
       self:edit_with_instructions({}, { self:get_visual_selection() }, {
         template = self.template,
         variables = self.variables,
-        params = self:get_params(),
+        -- params = self:get_params(),
       })
     elseif self.strategy == STRATEGY_EDIT_CODE then
       self:edit_with_instructions({}, { self:get_visual_selection() }, {
         template = self.template,
         variables = self.variables,
-        params = self:get_params(),
+        -- params = self:get_params(),
         edit_code = true,
         filetype = self:get_filetype(),
       })
@@ -80,31 +61,7 @@ function EditAction:run()
   end)
 end
 
-local namespace_id = vim.api.nvim_create_namespace("OGPTNS")
-
 local instructions_input, layout, input_window, output_window, output, timer, filetype, bufnr, extmark_id
-
-local display_input_suffix = function(suffix)
-  if utils.is_buf_exists(instructions_input.bufnr) then
-    if extmark_id then
-      vim.api.nvim_buf_del_extmark(instructions_input.bufnr, namespace_id, extmark_id)
-    end
-
-    if not suffix then
-      return
-    end
-
-    extmark_id = vim.api.nvim_buf_set_extmark(instructions_input.bufnr, namespace_id, 0, -1, {
-      virt_text = {
-        { Config.options.chat.border_left_sign, "OGPTTotalTokensBorder" },
-        { "" .. suffix, "OGPTTotalTokens" },
-        { Config.options.chat.border_right_sign, "OGPTTotalTokensBorder" },
-        { " ", "" },
-      },
-      virt_text_pos = "right_align",
-    })
-  end
-end
 
 local setup_and_mount = vim.schedule_wrap(function(lines, output_lines, ...)
   layout:mount()
@@ -127,6 +84,8 @@ end)
 
 function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   opts = opts or {}
+  opts.params = opts.params or self.params
+  local api_params = opts.params
 
   bufnr = self:get_bufnr()
 
@@ -138,7 +97,6 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   else
     visual_lines, start_row, start_col, end_row, end_col = unpack(selection)
   end
-  local api_params = vim.tbl_extend("keep", opts.params or {}, Config.options.api_edit_params)
   local parameters_panel = Parameters.get_parameters_panel("edits", api_params)
   input_window = Popup(Config.options.popup_window)
   output_window = Popup(Config.options.popup_window)
@@ -167,9 +125,9 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       if instruction == "" then
         instruction = opts.instruction or ""
       end
-      local messages = utils.build_edit_messages(input, instruction, opts)
+      local messages = self:build_edit_messages(input, instruction, opts)
       local params = vim.tbl_extend("keep", { messages = messages }, Parameters.params)
-      Api.edits(
+      self.provider.api:edits(
         params,
         utils.partial(utils.add_partial_completion, {
           panel = output_window,
@@ -204,15 +162,23 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
     end),
   })
 
-  layout = Layout(
-    {
+  local _layout
+  if Config.options.edit.layout == "default" then
+    _layout = {
       relative = "editor",
       position = "50%",
       size = {
         width = Config.options.popup_layout.center.width,
         height = Config.options.popup_layout.center.height,
       },
-    },
+    }
+  else
+    _layout = Split(Config.options.edit.layout)
+  end
+
+  layout = Layout(
+    _layout,
+
     Layout.Box({
       Layout.Box({
         Layout.Box(input_window, { grow = 1 }),
@@ -225,7 +191,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   -- accept output window
   for _, window in ipairs({ input_window, output_window, instructions_input }) do
     for _, mode in ipairs({ "n", "i" }) do
-      window:map(mode, Config.options.actions_opts.edit.keymaps.accept, function()
+      window:map(mode, Config.options.edit.keymaps.accept, function()
         instructions_input.input_props.on_close()
         local lines = vim.api.nvim_buf_get_lines(output_window.bufnr, 0, -1, false)
         vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
@@ -237,7 +203,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   -- use output as input
   for _, window in ipairs({ input_window, output_window, instructions_input }) do
     for _, mode in ipairs({ "n", "i" }) do
-      window:map(mode, Config.options.actions_opts.edit.keymaps.use_output_as_input, function()
+      window:map(mode, Config.options.edit.keymaps.use_output_as_input, function()
         local lines = vim.api.nvim_buf_get_lines(output_window.bufnr, 0, -1, false)
         vim.api.nvim_buf_set_lines(input_window.bufnr, 0, -1, false, lines)
         vim.api.nvim_buf_set_lines(output_window.bufnr, 0, -1, false, {})
@@ -248,7 +214,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   -- close
   for _, window in ipairs({ input_window, output_window, instructions_input }) do
     for _, mode in ipairs({ "n", "i" }) do
-      window:map(mode, Config.options.actions_opts.edit.keymaps.close, function()
+      window:map(mode, Config.options.edit.keymaps.close, function()
         self.spinner:stop()
         if vim.fn.mode() == "i" then
           vim.api.nvim_command("stopinsert")
@@ -262,7 +228,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   local parameters_open = false
   for _, popup in ipairs({ parameters_panel, instructions_input, input_window, output_window }) do
     for _, mode in ipairs({ "n", "i" }) do
-      popup:map(mode, Config.options.actions_opts.edit.keymaps.toggle_parameters, function()
+      popup:map(mode, Config.options.edit.keymaps.toggle_parameters, function()
         if parameters_open then
           layout:update(Layout.Box({
             Layout.Box({
@@ -307,7 +273,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       if mode == "i" and (popup == input_window or popup == output_window) then
         goto continue
       end
-      popup:map(mode, Config.options.actions_opts.edit.keymaps.cycle_windows, function()
+      popup:map(mode, Config.options.edit.keymaps.cycle_windows, function()
         if active_panel == instructions_input then
           vim.api.nvim_set_current_win(input_window.winid)
           active_panel = input_window
@@ -334,10 +300,10 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   end
 
   -- toggle diff mode
-  local diff_mode = Config.options.actions_opts.edit.diff
+  local diff_mode = Config.options.edit.diff
   for _, popup in ipairs({ parameters_panel, instructions_input, output_window, input_window }) do
     for _, mode in ipairs({ "n", "i" }) do
-      popup:map(mode, Config.options.actions_opts.edit.keymaps.toggle_diff, function()
+      popup:map(mode, Config.options.edit.keymaps.toggle_diff, function()
         diff_mode = not diff_mode
         for _, winid in ipairs({ input_window.winid, output_window.winid }) do
           vim.api.nvim_set_current_win(winid)
@@ -353,6 +319,33 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   end
 
   setup_and_mount(visual_lines, output_lines)
+end
+
+function EditAction:build_edit_messages(input, instructions, opts)
+  local _input = input
+  if opts.edit_code then
+    _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
+  else
+    _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
+  end
+  local variables = vim.tbl_extend("force", {}, {
+    instruction = instructions,
+    input = _input,
+    filetype = opts.filetype,
+  }, opts.variables)
+  local system_msg = opts.params.system or ""
+  local messages = {
+    {
+      role = "system",
+      content = system_msg,
+    },
+    {
+      role = "user",
+      content = self:render_template(variables, opts.template),
+    },
+  }
+
+  return messages
 end
 
 return EditAction

@@ -70,6 +70,7 @@ local finder = function(opts)
 end
 
 local params_order = {
+  "provider",
   "model",
   "embedding_only",
   "f16_kv",
@@ -105,6 +106,7 @@ local params_order = {
   "vocab_only",
 }
 local params_validators = {
+  provider = model_validator(),
   model = model_validator(),
   embedding_only = model_validator(),
   f16_kv = model_validator(),
@@ -212,7 +214,11 @@ M.refresh_panel = function()
     if M.params[key] ~= nil then
       local display_text = M.params[key]
       if type(display_text) == "table" then
-        display_text = table.concat(M.params[key], ", ")
+        if display_text.name then
+          display_text = display_text.name
+        else
+          display_text = table.concat(M.params[key], ", ")
+        end
       end
 
       local vt = {
@@ -240,7 +246,7 @@ M.refresh_panel = function()
   end
 end
 
-M.get_parameters_panel = function(type, default_params, session)
+M.get_parameters_panel = function(type, default_params, session, parent)
   M.type = type
   local custom_params = M.read_config(session or {})
 
@@ -289,9 +295,17 @@ M.get_parameters_panel = function(type, default_params, session)
     local key = existing_order[row]
     if key == "model" then
       local models = require("ogpt.models")
-      models.select_model({
+      models.select_model(parent.provider, {
         cb = function(display, value)
           M.update_property(key, row, value, session)
+        end,
+      })
+    elseif key == "provider" then
+      local provider = require("ogpt.provider")
+      provider.select_provider({
+        cb = function(display, value)
+          M.update_property(key, row, value, session)
+          parent.provider = Config.get_provider(value)
         end,
       })
     else
@@ -318,8 +332,8 @@ M.update_property = function(key, row, new_value, session)
   M.refresh_panel()
 end
 
-M.get_panel = function(session)
-  return M.get_parameters_panel(" ", session.parameters or {}, session)
+M.get_panel = function(session, parent)
+  return M.get_parameters_panel(" ", session.parameters or {}, session, parent)
 end
 
 M.open_edit_property_input = function(key, value, row, cb)

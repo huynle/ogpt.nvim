@@ -1,13 +1,13 @@
 local M = {}
 
-local CompletionAction = require("ogpt.flows.actions.completions")
+-- local CompletionAction = require("ogpt.flows.actions.completions")
 local EditAction = require("ogpt.flows.actions.edits")
 local PopupAction = require("ogpt.flows.actions.popup")
 local Config = require("ogpt.config")
 
 local classes_by_type = {
   chat = PopupAction,
-  completion = CompletionAction,
+  -- completion = CompletionAction,
   edit = EditAction,
   popup = PopupAction,
 }
@@ -35,9 +35,6 @@ function M.read_actions()
   -- local actions = {}
   local paths = {}
 
-  -- add default actions
-  local default_actions_path = debug.getinfo(1, "S").source:sub(2):match("(.*/)") .. "actions.json"
-  table.insert(paths, default_actions_path)
   for i = 1, #Config.options.actions_paths do
     paths[#paths + 1] = Config.options.actions_paths[i]
   end
@@ -56,24 +53,26 @@ end
 function M.run_action(opts)
   local ACTIONS = M.read_actions()
 
+  local action_opts = loadstring("return " .. opts.args)() or {}
+
   local action_name = opts.fargs[1]
   local item = ACTIONS[action_name]
 
   -- parse args
   if item.args then
-    item.opts.variables = {}
+    item.variables = {}
     local i = 2
     for key, value in pairs(item.args) do
       local arg = type(value.default) == "function" and value.default() or value.default or ""
       -- TODO: validataion
-      item.opts.variables[key] = arg
+      item.variables[key] = arg
       i = i + 1
     end
   end
 
-  opts = vim.tbl_extend("force", {}, opts, item.opts)
+  opts = vim.tbl_extend("force", {}, action_opts, item)
   local class = classes_by_type[item.type]
-  local action = class.new(opts)
+  local action = class.new(action_name, opts)
   action:run()
 end
 

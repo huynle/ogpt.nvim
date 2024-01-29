@@ -2,6 +2,8 @@ local utils = require("ogpt.utils")
 
 local M = {}
 
+M.name = "openai"
+
 M.envs = {}
 
 function M.load_envs()
@@ -16,9 +18,18 @@ function M.load_envs()
   return M.envs
 end
 
-M.openai_options = {}
+M._api_chat_parameters = {
+  "model",
+  "messages",
+  "stream",
+  "temperature",
+  "presence_penalty",
+  "frequency_penalty",
+  "top_p",
+  "max_tokens",
+}
 
-function M.process_model(json, cb)
+function M.parse_api_model_response(json, cb)
   local data = json.data or {}
   for _, model in ipairs(data) do
     cb({
@@ -28,33 +39,42 @@ function M.process_model(json, cb)
 end
 
 function M.conform(params)
-  local openai_parameters = {
-    "model",
-    "messages",
-    "stream",
-    "temperature",
-  }
-
-  local param_options = {}
+  params = M._conform_messages(params)
 
   for key, value in pairs(params) do
-    if not vim.tbl_contains(openai_parameters, key) then
-      if vim.tbl_contains(M.openai_options, key) then
-        param_options[key] = value
-        params[key] = nil
-      else
-        params[key] = nil
-      end
+    if not vim.tbl_contains(M._api_chat_parameters, key) then
+      utils.log("Did not process " .. key .. " for " .. M.name)
+      params[key] = nil
     end
   end
-  local _options = vim.tbl_extend("keep", param_options, params.options or {})
-  if next(_options) ~= nil then
-    params.options = _options
+  return params
+end
+
+function M._conform_messages(params)
+  -- ensure we only have one system message
+  local _to_remove_system_idx = {}
+  for idx, message in ipairs(params.messages) do
+    if message.role == "system" then
+      table.insert(_to_remove_system_idx, idx)
+    end
+  end
+  -- Remove elements from the list based on indices
+  for i = #_to_remove_system_idx, 1, -1 do
+    table.remove(params.messages, _to_remove_system_idx[i])
+  end
+
+  -- https://platform.openai.com/docs/api-reference/chat
+  if params.system then
+    table.insert(params.messages, 1, {
+      role = "system",
+      content = params.system,
+    })
   end
   return params
 end
 
 function M.process_line(_json, ctx, raw_chunks, state, cb)
+  -- given a JSON response from the STREAMING api, processs it
   if _json and _json.done then
     ctx.context = _json.context
     cb(raw_chunks, "END", ctx)

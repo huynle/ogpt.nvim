@@ -3,7 +3,6 @@ local conf = require("telescope.config").values
 local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
 local job = require("plenary.job")
-local Api = require("ogpt.api")
 
 local Utils = require("ogpt.utils")
 local Config = require("ogpt.config")
@@ -82,8 +81,8 @@ local finder = function(provider, opts)
                 process_result(v)
               end
 
-              if provider.process_model then
-                provider.process_model(json, process_single_model)
+              if provider.parse_api_model_response then
+                provider.parse_api_model_response(json, process_single_model)
               else
                 -- default processor for a REST response from a curl for models
                 for _, model in ipairs(json.models) do
@@ -106,9 +105,8 @@ end
 --
 
 local M = {}
-function M.select_model(opts)
+function M.select_model(provider, opts)
   opts = opts or {}
-  local provider = Api.get_provider()
   pickers
     .new(opts, {
       sorting_strategy = "ascending",

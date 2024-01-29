@@ -1,3 +1,4 @@
+local Config = require("ogpt.config")
 local M = {}
 
 local ESC_FEEDKEY = vim.api.nvim_replace_termcodes("<ESC>", true, false, true)
@@ -191,120 +192,6 @@ function M.match_indentation(input, output)
   return table.concat(lines)
 end
 
-function M._conform_to_ollama_api(params)
-  local ollama_parameters = {
-    "model",
-    -- "prompt",
-    "messages",
-    "format",
-    "options",
-    "system",
-    "template",
-    -- "context",
-    "stream",
-    "raw",
-  }
-
-  -- https://github.com/jmorganca/ollama/blob/main/docs/api.md#show-model-information
-
-  local param_options = {}
-
-  for key, value in pairs(params) do
-    if not vim.tbl_contains(ollama_parameters, key) then
-      if vim.tbl_contains(M.ollama_options, key) then
-        param_options[key] = value
-        params[key] = nil
-      else
-        params[key] = nil
-      end
-    end
-  end
-  local _options = vim.tbl_extend("keep", param_options, params.options or {})
-  if next(_options) ~= nil then
-    params.options = _options
-  end
-  return params
-end
-
-function M.conform_to_ollama(params)
-  if params.messages then
-    --   local messages = params.messages
-    --   params.messages = nil
-    --   params.system = params.system or ""
-    --   params.prompt = params.prompt or ""
-    --   for _, message in ipairs(messages) do
-    --     if message.role == "system" then
-    --       params.system = params.system .. "\n" .. message.content .. "\n"
-    --     end
-    --   end
-    --
-    --   for _, message in ipairs(messages) do
-    --     if message.role == "user" then
-    --       params.prompt = params.prompt .. "\n" .. message.content .. "\n"
-    --     end
-    --   end
-  end
-
-  return M._conform_to_ollama_api(params)
-end
-
-function M._conform_to_textgenui_api(params)
-  local model_params = {
-    "seed",
-    "top_k",
-    "top_p",
-    "stop",
-  }
-
-  local request_params = {
-    "inputs",
-    "parameters",
-    "stream",
-  }
-
-  local param_options = {}
-
-  for key, value in pairs(params) do
-    if not vim.tbl_contains(request_params, key) then
-      if vim.tbl_contains(model_params, key) then
-        param_options[key] = value
-        params[key] = nil
-      else
-        params[key] = nil
-      end
-    end
-  end
-  local _options = vim.tbl_extend("keep", param_options, params.options or {})
-  if next(_options) ~= nil then
-    params.parameters = _options
-  end
-  return params
-end
-
-function M.conform_to_textgenui(params)
-  -- conform to mixtral
-  -- <s> [INST] Instruction [/INST] Model answer</s> [INST] Follow-up instruction [/INST]
-  if params.messages then
-    local messages = params.messages
-    params.messages = nil
-    -- params.system = params.system or ""
-    params.inputs = params.inputs or ""
-    -- for _, message in ipairs(messages) do
-    --   if message.role == "system" then
-    --     params.system = params.system .. "\n" .. message.content .. "\n"
-    --   end
-    -- end
-
-    for _, message in ipairs(messages) do
-      if message.role == "user" then
-        params.inputs = params.inputs .. "\n" .. message.content .. "\n"
-      end
-    end
-  end
-
-  return M._conform_to_textgenui_api(params)
-end
-
 function M.extract_code(text)
   -- Iterate through all code blocks in the message using a regular expression pattern
   local lastCodeBlock
@@ -371,10 +258,12 @@ function M.add_partial_completion(opts, text, state)
   local progress = opts.progress
 
   if state == "ERROR" then
-    if not opts.on_complete then
-      return
+    if progress then
+      progress(false)
     end
-    return opts.on_complete(text)
+    M.log("An Error Occurred: " .. text, vim.log.levels.ERROR)
+    panel:unmount()
+    return
   end
 
   local start_line = 0
@@ -409,8 +298,6 @@ function M.add_partial_completion(opts, text, state)
         end
       end
     end
-  else
-    print("stuc")
   end
 end
 
@@ -447,15 +334,6 @@ function M.getSelectedCode(lines)
   return nil
 end
 
-function M.render_template(data, template)
-  local result = template
-  for key, value in pairs(data) do
-    local escaped_value = M.escape_pattern(value)
-    result = result:gsub("{{" .. key .. "}}", escaped_value)
-  end
-  return result
-end
-
 function M.escape_pattern(text)
   -- https://stackoverflow.com/a/34953646/4780010
   return text:gsub("([^%w])", "%%%1")
@@ -490,52 +368,29 @@ function M.ensureUrlProtocol(str)
   return "https://" .. str
 end
 
-function M.build_edit_messages(input, instructions, opts)
-  local _input = input
-  if opts.edit_code then
-    _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
-  else
-    _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
+-- Function to format a table for logging
+function M.format_table(tbl, indent)
+  indent = indent or 0
+  local result = ""
+
+  for key, value in pairs(tbl) do
+    local keyStr = tostring(key)
+    local valueStr = type(value) == "table" and M.format_table(value, indent + 1) or tostring(value)
+    local indentation = string.rep("\t", indent)
+
+    result = result .. indentation .. keyStr .. " = " .. valueStr .. "\n"
   end
-  local variables = vim.tbl_extend("force", {}, {
-    instruction = instructions,
-    input = _input,
-    filetype = opts.filetype,
-  }, opts.variables)
-  local system_msg = opts.params.system or ""
 
-  -- local messages = opts.params.messages or {}
-  -- table.insert(messages, {
-  --   {
-  --     role = "system",
-  --     content = system_msg,
-  --   },
-  --   {
-  --     role = "user",
-  --     content = _input,
-  --   },
-  --   {
-  --     role = "user",
-  --     content = instructions,
-  --   },
-  -- })
+  return result
+end
 
-  local messages = {
-    {
-      role = "system",
-      content = system_msg,
-    },
-    -- {
-    --   role = "user",
-    --   content = _input,
-    -- },
-    {
-      role = "user",
-      content = M.render_template(variables, opts.template),
-    },
-  }
-
-  return messages
+function M.log(msg, level)
+  msg = vim.inspect(msg)
+  level = level or vim.log.levels.DEBUG
+  Config.logs[#Config.logs + 1] = { msg = msg, level = level }
+  if Config.options.debug then
+    vim.notify(msg, level, { title = "OGPT Debug" })
+  end
 end
 
 return M

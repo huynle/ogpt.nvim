@@ -3,11 +3,10 @@ local Layout = require("nui.layout")
 local Popup = require("nui.popup")
 
 local ChatInput = require("ogpt.input")
-local Api = require("ogpt.api")
 local Config = require("ogpt.config")
 local Parameters = require("ogpt.parameters")
 local Sessions = require("ogpt.flows.chat.sessions")
-local Utils = require("ogpt.utils")
+local utils = require("ogpt.utils")
 local Signs = require("ogpt.signs")
 local Spinner = require("ogpt.spinner")
 local Session = require("ogpt.flows.chat.session")
@@ -20,7 +19,7 @@ ROLE_USER = "user"
 
 local Chat = classes.class()
 
-function Chat:init()
+function Chat:init(opts)
   self.input_extmark_id = nil
 
   self.active_panel = nil
@@ -46,9 +45,11 @@ function Chat:init()
   self.prompt_lines = 1
 
   self.display_mode = Config.options.popup_layout.default
-  self.params = Config.options.api_params
+  self.params = Config.get_chat_params(opts.provider)
 
   self.session = Session.latest()
+
+  self.provider = Config.get_provider(self.session.parameters.provider, self)
   self.selectedIndex = 0
   self.role = ROLE_USER
   self.messages = {}
@@ -78,7 +79,7 @@ function Chat:welcome()
   end
 
   if #self.session.conversation == 0 or (#self.session.conversation == 1 and self.system_message ~= nil) then
-    local lines = Utils.split_string_by_line(Config.options.chat.welcome_message)
+    local lines = utils.split_string_by_line(Config.options.chat.welcome_message)
     self:set_lines(0, 0, false, lines)
     for line_num = 0, #lines do
       self:add_highlight("OGPTWelcome", line_num, 0, -1)
@@ -120,7 +121,7 @@ function Chat:set_system_message(msg, skip_session_add)
       usage = {},
     })
   else
-    self.system_role_panel:set_text(Utils.split_string_by_line(msg))
+    self.system_role_panel:set_text(utils.split_string_by_line(msg))
   end
 end
 
@@ -602,7 +603,7 @@ end
 function Chat:set_active_panel(panel)
   vim.api.nvim_set_current_win(panel.winid)
   self.active_panel = panel
-  Utils.change_mode_to_normal()
+  utils.change_mode_to_normal()
 
   if self.active_panel == self.chat_window then
     self:show_message_selection()
@@ -621,7 +622,7 @@ function Chat:get_layout_params()
   local layout_height = total_height - used_height
   local starting_row = tabline_height == 0 and 0 or 1
 
-  local width = Utils.calculate_percentage_width(Config.options.popup_layout.right.width)
+  local width = utils.calculate_percentage_width(Config.options.popup_layout.right.width)
   if self.parameters_open then
     width = width + 40
   end
@@ -680,7 +681,7 @@ end
 
 function Chat:open()
   self.session.parameters = vim.tbl_extend("keep", self.session.parameters, self.params)
-  self.parameters_panel = Parameters.get_panel(self.session)
+  self.parameters_panel = Parameters.get_panel(self.session, self)
   self.sessions_panel = Sessions.get_panel(function(session)
     self:set_session(session)
   end)
@@ -730,7 +731,7 @@ function Chat:open()
           messages = self:toMessages(),
           system = self.system_message,
         }, Parameters.params)
-        Api.chat_completions(params, function(answer, state, ctx)
+        self.provider.api:chat_completions(params, function(answer, state, ctx)
           self:addAnswerPartial(answer, state, ctx)
         end, self.should_stop)
       end

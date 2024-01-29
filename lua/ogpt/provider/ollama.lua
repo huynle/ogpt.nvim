@@ -2,9 +2,11 @@ local utils = require("ogpt.utils")
 
 local M = {}
 
+M.name = "ollama"
 M.envs = {}
+M.models = {}
 
-function M.load_envs()
+function M.load_envs(envs)
   local _envs = {}
   _envs.OLLAMA_API_HOST = M.envs.api_host or os.getenv("OLLAMA_API_HOST") or "http://localhost:11434"
   _envs.OLLAMA_API_KEY = M.envs.api_key or os.getenv("OLLAMA_API_KEY") or ""
@@ -13,10 +15,22 @@ function M.load_envs()
   _envs.CHAT_COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OLLAMA_API_HOST .. "/api/chat")
   _envs.AUTHORIZATION_HEADER = "Authorization: Bearer " .. (_envs.OLLAMA_API_KEY or " ")
   M.envs = vim.tbl_extend("force", M.envs, _envs)
+  M.envs = vim.tbl_extend("force", M.envs, envs or {})
   return M.envs
 end
 
-M.ollama_options = {
+M.api_parameters = {
+  "model",
+  "messages",
+  "format",
+  "options",
+  "system",
+  "template",
+  "stream",
+  "raw",
+}
+
+M.api_chat_request_options = {
   "num_keep",
   "seed",
   "num_predict",
@@ -52,7 +66,8 @@ M.ollama_options = {
   "num_thread",
 }
 
-function M.process_model(json, cb)
+function M.parse_api_model_response(json, cb)
+  -- Given a json object from the api, parse this and get the names of the model to be displayed
   for _, model in ipairs(json.models) do
     cb({
       name = model.name,
@@ -61,24 +76,14 @@ function M.process_model(json, cb)
 end
 
 function M.conform(params)
-  local ollama_parameters = {
-    "model",
-    "messages",
-    "format",
-    "options",
-    "system",
-    "template",
-    "stream",
-    "raw",
-  }
-
   -- https://github.com/jmorganca/ollama/blob/main/docs/api.md#show-model-information
 
   local param_options = {}
 
   for key, value in pairs(params) do
-    if not vim.tbl_contains(ollama_parameters, key) then
-      if vim.tbl_contains(M.ollama_options, key) then
+    if not vim.tbl_contains(M.api_parameters, key) then
+      if vim.tbl_contains(M.api_chat_request_options, key) then
+        -- move it to the options
         param_options[key] = value
         params[key] = nil
       else
@@ -94,6 +99,7 @@ function M.conform(params)
 end
 
 function M.process_line(_json, ctx, raw_chunks, state, cb)
+  -- given a JSON response from the STREAMING api, processs it
   if _json and _json.done then
     ctx.context = _json.context
     cb(raw_chunks, "END", ctx)

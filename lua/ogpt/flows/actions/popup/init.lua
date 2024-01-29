@@ -1,22 +1,5 @@
--- PopupAction that can be used for actions of type "chat" in actions.PreviewWindowjson
---
--- This enables the use of mistral:7b in user defined actions,
--- as this model only defines the chat endpoint and has no completions endpoint
---
--- Example action for your local actions.json:
---
---   "turbo-summary": {
---     "type": "chat",
---     "opts": {
---       "template": "Summarize the following text.\n\nText:\n\"\"\"\n{{input}}\n\"\"\"\n\nSummary:",
---       "params": {
---         "model": "mistral:7b"
---       }
---     }
---   }
 local classes = require("ogpt.common.classes")
 local BaseAction = require("ogpt.flows.actions.base")
-local Api = require("ogpt.api")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
 
@@ -28,28 +11,30 @@ local STRATEGY_PREPEND = "prepend"
 local STRATEGY_DISPLAY = "display"
 local STRATEGY_QUICK_FIX = "quick_fix"
 
-function PopupAction:init(opts)
+function PopupAction:init(name, opts)
+  self.name = name or ""
   self.super:init(opts)
-  self.params = opts.params or {}
+  self.provider = Config.get_provider(opts.provider, self)
+  self.params = Config.get_action_params(self.provider.name, opts.params or {})
   self.system = type(opts.system) == "function" and opts.system() or opts.system or ""
   self.template = type(opts.template) == "function" and opts.template() or opts.template or "{{input}}"
   self.variables = opts.variables or {}
-  self.strategy = opts.strategy or STRATEGY_APPEND
+  self.strategy = opts.strategy or STRATEGY_DISPLAY
   self.ui = opts.ui or {}
   self.cur_win = vim.api.nvim_get_current_win()
-  self.stop = false
 
   self:post_init()
 end
 
 function PopupAction:run()
+  self.stop = false
   local params = self:get_params()
   local _, start_row, start_col, end_row, end_col = self:get_visual_selection()
 
   if self.strategy == STRATEGY_DISPLAY then
     self:run_spinner(true)
     self.popup:mount({
-      name = self.opts.fargs[1],
+      name = self.name,
       cur_win = self.cur_win,
       main_bufnr = self:get_bufnr(),
       selection_idx = {
@@ -69,14 +54,14 @@ function PopupAction:run()
     self:call_api(self.popup, params)
   else
     self:set_loading(true)
-    Api.chat_completions(params, function(answer, usage)
+    self.provider.api:chat_completions(params, function(answer, usage)
       self:on_result(answer, usage)
     end)
   end
 end
 
 function PopupAction:call_api(panel, params)
-  Api.chat_completions(
+  self.provider.api:chat_completions(
     params,
     utils.partial(utils.add_partial_completion, {
       panel = panel,
