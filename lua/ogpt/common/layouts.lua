@@ -1,4 +1,5 @@
 local Config = require("ogpt.config")
+local SimpleParameters = require("ogpt.simple_parameters")
 local Layout = require("nui.layout")
 
 local M = {}
@@ -66,21 +67,17 @@ M.edit_with_no_layout = function(layout, input, instruction, output, parameters,
   })
 
   input:mount()
-  vim.api.nvim_buf_set_var(input.bufnr, "ogpt_input", true)
   output:mount()
-  vim.api.nvim_buf_set_var(output.bufnr, "ogpt_output", true)
   instruction:mount()
-  vim.api.nvim_buf_set_var(instruction.bufnr, "ogpt_instruction", true)
-
-  vim.api.nvim_buf_set_var(parameters.bufnr, "ogpt_parameters", true)
 
   if opts.show_parameters then
-    parameters:show()
     parameters:mount()
 
     vim.api.nvim_set_current_win(parameters.winid)
     vim.api.nvim_buf_set_option(parameters.bufnr, "modifiable", false)
     vim.api.nvim_win_set_option(parameters.winid, "cursorline", true)
+
+    SimpleParameters.refresh_panel()
   else
     parameters:hide()
     -- vim.api.nvim_set_current_win(instruction.winid)
