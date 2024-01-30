@@ -258,12 +258,12 @@ M.get_parameters_panel = function(type, default_params, session, parent)
   end
 
   -- M.panel = Popup(Config.options.parameters_window)
-  M.panel = SimpleWindow.new(M, Config.options.parameters_window)
-  M.panel:mount()
-
-  vim.api.nvim_buf_set_option(M.panel.bufnr, "modifiable", true)
-
-  M.refresh_panel()
+  M.panel = SimpleWindow.new(M.name, Config.options.parameters_window)
+  -- M.panel:mount()
+  --
+  -- vim.api.nvim_buf_set_option(M.panel.bufnr, "modifiable", true)
+  --
+  -- M.refresh_panel()
 
   M.panel:map("n", "d", function()
     local row, _ = unpack(vim.api.nvim_win_get_cursor(M.panel.winid))

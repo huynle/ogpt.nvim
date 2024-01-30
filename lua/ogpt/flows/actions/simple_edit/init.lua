@@ -98,74 +98,85 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
     visual_lines, start_row, start_col, end_row, end_col = unpack(selection)
   end
   local parameters_panel = SimpleParameters.get_parameters_panel("edits", api_params)
-  input_window = Popup(Config.options.popup_window)
-  output_window = Popup(Config.options.popup_window)
+  input_window = SimpleWindow.new("ogpt_input", Config.options.popup_window)
+  output_window = SimpleWindow.new("ogpt_output", Config.options.popup_window)
   -- instructions_input = ChatInput(Config.options.popup_input, {
-  instructions_input = SimpleWindow.new(self, {
+  instructions_input = SimpleWindow.new("ogpt_instruction", {
+    keymaps = {
+      ["<C-CR>"] = function()
+        local function on_submit(instruction)
+          -- clear input
+          vim.api.nvim_buf_set_lines(instructions_input.bufnr, 0, -1, false, { "" })
+          vim.api.nvim_buf_set_lines(output_window.bufnr, 0, -1, false, { "" })
+          -- show_progress()
+          self:run_spinner(true)
+
+          local input = table.concat(vim.api.nvim_buf_get_lines(input_window.bufnr, 0, -1, false), "\n")
+
+          -- if instruction is empty, try to get the original instruction from opts
+          if instruction == "" then
+            instruction = opts.instruction or ""
+          end
+          local messages = self:build_edit_messages(input, instruction, opts)
+          local params = vim.tbl_extend("keep", { messages = messages }, SimpleParameters.params)
+          self.provider.api:edits(
+            params,
+            utils.partial(utils.add_partial_completion, {
+              panel = output_window,
+              on_complete = function(response)
+                -- on the completion, execute this function to extract out codeblocks
+                local nlcount = utils.count_newlines_at_end(response)
+                local output_txt = response
+                if opts.edit_code then
+                  local code_response = utils.extract_code(response)
+                  -- if the chat is to edit code, it will try to extract out the code from response
+                  output_txt = response
+                  if code_response then
+                    output_txt = utils.match_indentation(response, code_response)
+                  else
+                    vim.notify("no codeblock detected", vim.log.levels.INFO)
+                  end
+                  if response.applied_changes then
+                    vim.notify(response.applied_changes, vim.log.levels.INFO)
+                  end
+                end
+                local output_txt_nlfixed = utils.replace_newlines_at_end(output_txt, nlcount)
+                local _output = utils.split_string_by_line(output_txt_nlfixed)
+                if output_window.bufnr then
+                  vim.api.nvim_buf_set_lines(output_window.bufnr, 0, -1, false, _output)
+                end
+              end,
+              progress = function(flag)
+                self:run_spinner(flag)
+              end,
+            })
+          )
+        end
+
+        local instructions = vim.api.nvim_buf_get_lines(vim.api.nvim_get_current_buf(), 0, -1, false)
+        on_submit = vim.schedule_wrap(on_submit)
+        on_submit(table.concat(instructions, "\n"))
+      end,
+    },
     prompt = Config.options.popup_input.prompt,
     default_value = opts.instruction or "",
-    on_close = function()
-      -- if self.spinner:is_running() then
-      --   self.spinner:stop()
-      -- end
-      self:run_spinner(false)
-      if timer ~= nil then
-        timer:stop()
-      end
-    end,
-    on_submit = vim.schedule_wrap(function(instruction)
-      -- clear input
-      vim.api.nvim_buf_set_lines(instructions_input.bufnr, 0, -1, false, { "" })
-      vim.api.nvim_buf_set_lines(output_window.bufnr, 0, -1, false, { "" })
-      -- show_progress()
-      self:run_spinner(true)
-
-      local input = table.concat(vim.api.nvim_buf_get_lines(input_window.bufnr, 0, -1, false), "\n")
-
-      -- if instruction is empty, try to get the original instruction from opts
-      if instruction == "" then
-        instruction = opts.instruction or ""
-      end
-      local messages = self:build_edit_messages(input, instruction, opts)
-      local params = vim.tbl_extend("keep", { messages = messages }, SimpleParameters.params)
-      self.provider.api:edits(
-        params,
-        utils.partial(utils.add_partial_completion, {
-          panel = output_window,
-          on_complete = function(response)
-            -- on the completion, execute this function to extract out codeblocks
-            local nlcount = utils.count_newlines_at_end(response)
-            local output_txt = response
-            if opts.edit_code then
-              local code_response = utils.extract_code(response)
-              -- if the chat is to edit code, it will try to extract out the code from response
-              output_txt = response
-              if code_response then
-                output_txt = utils.match_indentation(response, code_response)
-              else
-                vim.notify("no codeblock detected", vim.log.levels.INFO)
-              end
-              if response.applied_changes then
-                vim.notify(response.applied_changes, vim.log.levels.INFO)
-              end
-            end
-            local output_txt_nlfixed = utils.replace_newlines_at_end(output_txt, nlcount)
-            local _output = utils.split_string_by_line(output_txt_nlfixed)
-            if output_window.bufnr then
-              vim.api.nvim_buf_set_lines(output_window.bufnr, 0, -1, false, _output)
-            end
-          end,
-          progress = function(flag)
-            self:run_spinner(flag)
-          end,
-        })
-      )
-    end),
+    events = {
+      {
+        events = { "BufUnload" },
+        callback = function()
+          vim.print("turning off spinner")
+          self:run_spinner(false)
+          if timer ~= nil then
+            timer:stop()
+          end
+        end,
+      },
+    },
   })
-  instructions_input:map("n", "<C-CR>", function()
-    local instructions = vim.api.nvim_buf_get_lines(instructions_input.bufnr, 0, -1, false)
-    instructions_input.opts.on_submit(table.concat(instructions, "\n"))
-  end)
+  -- instructions_input:map("n", "<C-CR>", function()
+  --   local instructions = vim.api.nvim_buf_get_lines(instructions_input.bufnr, 0, -1, false)
+  --   instructions_input.opts.on_submit(table.concat(instructions, "\n"))
+  -- end)
 
   layout = layouts.edit_with_no_layout(layout, input_window, instructions_input, output_window, parameters_panel, {
     show_parameters = false,
@@ -202,7 +213,11 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
         if vim.fn.mode() == "i" then
           vim.api.nvim_command("stopinsert")
         end
-        vim.cmd("q")
+        -- vim.cmd("q")
+        input_window:unmount()
+        output_window:unmount()
+        instructions_input:unmount()
+        parameters_panel:unmount()
       end, { noremap = true })
     end
   end
