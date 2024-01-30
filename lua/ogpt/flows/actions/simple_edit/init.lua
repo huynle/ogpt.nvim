@@ -1,12 +1,14 @@
 local classes = require("ogpt.common.classes")
+local SimpleWindow = require("ogpt.common.simple_window")
 local BaseAction = require("ogpt.flows.actions.base")
+local layouts = require("ogpt.common.layouts")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
 local Layout = require("nui.layout")
 local Split = require("nui.split")
 local Popup = require("nui.popup")
 local ChatInput = require("ogpt.input")
-local Parameters = require("ogpt.parameters")
+local SimpleParameters = require("ogpt.simple_parameters")
 
 local EditAction = classes.class(BaseAction)
 
@@ -62,8 +64,7 @@ end
 
 local instructions_input, layout, input_window, output_window, output, timer, filetype, bufnr, extmark_id
 
-local setup_and_mount = vim.schedule_wrap(function(lines, output_lines, ...)
-  layout:mount()
+local setup_and_mount = function(lines, output_lines, ...)
   -- set input
   if lines then
     vim.api.nvim_buf_set_lines(input_window.bufnr, 0, -1, false, lines)
@@ -79,7 +80,7 @@ local setup_and_mount = vim.schedule_wrap(function(lines, output_lines, ...)
     vim.api.nvim_buf_set_option(window.bufnr, "filetype", "markdown")
     vim.api.nvim_win_set_option(window.winid, "number", true)
   end
-end)
+end
 
 function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   opts = opts or {}
@@ -96,10 +97,11 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   else
     visual_lines, start_row, start_col, end_row, end_col = unpack(selection)
   end
-  local parameters_panel = Parameters.get_parameters_panel("edits", api_params)
+  local parameters_panel = SimpleParameters.get_parameters_panel("edits", api_params)
   input_window = Popup(Config.options.popup_window)
   output_window = Popup(Config.options.popup_window)
-  instructions_input = ChatInput(Config.options.popup_input, {
+  -- instructions_input = ChatInput(Config.options.popup_input, {
+  instructions_input = SimpleWindow.new(self, {
     prompt = Config.options.popup_input.prompt,
     default_value = opts.instruction or "",
     on_close = function()
@@ -125,7 +127,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
         instruction = opts.instruction or ""
       end
       local messages = self:build_edit_messages(input, instruction, opts)
-      local params = vim.tbl_extend("keep", { messages = messages }, Parameters.params)
+      local params = vim.tbl_extend("keep", { messages = messages }, SimpleParameters.params)
       self.provider.api:edits(
         params,
         utils.partial(utils.add_partial_completion, {
@@ -160,32 +162,14 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       )
     end),
   })
+  instructions_input:map("n", "<C-CR>", function()
+    local instructions = vim.api.nvim_buf_get_lines(instructions_input.bufnr, 0, -1, false)
+    instructions_input.opts.on_submit(table.concat(instructions, "\n"))
+  end)
 
-  local _layout
-  if Config.options.edit.layout == "default" then
-    _layout = {
-      relative = "editor",
-      position = "50%",
-      size = {
-        width = Config.options.popup_layout.center.width,
-        height = Config.options.popup_layout.center.height,
-      },
-    }
-  else
-    _layout = Split(Config.options.edit.layout)
-  end
-
-  layout = Layout(
-    _layout,
-
-    Layout.Box({
-      Layout.Box({
-        Layout.Box(input_window, { grow = 1 }),
-        Layout.Box(instructions_input, { size = 3 }),
-      }, { dir = "col", size = "50%" }),
-      Layout.Box(output_window, { size = "50%" }),
-    }, { dir = "row" })
-  )
+  layout = layouts.edit_with_no_layout(layout, input_window, instructions_input, output_window, parameters_panel, {
+    show_parameters = false,
+  })
 
   -- accept output window
   for _, window in ipairs({ input_window, output_window, instructions_input }) do
@@ -229,30 +213,14 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
     for _, mode in ipairs({ "n", "i" }) do
       popup:map(mode, Config.options.edit.keymaps.toggle_parameters, function()
         if parameters_open then
-          layout:update(Layout.Box({
-            Layout.Box({
-              Layout.Box(input_window, { grow = 1 }),
-              Layout.Box(instructions_input, { size = 3 }),
-            }, { dir = "col", size = "50%" }),
-            Layout.Box(output_window, { size = "50%" }),
-          }, { dir = "row" }))
-          parameters_panel:hide()
-          vim.api.nvim_set_current_win(instructions_input.winid)
+          layouts.edit_with_no_layout(layout, input_window, instructions_input, output_window, parameters_panel, {
+            show_parameters = false,
+          })
         else
-          layout:update(Layout.Box({
-            Layout.Box({
-              Layout.Box(input_window, { grow = 1 }),
-              Layout.Box(instructions_input, { size = 3 }),
-            }, { dir = "col", grow = 1 }),
-            Layout.Box(output_window, { grow = 1 }),
-            Layout.Box(parameters_panel, { size = 40 }),
-          }, { dir = "row" }))
-          parameters_panel:show()
-          parameters_panel:mount()
-
-          vim.api.nvim_set_current_win(parameters_panel.winid)
-          vim.api.nvim_buf_set_option(parameters_panel.bufnr, "modifiable", false)
-          vim.api.nvim_win_set_option(parameters_panel.winid, "cursorline", true)
+          layouts.edit_with_no_layout(layout, input_window, instructions_input, output_window, parameters_panel, {
+            show_parameters = true,
+          })
+          SimpleParameters.refresh_panel()
         end
         parameters_open = not parameters_open
         -- set input and output settings
@@ -345,6 +313,15 @@ function EditAction:build_edit_messages(input, instructions, opts)
   }
 
   return messages
+end
+
+function EditAction:render_template(variables, template)
+  local result = template
+  for key, value in pairs(variables) do
+    local escaped_value = utils.escape_pattern(value)
+    result = string.gsub(result, "{{" .. key .. "}}", escaped_value)
+  end
+  return result
 end
 
 return EditAction

@@ -249,6 +249,7 @@ end
 
 M.get_parameters_panel = function(type, default_params, session, parent)
   M.type = type
+  M.name = "ogpt_parameters"
   local custom_params = M.read_config(session or {})
 
   M.params = vim.tbl_deep_extend("force", {}, default_params, custom_params or {})
@@ -256,9 +257,12 @@ M.get_parameters_panel = function(type, default_params, session, parent)
     M.params = session.parameters
   end
 
-  M.panel = Popup(Config.options.parameters_window)
-  -- M.panel = SimpleWindow.new(Config.options.parameters_window)
-  -- M.panel:mount()
+  -- M.panel = Popup(Config.options.parameters_window)
+  M.panel = SimpleWindow.new(M, Config.options.parameters_window)
+  M.panel:mount()
+
+  vim.api.nvim_buf_set_option(M.panel.bufnr, "modifiable", true)
+
   M.refresh_panel()
 
   M.panel:map("n", "d", function()

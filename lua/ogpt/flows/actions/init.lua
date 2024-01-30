@@ -2,6 +2,7 @@ local M = {}
 
 -- local CompletionAction = require("ogpt.flows.actions.completions")
 local EditAction = require("ogpt.flows.actions.edits")
+local EditSimpleAction = require("ogpt.flows.actions.simple_edit")
 local PopupAction = require("ogpt.flows.actions.popup")
 local Config = require("ogpt.config")
 
@@ -9,6 +10,7 @@ local classes_by_type = {
   chat = PopupAction,
   -- completion = CompletionAction,
   edit = EditAction,
+  simple_edit = EditSimpleAction,
   popup = PopupAction,
 }
 
