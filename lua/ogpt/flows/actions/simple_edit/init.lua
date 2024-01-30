@@ -241,10 +241,10 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
         parameters_open = not parameters_open
         -- set input and output settings
         --  TODO
-        for _, window in ipairs({ input_window, output_window }) do
-          vim.api.nvim_buf_set_option(window.bufnr, "filetype", filetype)
-          vim.api.nvim_win_set_option(window.winid, "number", true)
-        end
+        -- for _, window in ipairs({ input_window, output_window }) do
+        --   vim.api.nvim_buf_set_option(window.bufnr, "filetype", filetype)
+        --   vim.api.nvim_win_set_option(window.winid, "number", true)
+        -- end
       end, {})
     end
   end
