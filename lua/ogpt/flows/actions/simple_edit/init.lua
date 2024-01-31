@@ -1,10 +1,10 @@
 local classes = require("ogpt.common.classes")
-local SimpleWindow = require("ogpt.common.simple_window")
+local SimpleWindow = require("ogpt.common.ui.window")
 local BaseAction = require("ogpt.flows.actions.base")
-local layouts = require("ogpt.common.layouts")
+local layouts = require("ogpt.flows.actions.edits.layouts")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
-local SimpleParameters = require("ogpt.simple_parameters")
+local SimpleParameters = require("ogpt.common.simple_parameters")
 
 local EditAction = classes.class(BaseAction)
 
@@ -173,10 +173,6 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       },
     },
   })
-  -- instructions_input:map("n", "<C-CR>", function()
-  --   local instructions = vim.api.nvim_buf_get_lines(instructions_input.bufnr, 0, -1, false)
-  --   instructions_input.opts.on_submit(table.concat(instructions, "\n"))
-  -- end)
 
   layout =
     layouts.edit_with_no_layout(layout, self, input_window, instructions_input, output_window, parameters_panel, {

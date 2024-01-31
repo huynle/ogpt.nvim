@@ -1,11 +1,11 @@
 local Config = require("ogpt.config")
 local utils = require("ogpt.utils")
-local SimpleParameters = require("ogpt.simple_parameters")
+local SimpleParameters = require("ogpt.common.simple_parameters")
 local Layout = require("nui.layout")
 
 local M = {}
 
-M.edit_with_nui_layout = function(layout, input, instruction, output, parameters, opts)
+M.edit_with_nui_layout = function(layout, parent, input, instruction, output, parameters, opts)
   opts = opts or {}
   local _boxes
   if opts.show_parameters then

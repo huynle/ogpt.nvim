@@ -2,7 +2,8 @@ local classes = require("ogpt.common.classes")
 local BaseAction = require("ogpt.flows.actions.base")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
-local SimpleWindow = require("ogpt.common.simple_window")
+local SimpleWindow = require("ogpt.common.ui.window")
+local popup_keymap = require("ogpt.flows.actions.popup.keymaps")
 
 local PopupAction = classes.class(BaseAction)
 
@@ -11,6 +12,7 @@ local STRATEGY_APPEND = "append"
 local STRATEGY_PREPEND = "prepend"
 local STRATEGY_DISPLAY = "display"
 local STRATEGY_DISPLAY_WINDOW = "display_window"
+local STRATEGY_NEW_DISPLAY_WINDOW = "new_display_window"
 local STRATEGY_QUICK_FIX = "quick_fix"
 
 function PopupAction:init(name, opts)
@@ -77,50 +79,32 @@ function PopupAction:run()
         end
       end
     )
-  elseif self.strategy == STRATEGY_DISPLAY_WINDOW then
-    self.popup = SimpleWindow.new(self, {
+  elseif self.strategy == STRATEGY_DISPLAY_WINDOW or self.strategy == STRATEGY_NEW_DISPLAY_WINDOW then
+    self.popup = SimpleWindow.new("ogpt_popup", {
       new_win = false,
       buf = {
-        filetype = "markdown",
-        vars = {
-          ogpt = true,
-        },
+        syntax = "markdown",
+      },
+      events = {
+        -- {
+        --   events = { "BufUnload" },
+        --   callback = function()
+        --     opts.stop()
+        --   end,
+        -- },
       },
     })
-    self.popup:apply_map(opts)
-
-    local keys = Config.options.popup.keymaps.close
-    if type(keys) ~= "table" then
-      keys = { keys }
-    end
-    for _, key in ipairs(keys) do
-      self.popup:map("n", key, function()
-        if opts.stop and type(opts.stop) == "function" then
-          opts.stop()
-        end
-        self.popup:unmount()
-      end)
-    end
+    popup_keymap.apply_map(self.popup, opts)
 
     self:set_loading(true)
-    self.popup:mount(self.name, {
-      name = self.name,
-      cur_win = self.cur_win,
-      main_bufnr = self:get_bufnr(),
-      selection_idx = {
-        start_row = start_row,
-        start_col = start_col,
-        end_row = end_row,
-        end_col = end_col,
-      },
-      default_ui = self.ui,
-      title = self.opts.title,
-      args = self.opts.args,
-      stop = function()
-        self.stop = true
-      end,
-    })
+    if self.strategy == STRATEGY_NEW_DISPLAY_WINDOW then
+      self.popup:mount(self.name)
+    else
+      self.popup:mount()
+    end
+
     params.stream = true
+
     self.provider.api:chat_completions(
       params,
       utils.partial(utils.add_partial_completion, {
@@ -128,15 +112,10 @@ function PopupAction:run()
         progress = function(flag)
           self:run_spinner(flag)
         end,
-        on_complete = function(total_text)
-          -- print("completed: " .. total_text)
-        end,
       }),
       function()
         -- should stop function
         if self.stop then
-          -- self.stop = false
-          -- self:run_spinner(false)
           self:set_loading(false)
           return true
         else

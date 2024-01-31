@@ -1,5 +1,5 @@
 local pickers = require("telescope.pickers")
-local SimpleWindow = require("ogpt.common.simple_window")
+local SimpleWindow = require("ogpt.common.ui.window")
 local utils = require("ogpt.utils")
 local conf = require("telescope.config").values
 local actions = require("telescope.actions")

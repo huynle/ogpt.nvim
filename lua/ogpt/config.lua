@@ -299,7 +299,7 @@ function M.defaults()
         -- model = "mistral:7b",
         type = "edit",
         strategy = "edit",
-        template = "Given the follow snippet, {{instruction}}.\n\nSnippet:\n```{{filetype}}\n{{input}}\n```",
+        template = "Given the follow input, {{instruction}}.\n\nInput:\n```{{filetype}}\n{{input}}\n```",
         delay = true,
         params = {
           temperature = 0.5,
