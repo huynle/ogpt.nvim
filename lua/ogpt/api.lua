@@ -18,7 +18,7 @@ function Api:completions(custom_params, cb)
   self:make_call(self.COMPLETIONS_URL, params, cb)
 end
 
-function Api:chat_completions(custom_params, cb, should_stop, opts)
+function Api:chat_completions(custom_params, partial_result_fn, should_stop, opts)
   local stream = custom_params.stream or false
   local params, _completion_url = Config.expand_model(self, custom_params)
 
@@ -31,7 +31,7 @@ function Api:chat_completions(custom_params, cb, should_stop, opts)
     local raw_chunks = ""
     local state = "START"
 
-    cb = vim.schedule_wrap(cb)
+    partial_result_fn = vim.schedule_wrap(partial_result_fn)
 
     self:exec(
       "curl",
@@ -59,10 +59,10 @@ function Api:chat_completions(custom_params, cb, should_stop, opts)
             }
             table.insert(error_msg, vim.inspect(params))
             -- local error_msg = "OGPT ERROR: " .. (json.error.message or "Something went wrong")
-            cb(table.concat(error_msg, " "), "ERROR", ctx)
+            partial_result_fn(table.concat(error_msg, " "), "ERROR", ctx)
             return
           end
-          ctx, raw_chunks, state = self.provider.process_line(json, ctx, raw_chunks, state, cb)
+          ctx, raw_chunks, state = self.provider.process_line(json, ctx, raw_chunks, state, partial_result_fn)
           return
         end
 
@@ -70,21 +70,21 @@ function Api:chat_completions(custom_params, cb, should_stop, opts)
           local raw_json = string.gsub(line, "^data:", "")
           local _ok, _json = pcall(vim.json.decode, raw_json)
           if _ok then
-            ctx, raw_chunks, state = self.provider.process_line(_json, ctx, raw_chunks, state, cb)
+            ctx, raw_chunks, state = self.provider.process_line(_json, ctx, raw_chunks, state, partial_result_fn)
           end
         end
       end,
       function(err, _)
-        cb(err, "ERROR", ctx)
+        partial_result_fn(err, "ERROR", ctx)
       end,
       should_stop,
       function()
-        cb(raw_chunks, "END", ctx)
+        partial_result_fn(raw_chunks, "END", ctx)
       end
     )
   else
     params.stream = false
-    self:make_call(self.provider.envs.CHAT_COMPLETIONS_URL, params, cb)
+    self:make_call(self.provider.envs.CHAT_COMPLETIONS_URL, params, partial_result_fn)
   end
 end
 

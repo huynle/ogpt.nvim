@@ -120,7 +120,7 @@ function M.defaults()
         close = "<C-c>",
         accept = "<C-y>", -- accept the output and write to original buffer
         toggle_diff = "<C-d>", -- view the diff between left and right panes and use diff-mode
-        toggle_parameters = "<C-o>", -- Toggle parameters window
+        toggle_parameters = "<C-p>", -- Toggle parameters window
         cycle_windows = "<Tab>",
         use_output_as_input = "<C-u>",
       },
@@ -197,7 +197,7 @@ function M.defaults()
         draft_message = "<C-d>",
         edit_message = "e",
         delete_message = "d",
-        toggle_parameters = "<C-o>",
+        toggle_parameters = "<C-p>",
         toggle_message_role = "<C-r>",
         toggle_system_role_open = "<C-s>",
         stop_generating = "<C-x>",
@@ -299,7 +299,7 @@ function M.defaults()
         -- model = "mistral:7b",
         type = "edit",
         strategy = "edit",
-        template = "Given the follow snippet, {{instruction}}.\n\nSnippet:\n```{{filetype}}\n{{input}}\n```",
+        template = "Given the follow input, {{instruction}}.\n\nInput:\n```{{filetype}}\n{{input}}\n```",
         delay = true,
         params = {
           temperature = 0.5,

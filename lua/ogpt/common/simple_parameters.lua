@@ -1,5 +1,6 @@
 local pickers = require("telescope.pickers")
-local Utils = require("ogpt.utils")
+local SimpleWindow = require("ogpt.common.ui.window")
+local utils = require("ogpt.utils")
 local conf = require("telescope.config").values
 local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
@@ -7,7 +8,6 @@ local action_state = require("telescope.actions.state")
 local M = {}
 M.vts = {}
 
-local Popup = require("nui.popup")
 local Config = require("ogpt.config")
 
 local namespace_id = vim.api.nvim_create_namespace("OGPTNS")
@@ -39,7 +39,7 @@ end
 
 local function preview_command(entry, bufnr, width)
   vim.api.nvim_buf_call(bufnr, function()
-    local preview = Utils.wrapTextToTable(entry.value, width - 5)
+    local preview = utils.wrapTextToTable(entry.value, width - 5)
     table.insert(preview, 1, "---")
     table.insert(preview, 1, entry.display)
     vim.api.nvim_buf_set_lines(bufnr, 0, -1, true, preview)
@@ -69,7 +69,7 @@ local finder = function(opts)
   })
 end
 
-local params_order = {
+M.params_order = {
   "provider",
   "model",
   "embedding_only",
@@ -159,7 +159,7 @@ function M.select_parameter(opts)
       selection_caret = Config.options.chat.answer_sign .. " ",
       prompt_title = "Parameter",
       finder = finder({
-        parameters = params_order,
+        parameters = M.params_order,
       }),
       sorter = conf.generic_sorter(opts),
       attach_mappings = function(prompt_bufnr)
@@ -210,7 +210,7 @@ end
 M.refresh_panel = function()
   -- write details as virtual text
   local details = {}
-  for _, key in pairs(params_order) do
+  for _, key in pairs(M.params_order) do
     if M.params[key] ~= nil then
       local display_text = M.params[key]
       if type(display_text) == "table" then
@@ -248,6 +248,7 @@ end
 
 M.get_parameters_panel = function(type, default_params, session, parent)
   M.type = type
+  M.name = "ogpt_parameters"
   local custom_params = M.read_config(session or {})
 
   M.params = vim.tbl_deep_extend("force", {}, default_params, custom_params or {})
@@ -255,68 +256,13 @@ M.get_parameters_panel = function(type, default_params, session, parent)
     M.params = session.parameters
   end
 
-  M.panel = Popup(Config.options.parameters_window)
-  -- M.panel = SimpleWindow.new(Config.options.parameters_window)
+  -- M.panel = Popup(Config.options.parameters_window)
+  M.panel = SimpleWindow.new(M.name, { params = M.params })
   -- M.panel:mount()
-  M.refresh_panel()
-
-  M.panel:map("n", "d", function()
-    local row, _ = unpack(vim.api.nvim_win_get_cursor(M.panel.winid))
-
-    local existing_order = {}
-    for _, key in ipairs(params_order) do
-      if M.params[key] ~= nil then
-        table.insert(existing_order, key)
-      end
-    end
-
-    local key = existing_order[row]
-    M.update_property(key, row, nil, session)
-    M.refresh_panel()
-  end)
-
-  M.panel:map("n", "a", function()
-    local row, _ = unpack(vim.api.nvim_win_get_cursor(M.panel.winid))
-    M.select_parameter({
-      cb = function(key, value)
-        M.update_property(key, row + 1, value, session)
-      end,
-    })
-  end)
-
-  M.panel:map("n", "<Enter>", function()
-    local row, _ = unpack(vim.api.nvim_win_get_cursor(M.panel.winid))
-
-    local existing_order = {}
-    for _, key in ipairs(params_order) do
-      if M.params[key] ~= nil then
-        table.insert(existing_order, key)
-      end
-    end
-
-    local key = existing_order[row]
-    if key == "model" then
-      local models = require("ogpt.models")
-      models.select_model(parent.provider, {
-        cb = function(display, value)
-          M.update_property(key, row, value, session)
-        end,
-      })
-    elseif key == "provider" then
-      local provider = require("ogpt.provider")
-      provider.select_provider({
-        cb = function(display, value)
-          M.update_property(key, row, value, session)
-          parent.provider = Config.get_provider(value)
-        end,
-      })
-    else
-      local value = M.params[key]
-      M.open_edit_property_input(key, value, row, function(new_value)
-        M.update_property(key, row, Utils.process_string(new_value), session)
-      end)
-    end
-  end, {})
+  --
+  -- vim.api.nvim_buf_set_option(M.panel.bufnr, "modifiable", true)
+  --
+  -- M.refresh_panel()
 
   return M.panel
 end
