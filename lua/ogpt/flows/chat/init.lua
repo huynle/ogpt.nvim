@@ -1,6 +1,7 @@
 local Session = require("ogpt.flows.chat.session")
 local Prompts = require("ogpt.prompts")
 local Chat = require("ogpt.flows.chat.base")
+-- local Chat = require("ogpt.flows.chat.simple")
 
 local M = {
   chat = nil,
@@ -10,7 +11,7 @@ M.open = function(opts)
   if M.chat ~= nil and M.chat.active then
     M.chat:toggle()
   else
-    M.chat = Chat.new(opts)
+    M.chat = Chat(opts)
     M.chat:open(opts)
   end
 end
@@ -22,7 +23,7 @@ M.focus = function(opts)
       M.chat:show(opts)
     end
   else
-    M.chat = Chat.new(opts)
+    M.chat = Chat(opts)
     M.chat:open(opts)
   end
 end
@@ -34,7 +35,7 @@ M.open_with_awesome_prompt = function()
       local session = Session.new({ name = act })
       session:save()
 
-      local chat = Chat:new()
+      local chat = Chat()
       chat:open()
       chat.chat_window.border:set_text("top", " OGPT - Acts as " .. act .. " ", "center")
 

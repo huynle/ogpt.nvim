@@ -1,7 +1,9 @@
 local classes = require("ogpt.common.classes")
+local Object = require("ogpt.common.object")
 local utils = require("ogpt.utils")
 
-local SimpleView = classes.class()
+-- local SimpleView = classes.class()
+local SimpleView = Object("SimpleView")
 
 function SimpleView:init(name, opts)
   local _defaults = {
@@ -118,7 +120,7 @@ function SimpleView:mount(name, opts)
     -- local _copy = event
     local event_names = _copy.events
     _copy.events = nil
-    opts = vim.tbl_extend("force", opts or {}, {
+    _copy = vim.tbl_extend("force", _copy or {}, {
       group = group,
       buffer = self.bufnr,
     })
@@ -133,6 +135,17 @@ end
 function SimpleView:map(mode, key, command)
   mode = vim.tbl_islist(mode) and mode or { mode }
   vim.keymap.set(mode, key, command, { buffer = self.bufnr })
+end
+
+function SimpleView:on(events, command)
+  events = vim.tbl_islist(events) and events or { events }
+  local group = vim.api.nvim_create_augroup(self.name .. "_augroup", {})
+  local opts = {
+    group = group,
+    buffer = self.bufnr,
+    callback = command,
+  }
+  vim.api.nvim_create_autocmd(events, opts)
 end
 
 return SimpleView

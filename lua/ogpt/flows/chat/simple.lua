@@ -1,10 +1,11 @@
-local Object = require("ogpt.common.object")
+local SimpleWindow = require("ogpt.common.ui.window")
 local Layout = require("nui.layout")
 local Popup = require("nui.popup")
 
+local BaseChat = require("ogpt.flows.chat.base")
 local ChatInput = require("ogpt.input")
 local Config = require("ogpt.config")
-local Parameters = require("ogpt.parameters")
+local Parameters = require("ogpt.common.simple_parameters")
 local Sessions = require("ogpt.flows.chat.sessions")
 local utils = require("ogpt.utils")
 local Signs = require("ogpt.signs")
@@ -17,51 +18,9 @@ ROLE_ASSISTANT = "assistant"
 ROLE_SYSTEM = "system"
 ROLE_USER = "user"
 
-local Chat = Object("Chat")
+local SimpleChat = BaseChat:extend("SimpleChat")
 
-function Chat:init(opts)
-  self.input_extmark_id = nil
-
-  self.active_panel = nil
-  self.selected_message_nsid = vim.api.nvim_create_namespace("OGPTNSSM")
-
-  -- quit indicator
-  self.active = true
-  self.focused = true
-
-  -- UI ELEMENTS
-  self.layout = nil
-  self.chat_panel = nil
-  self.chat_input = nil
-  self.chat_window = nil
-  self.sessions_panel = nil
-  self.parameters_panel = nil
-  self.system_role_panel = nil
-
-  -- UI OPEN INDICATORS
-  self.parameters_open = false
-  self.system_role_open = false
-
-  self.prompt_lines = 1
-
-  self.display_mode = Config.options.popup_layout.default
-  self.params = Config.get_chat_params(opts.provider)
-
-  self.session = Session.latest()
-
-  self.provider = Config.get_provider(self.session.parameters.provider, self)
-  self.selectedIndex = 0
-  self.role = ROLE_USER
-  self.messages = {}
-  self.spinner = Spinner:new(function(state)
-    vim.schedule(function()
-      self:set_lines(-2, -1, false, { state .. " " .. Config.options.chat.loading_text })
-      self:display_input_suffix(state)
-    end)
-  end)
-end
-
-function Chat:welcome()
+function SimpleChat:welcome()
   self.messages = {}
   self.selectedIndex = 0
   self:set_lines(0, -1, false, {})
@@ -88,7 +47,7 @@ function Chat:welcome()
   self:render_role()
 end
 
-function Chat:render_role()
+function SimpleChat:render_role()
   if self.role_extmark_id ~= nil then
     vim.api.nvim_buf_del_extmark(self.chat_input.bufnr, Config.namespace_id, self.role_extmark_id)
   end
@@ -107,7 +66,7 @@ function Chat:render_role()
   })
 end
 
-function Chat:set_system_message(msg, skip_session_add)
+function SimpleChat:set_system_message(msg, skip_session_add)
   self.system_message = msg
   if msg == nil then
     self.system_role_panel:set_text({})
@@ -125,7 +84,7 @@ function Chat:set_system_message(msg, skip_session_add)
   end
 end
 
-function Chat:new_session()
+function SimpleChat:new_session()
   vim.api.nvim_buf_clear_namespace(self.chat_window.bufnr, Config.namespace_id, 0, -1)
 
   self.session = Session:new()
@@ -136,7 +95,7 @@ function Chat:new_session()
   self:welcome()
 end
 
-function Chat:set_session(session)
+function SimpleChat:set_session(session)
   vim.api.nvim_buf_clear_namespace(self.chat_window.bufnr, Config.namespace_id, 0, -1)
 
   self.session = session
@@ -150,11 +109,11 @@ function Chat:set_session(session)
   self:set_keymaps()
 end
 
-function Chat:isBusy()
+function SimpleChat:isBusy()
   return self.spinner:is_running()
 end
 
-function Chat:add(type, text, usage)
+function SimpleChat:add(type, text, usage)
   local idx = self.session:add_item({
     type = type,
     text = text,
@@ -165,7 +124,7 @@ function Chat:add(type, text, usage)
   self:render_role()
 end
 
-function Chat:_add(type, text, usage, idx)
+function SimpleChat:_add(type, text, usage, idx)
   if not self:is_buf_exists() then
     return
   end
@@ -198,19 +157,19 @@ function Chat:_add(type, text, usage, idx)
   self:renderLastMessage()
 end
 
-function Chat:addQuestion(text)
+function SimpleChat:addQuestion(text)
   self:add(self.role == ROLE_USER and QUESTION or ANSWER, text)
 end
 
-function Chat:addSystem(text)
+function SimpleChat:addSystem(text)
   self:add(SYSTEM, text)
 end
 
-function Chat:addAnswer(text, usage)
+function SimpleChat:addAnswer(text, usage)
   self:add(ANSWER, text, usage)
 end
 
-function Chat:addAnswerPartial(text, state, ctx)
+function SimpleChat:addAnswerPartial(text, state, ctx)
   if state == "ERROR" then
     self:stopSpinner()
     return self:addAnswer(text, {})
@@ -284,7 +243,7 @@ function Chat:addAnswerPartial(text, state, ctx)
   end
 end
 
-function Chat:get_total_tokens()
+function SimpleChat:get_total_tokens()
   local total_tokens = 0
   for i = 1, #self.messages, 1 do
     local tokens = self.messages[i].usage.total_tokens
@@ -295,7 +254,7 @@ function Chat:get_total_tokens()
   return total_tokens
 end
 
-function Chat:next()
+function SimpleChat:next()
   local count = self:count()
   if self.selectedIndex < count then
     self.selectedIndex = self.selectedIndex + 1
@@ -305,7 +264,7 @@ function Chat:next()
   self:show_message_selection()
 end
 
-function Chat:prev()
+function SimpleChat:prev()
   local count = self:count()
   if self.selectedIndex > 1 then
     self.selectedIndex = self.selectedIndex - 1
@@ -315,7 +274,7 @@ function Chat:prev()
   self:show_message_selection()
 end
 
-function Chat:show_message_selection()
+function SimpleChat:show_message_selection()
   local msg = self:getSelected()
   if msg == nil then
     return
@@ -332,15 +291,15 @@ function Chat:show_message_selection()
   self:render_message_actions()
 end
 
-function Chat:hide_message_selection()
+function SimpleChat:hide_message_selection()
   vim.api.nvim_buf_clear_namespace(self.chat_window.bufnr, self.selected_message_nsid, 0, -1)
 end
 
-function Chat:getSelected()
+function SimpleChat:getSelected()
   return self.messages[self.selectedIndex]
 end
 
-function Chat:delete_message()
+function SimpleChat:delete_message()
   local selected_index = self.selectedIndex
   local msg = self:getSelected()
   self.session:delete_by_index(msg.idx)
@@ -358,7 +317,7 @@ function Chat:delete_message()
   self:show_message_selection()
 end
 
-function Chat:render_message_actions()
+function SimpleChat:render_message_actions()
   local msg = self:getSelected()
   if msg ~= nil then
     vim.api.nvim_buf_set_extmark(self.chat_window.bufnr, self.selected_message_nsid, msg.start_line, 0, {
@@ -386,7 +345,7 @@ function Chat:render_message_actions()
   end
 end
 
-function Chat:getSelectedCode()
+function SimpleChat:getSelectedCode()
   local msg = self:getSelected()
   local text = msg.text
   -- Iterate through all code blocks in the message using a regular expression pattern
@@ -405,7 +364,7 @@ function Chat:getSelectedCode()
   return nil
 end
 
-function Chat:get_last_answer()
+function SimpleChat:get_last_answer()
   for i = #self.messages, 1, -1 do
     if self.messages[i].type == ANSWER then
       return self.messages[i]
@@ -413,7 +372,7 @@ function Chat:get_last_answer()
   end
 end
 
-function Chat:renderLastMessage()
+function SimpleChat:renderLastMessage()
   self:stopSpinner()
   local msg = self:getSelected()
 
@@ -461,16 +420,16 @@ function Chat:renderLastMessage()
   end
 end
 
-function Chat:showProgess()
+function SimpleChat:showProgess()
   self.spinner:start()
 end
 
-function Chat:stopSpinner()
+function SimpleChat:stopSpinner()
   self.spinner:stop()
   self:display_input_suffix()
 end
 
-function Chat:toString()
+function SimpleChat:toString()
   local str = ""
   for _, msg in pairs(self.messages) do
     str = str .. msg.text .. "\n"
@@ -478,7 +437,7 @@ function Chat:toString()
   return str
 end
 
-function Chat:toMessages()
+function SimpleChat:toMessages()
   local messages = {}
   if self.system_message ~= nil then
     table.insert(messages, { role = "system", content = self.system_message })
@@ -497,7 +456,7 @@ function Chat:toMessages()
   return messages
 end
 
-function Chat:count()
+function SimpleChat:count()
   local count = 0
   for _ in pairs(self.messages) do
     count = count + 1
@@ -505,11 +464,11 @@ function Chat:count()
   return count
 end
 
-function Chat:is_buf_exists()
+function SimpleChat:is_buf_exists()
   return vim.fn.bufexists(self.chat_window.bufnr) == 1
 end
 
-function Chat:is_buf_visiable()
+function SimpleChat:is_buf_visiable()
   -- Get all windows in the current tab
   local wins = vim.api.nvim_tabpage_list_wins(0)
   -- Traverse the window list to determine whether the buffer of chat_window is visible in the window
@@ -524,7 +483,7 @@ function Chat:is_buf_visiable()
   return visible
 end
 
-function Chat:set_lines(start_idx, end_idx, strict_indexing, lines)
+function SimpleChat:set_lines(start_idx, end_idx, strict_indexing, lines)
   if self:is_buf_exists() then
     vim.api.nvim_buf_set_option(self.chat_window.bufnr, "modifiable", true)
     vim.api.nvim_buf_set_lines(self.chat_window.bufnr, start_idx, end_idx, strict_indexing, lines)
@@ -532,25 +491,25 @@ function Chat:set_lines(start_idx, end_idx, strict_indexing, lines)
   end
 end
 
-function Chat:add_highlight(hl_group, line, col_start, col_end)
+function SimpleChat:add_highlight(hl_group, line, col_start, col_end)
   if self:is_buf_exists() then
     vim.api.nvim_buf_add_highlight(self.chat_window.bufnr, -1, hl_group, line, col_start, col_end)
   end
 end
 
-function Chat:set_cursor(pos)
+function SimpleChat:set_cursor(pos)
   if self:is_buf_visiable() then
     pcall(vim.api.nvim_win_set_cursor, self.chat_window.winid, pos)
   end
 end
 
-function Chat:get_width()
+function SimpleChat:get_width()
   if self:is_buf_exists() then
     return vim.api.nvim_win_get_width(self.chat_window.winid)
   end
 end
 
-function Chat:display_input_suffix(suffix)
+function SimpleChat:display_input_suffix(suffix)
   if self.extmark_id then
     vim.api.nvim_buf_del_extmark(self.chat_input.bufnr, Config.namespace_id, self.extmark_id)
   end
@@ -568,7 +527,7 @@ function Chat:display_input_suffix(suffix)
   end
 end
 
-function Chat:scroll(direction)
+function SimpleChat:scroll(direction)
   local speed = vim.api.nvim_win_get_height(self.chat_window.winid) / 2
   local input = direction > 0 and [[]] or [[]]
   local count = math.floor(speed)
@@ -578,7 +537,7 @@ function Chat:scroll(direction)
   end)
 end
 
-function Chat:map(keys, fn, windows, modes)
+function SimpleChat:map(keys, fn, windows, modes)
   if windows == nil or next(windows) == nil then
     windows = { self.parameters_panel, self.sessions_panel, self.system_role_panel, self.chat_input, self.chat_window }
   end
@@ -600,7 +559,7 @@ function Chat:map(keys, fn, windows, modes)
   end
 end
 
-function Chat:set_active_panel(panel)
+function SimpleChat:set_active_panel(panel)
   vim.api.nvim_set_current_win(panel.winid)
   self.active_panel = panel
   utils.change_mode_to_normal()
@@ -612,7 +571,7 @@ function Chat:set_active_panel(panel)
   end
 end
 
-function Chat:get_layout_params()
+function SimpleChat:get_layout_params()
   local lines_height = vim.api.nvim_get_option("lines")
   local statusline_height = vim.o.laststatus == 0 and 0 or 1 -- height of the statusline if present
   local cmdline_height = vim.o.cmdheight -- height of the cmdline if present
@@ -679,13 +638,14 @@ function Chat:get_layout_params()
   return config, box
 end
 
-function Chat:open()
+function SimpleChat:open()
   self.session.parameters = vim.tbl_extend("keep", self.session.parameters, self.params)
   self.parameters_panel = Parameters.get_panel(self.session, self)
   self.sessions_panel = Sessions.get_panel(function(session)
     self:set_session(session)
   end)
-  self.chat_window = Popup(Config.options.popup_window)
+  self.chat_window = SimpleWindow("ogpt_chat")
+  -- self.chat_window = Popup(Config.options.popup_window)
   self.system_role_panel = SystemWindow({
     on_change = function(text)
       self:set_system_message(text)
@@ -747,7 +707,7 @@ function Chat:open()
   self:set_events()
 end
 
-function Chat:set_events()
+function SimpleChat:set_events()
   local event = require("nui.utils.autocmd").event
   local windows = { self.parameters_panel, self.chat_input, self.chat_window }
 
@@ -764,7 +724,7 @@ function Chat:set_events()
   end
 end
 
-function Chat:set_keymaps()
+function SimpleChat:set_keymaps()
   -- yank last answer
   self:map(Config.options.chat.keymaps.yank_last, function()
     local msg = self:getSelected()
@@ -927,13 +887,13 @@ function Chat:set_keymaps()
   end, { self.chat_window }, { "n" })
 end
 
-function Chat:open_system_panel()
+function SimpleChat:open_system_panel()
   self.system_role_open = true
   self:redraw()
   self:set_active_panel(self.system_role_panel)
 end
 
-function Chat:redraw(noinit)
+function SimpleChat:redraw(noinit)
   noinit = noinit or false
   self.layout:update(self:get_layout_params())
   if not noinit then
@@ -941,16 +901,16 @@ function Chat:redraw(noinit)
   end
 end
 
-function Chat:hide()
+function SimpleChat:hide()
   self.layout:hide()
 end
 
-function Chat:show()
+function SimpleChat:show()
   self:redraw(true)
   self.layout:show()
 end
 
-function Chat:toggle()
+function SimpleChat:toggle()
   if self.layout.winid ~= nil then
     self:hide()
   else
@@ -958,9 +918,9 @@ function Chat:toggle()
   end
 end
 
-function Chat:configure_parameters_panel(session)
+function SimpleChat:configure_parameters_panel(session)
   self.parameters_panel = Parameters.get_panel(session)
   self:redraw()
 end
 
-return Chat
+return SimpleChat

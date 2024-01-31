@@ -257,7 +257,7 @@ M.get_parameters_panel = function(type, default_params, session, parent)
   end
 
   -- M.panel = Popup(Config.options.parameters_window)
-  M.panel = SimpleWindow.new(M.name, { params = M.params })
+  M.panel = SimpleWindow(M.name, { params = M.params })
   -- M.panel:mount()
   --
   -- vim.api.nvim_buf_set_option(M.panel.bufnr, "modifiable", true)

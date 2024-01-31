@@ -94,14 +94,14 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
     visual_lines, start_row, start_col, end_row, end_col = unpack(selection)
   end
   local parameters_panel = SimpleParameters.get_parameters_panel("edits", api_params, nil, self)
-  input_window = SimpleWindow.new("ogpt_input", {
+  input_window = SimpleWindow("ogpt_input", {
     buf = {
       syntax = vim.api.nvim_buf_get_option(0, "filetype"),
     },
   })
-  output_window = SimpleWindow.new("ogpt_output")
+  output_window = SimpleWindow("ogpt_output")
   -- instructions_input = ChatInput(Config.options.popup_input, {
-  instructions_input = SimpleWindow.new("ogpt_instruction", {
+  instructions_input = SimpleWindow("ogpt_instruction", {
     keymaps = {
       ["<CR>"] = function()
         local function on_submit(instruction)

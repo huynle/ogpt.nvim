@@ -80,18 +80,18 @@ function PopupAction:run()
       end
     )
   elseif self.strategy == STRATEGY_DISPLAY_WINDOW or self.strategy == STRATEGY_NEW_DISPLAY_WINDOW then
-    self.popup = SimpleWindow.new("ogpt_popup", {
+    self.popup = SimpleWindow("ogpt_popup", {
       new_win = false,
       buf = {
         syntax = "markdown",
       },
       events = {
-        -- {
-        --   events = { "BufUnload" },
-        --   callback = function()
-        --     opts.stop()
-        --   end,
-        -- },
+        {
+          events = { "BufUnload" },
+          callback = function()
+            self:set_loading(false)
+          end,
+        },
       },
     })
     popup_keymap.apply_map(self.popup, opts)
