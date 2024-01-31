@@ -289,12 +289,14 @@ function M.add_partial_completion(opts, text, state)
     local length = #lines
     local buffer = panel.bufnr
 
-    if M.is_buf_exists(panel.bufnr) then
-      for i, line in ipairs(lines) do
+    for i, line in ipairs(lines) do
+      if vim.fn.bufexists(buffer) then
         local currentLine = vim.api.nvim_buf_get_lines(buffer, -2, -1, false)[1]
-        vim.api.nvim_buf_set_lines(buffer, -2, -1, false, { currentLine .. line })
-        if i == length and i > 1 then
-          vim.api.nvim_buf_set_lines(buffer, -1, -1, false, { "" })
+        if currentLine then
+          vim.api.nvim_buf_set_lines(buffer, -2, -1, false, { currentLine .. line })
+          if i == length and i > 1 then
+            vim.api.nvim_buf_set_lines(buffer, -1, -1, false, { "" })
+          end
         end
       end
     end
@@ -391,6 +393,14 @@ function M.log(msg, level)
   if Config.options.debug then
     vim.notify(msg, level, { title = "OGPT Debug" })
   end
+end
+
+function M.shallow_copy(t)
+  local t2 = {}
+  for k, v in pairs(t) do
+    t2[k] = v
+  end
+  return t2
 end
 
 return M

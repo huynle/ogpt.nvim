@@ -2,6 +2,8 @@ local classes = require("ogpt.common.classes")
 local BaseAction = require("ogpt.flows.actions.base")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
+local SimpleWindow = require("ogpt.common.ui.window")
+local popup_keymap = require("ogpt.flows.actions.popup.keymaps")
 
 local PopupAction = classes.class(BaseAction)
 
@@ -9,6 +11,8 @@ local STRATEGY_REPLACE = "replace"
 local STRATEGY_APPEND = "append"
 local STRATEGY_PREPEND = "prepend"
 local STRATEGY_DISPLAY = "display"
+local STRATEGY_DISPLAY_WINDOW = "display_window"
+local STRATEGY_NEW_DISPLAY_WINDOW = "new_display_window"
 local STRATEGY_QUICK_FIX = "quick_fix"
 
 function PopupAction:init(name, opts)
@@ -27,62 +31,104 @@ function PopupAction:init(name, opts)
 end
 
 function PopupAction:run()
-  self.stop = false
+  -- self.stop = false
   local params = self:get_params()
   local _, start_row, start_col, end_row, end_col = self:get_visual_selection()
+  local opts = {
+    name = self.name,
+    cur_win = self.cur_win,
+    main_bufnr = self:get_bufnr(),
+    selection_idx = {
+      start_row = start_row,
+      start_col = start_col,
+      end_row = end_row,
+      end_col = end_col,
+    },
+    default_ui = self.ui,
+    title = self.opts.title,
+    args = self.opts.args,
+    stop = function()
+      self.stop = true
+    end,
+  }
 
   if self.strategy == STRATEGY_DISPLAY then
-    self:run_spinner(true)
-    self.popup:mount({
-      name = self.name,
-      cur_win = self.cur_win,
-      main_bufnr = self:get_bufnr(),
-      selection_idx = {
-        start_row = start_row,
-        start_col = start_col,
-        end_row = end_row,
-        end_col = end_col,
-      },
-      default_ui = self.ui,
-      title = self.opts.title,
-      args = self.opts.args,
-      stop = function()
-        self.stop = true
-      end,
-    })
+    self:set_loading(true)
+    self.popup:mount(opts)
     params.stream = true
-    self:call_api(self.popup, params)
+    self.provider.api:chat_completions(
+      params,
+      utils.partial(utils.add_partial_completion, {
+        panel = self.popup,
+        progress = function(flag)
+          self:run_spinner(flag)
+        end,
+        on_complete = function(total_text)
+          -- print("completed: " .. total_text)
+        end,
+      }),
+      function()
+        -- should stop function
+        if self.stop then
+          -- self.stop = false
+          -- self:run_spinner(false)
+          self:set_loading(false)
+          return true
+        else
+          return false
+        end
+      end
+    )
+  elseif self.strategy == STRATEGY_DISPLAY_WINDOW or self.strategy == STRATEGY_NEW_DISPLAY_WINDOW then
+    self.popup = SimpleWindow.new("ogpt_popup", {
+      new_win = false,
+      buf = {
+        syntax = "markdown",
+      },
+      events = {
+        -- {
+        --   events = { "BufUnload" },
+        --   callback = function()
+        --     opts.stop()
+        --   end,
+        -- },
+      },
+    })
+    popup_keymap.apply_map(self.popup, opts)
+
+    self:set_loading(true)
+    if self.strategy == STRATEGY_NEW_DISPLAY_WINDOW then
+      self.popup:mount(self.name)
+    else
+      self.popup:mount()
+    end
+
+    params.stream = true
+
+    self.provider.api:chat_completions(
+      params,
+      utils.partial(utils.add_partial_completion, {
+        panel = self.popup,
+        progress = function(flag)
+          self:run_spinner(flag)
+        end,
+      }),
+      function()
+        -- should stop function
+        if self.stop then
+          self:set_loading(false)
+          return true
+        else
+          return false
+        end
+      end
+    )
   else
     self:set_loading(true)
     self.provider.api:chat_completions(params, function(answer, usage)
       self:on_result(answer, usage)
     end)
   end
-end
-
-function PopupAction:call_api(panel, params)
-  self.provider.api:chat_completions(
-    params,
-    utils.partial(utils.add_partial_completion, {
-      panel = panel,
-      progress = function(flag)
-        self:run_spinner(flag)
-      end,
-      on_complete = function(total_text)
-        -- print("completed: " .. total_text)
-      end,
-    }),
-    function()
-      -- should stop function
-      if self.stop then
-        self.stop = false
-        self:run_spinner(false)
-        return true
-      else
-        return false
-      end
-    end
-  )
 end
 
 function PopupAction:on_result(answer, usage)

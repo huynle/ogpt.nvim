@@ -25,9 +25,9 @@ end
 function BaseAction:post_init()
   self.popup = PopupWindow()
   self.spinner = Spinner:new(function(state)
-    vim.schedule(function()
-      self:display_input_suffix(state)
-    end)
+    -- vim.schedule(function()
+    --   self:display_input_suffix(state)
+    -- end)
   end)
 
   self:update_variables()
@@ -111,12 +111,14 @@ function BaseAction:set_loading(state)
     end
     self:mark_selection_with_signs()
     self.spinner:start()
+    self.stop = false
   else
     self.spinner:stop()
     Signs.del(bufnr)
     if self.extmark_id then
       vim.api.nvim_buf_del_extmark(bufnr, namespace_id, self.extmark_id)
     end
+    self.stop = true
   end
 end
 
