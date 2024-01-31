@@ -5,12 +5,12 @@ local Config = require("ogpt.config")
 local SimpleView = classes.class()
 
 function SimpleView:init(name, opts)
-  -- Set default values for the options table if it's not provided.
-  opts = vim.tbl_extend("force", {
+  local _defaults = {
+
     buf = {
       swapfile = false,
       bufhidden = "delete",
-      filetype = "markdown",
+      syntax = "markdown",
       buftype = "nofile",
     },
     buf_vars = {},
@@ -29,8 +29,10 @@ function SimpleView:init(name, opts)
         end,
       },
     },
-  }, opts or {})
-  self.opts = opts
+  }
+  -- Set default values for the options table if it's not provided.
+  local _opts = vim.tbl_deep_extend("force", _defaults, opts or {})
+  self.opts = _opts
   self.name = name
   self.bufnr = nil
   self.winid = nil
@@ -39,7 +41,7 @@ end
 
 function SimpleView:unmount()
   local force = true
-  local winid = vim.fn.bufwinid(self.bufnr)
+  local winid = vim.fn.bufwinid(self.bufnr or -1)
   if winid ~= -1 then
     vim.api.nvim_win_close(self.winid, force)
   end
@@ -65,7 +67,7 @@ function SimpleView:mount(name, opts)
   end
   self.visible = true
   opts = opts or {}
-  opts = vim.tbl_extend("force", self.opts, opts)
+  opts = vim.tbl_deep_extend("force", self.opts, opts)
   name = name or self.name
   local start_win = vim.api.nvim_get_current_win()
   local buf = vim.fn.bufnr(name)
@@ -82,9 +84,13 @@ function SimpleView:mount(name, opts)
   self.bufnr = vim.api.nvim_get_current_buf()
   self.winid = vim.api.nvim_get_current_win()
 
+  vim.api.nvim_buf_set_option(self.bufnr, "filetype", name)
+
+  -- vim.api.nvim_exec_autocmds("Syntax", { buffer = self.bufnr, Syntax = opts.buf.filetype })
+
   -- Set the buffer type to "nofile" to prevent it from being saved.
   -- vim.api.nvim_buf_set_option(self.bufnr, "buftype", "nofile")
-  for opt, val in pairs(self.opts.buf) do
+  for opt, val in pairs(opts.buf) do
     vim.api.nvim_buf_set_option(self.bufnr, opt, val)
   end
 
@@ -98,24 +104,26 @@ function SimpleView:mount(name, opts)
   -- -- vim.api.nvim_win_set_option(win, "cursorline", opts.win.cursorline)
   --
   -- Set buffer variables as specified in the options table.
-  for key, value in pairs(self.opts.buf_vars or {}) do
+  for key, value in pairs(opts.buf_vars or {}) do
     vim.api.nvim_buf_set_var(self.bufnr, key, value)
   end
 
   -- Set the keymaps for the window as specified in the options table.
-  for keymap, command in pairs(self.opts.keymaps) do
+  for keymap, command in pairs(opts.keymaps) do
     vim.keymap.set("n", keymap, command, { noremap = true, buffer = self.bufnr })
   end
 
   local group = vim.api.nvim_create_augroup(name .. "_augroup", {})
-  for _, event in ipairs(self.opts.events) do
-    local event_names = event.events
-    event.events = nil
+  for _, event in ipairs(opts.events) do
+    local _copy = utils.shallow_copy(event)
+    -- local _copy = event
+    local event_names = _copy.events
+    _copy.events = nil
     opts = vim.tbl_extend("force", opts or {}, {
       group = group,
       buffer = self.bufnr,
     })
-    vim.api.nvim_create_autocmd(event_names, event)
+    vim.api.nvim_create_autocmd(event_names, _copy)
   end
 
   if not self.opts.enter then

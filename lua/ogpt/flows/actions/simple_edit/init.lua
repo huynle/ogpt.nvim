@@ -4,10 +4,6 @@ local BaseAction = require("ogpt.flows.actions.base")
 local layouts = require("ogpt.common.layouts")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
-local Layout = require("nui.layout")
-local Split = require("nui.split")
-local Popup = require("nui.popup")
-local ChatInput = require("ogpt.input")
 local SimpleParameters = require("ogpt.simple_parameters")
 
 local EditAction = classes.class(BaseAction)
@@ -75,11 +71,11 @@ local setup_and_mount = function(lines, output_lines, ...)
     vim.api.nvim_buf_set_lines(output_window.bufnr, 0, -1, false, output_lines)
   end
 
-  -- set input and output settings
-  for _, window in ipairs({ input_window, output_window }) do
-    vim.api.nvim_buf_set_option(window.bufnr, "filetype", "markdown")
-    vim.api.nvim_win_set_option(window.winid, "number", true)
-  end
+  -- -- set input and output settings
+  -- for _, window in ipairs({ input_window, output_window }) do
+  --   vim.api.nvim_buf_set_option(window.bufnr, "filetype", "markdown")
+  --   vim.api.nvim_win_set_option(window.winid, "number", true)
+  -- end
 end
 
 function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
@@ -97,13 +93,17 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   else
     visual_lines, start_row, start_col, end_row, end_col = unpack(selection)
   end
-  local parameters_panel = SimpleParameters.get_parameters_panel("edits", api_params)
-  input_window = SimpleWindow.new("ogpt_input", Config.options.popup_window)
-  output_window = SimpleWindow.new("ogpt_output", Config.options.popup_window)
+  local parameters_panel = SimpleParameters.get_parameters_panel("edits", api_params, nil, self)
+  input_window = SimpleWindow.new("ogpt_input", {
+    buf = {
+      syntax = vim.api.nvim_buf_get_option(0, "filetype"),
+    },
+  })
+  output_window = SimpleWindow.new("ogpt_output")
   -- instructions_input = ChatInput(Config.options.popup_input, {
   instructions_input = SimpleWindow.new("ogpt_instruction", {
     keymaps = {
-      ["<C-CR>"] = function()
+      ["<CR>"] = function()
         local function on_submit(instruction)
           -- clear input
           vim.api.nvim_buf_set_lines(instructions_input.bufnr, 0, -1, false, { "" })
@@ -164,7 +164,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       {
         events = { "BufUnload" },
         callback = function()
-          vim.print("turning off spinner")
+          -- vim.print("turning off spinner")
           self:run_spinner(false)
           if timer ~= nil then
             timer:stop()
@@ -178,9 +178,10 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   --   instructions_input.opts.on_submit(table.concat(instructions, "\n"))
   -- end)
 
-  layout = layouts.edit_with_no_layout(layout, input_window, instructions_input, output_window, parameters_panel, {
-    show_parameters = false,
-  })
+  layout =
+    layouts.edit_with_no_layout(layout, self, input_window, instructions_input, output_window, parameters_panel, {
+      show_parameters = false,
+    })
 
   -- accept output window
   for _, window in ipairs({ input_window, output_window, instructions_input }) do
@@ -206,7 +207,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   end
 
   -- close
-  for _, window in ipairs({ input_window, output_window, instructions_input }) do
+  for _, window in ipairs({ input_window, output_window, instructions_input, parameters_panel }) do
     for _, mode in ipairs({ "n", "i" }) do
       window:map(mode, Config.options.edit.keymaps.close, function()
         self.spinner:stop()
@@ -228,11 +229,11 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
     for _, mode in ipairs({ "n", "i" }) do
       popup:map(mode, Config.options.edit.keymaps.toggle_parameters, function()
         if parameters_open then
-          layouts.edit_with_no_layout(layout, input_window, instructions_input, output_window, parameters_panel, {
+          layouts.edit_with_no_layout(layout, self, input_window, instructions_input, output_window, parameters_panel, {
             show_parameters = false,
           })
         else
-          layouts.edit_with_no_layout(layout, input_window, instructions_input, output_window, parameters_panel, {
+          layouts.edit_with_no_layout(layout, self, input_window, instructions_input, output_window, parameters_panel, {
             show_parameters = true,
           })
           SimpleParameters.refresh_panel()
@@ -240,10 +241,10 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
         parameters_open = not parameters_open
         -- set input and output settings
         --  TODO
-        for _, window in ipairs({ input_window, output_window }) do
-          vim.api.nvim_buf_set_option(window.bufnr, "filetype", filetype)
-          vim.api.nvim_win_set_option(window.winid, "number", true)
-        end
+        -- for _, window in ipairs({ input_window, output_window }) do
+        --   vim.api.nvim_buf_set_option(window.bufnr, "filetype", filetype)
+        --   vim.api.nvim_win_set_option(window.winid, "number", true)
+        -- end
       end, {})
     end
   end

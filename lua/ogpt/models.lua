@@ -68,7 +68,7 @@ local finder = function(provider, opts)
 
               if not ok then
                 vim.print(
-                  "OGPT ERRPR: something happened when trying request for models from " .. providers.envs.MODELS_URL
+                  "OGPT ERRPR: something happened when trying request for models from " .. provider.envs.MODELS_URL
                 )
                 process_complete()
                 job_completed = true
