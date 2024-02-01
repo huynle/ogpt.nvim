@@ -141,7 +141,8 @@ function M.defaults()
       buf_options = {
         modifiable = false,
         readonly = false,
-        filetype = "markdown",
+        filetype = "ogpt-popup",
+        syntax = "markdown",
       },
       win_options = {
         wrap = true,
@@ -179,18 +180,21 @@ function M.defaults()
         win_options = {
           winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
         },
+        buf_options = {
+          filetype = "ogpt-sessions",
+        },
       },
       keymaps = {
         close = { "<C-c>" },
         yank_last = "<C-y>",
-        yank_last_code = "<C-k>",
+        yank_last_code = "<C-i>",
         scroll_up = "<C-u>",
         scroll_down = "<C-d>",
         new_session = "<C-n>",
         cycle_windows = "<Tab>",
         cycle_modes = "<C-f>",
-        next_message = "<C-j>",
-        prev_message = "<C-k>",
+        next_message = "J",
+        prev_message = "K",
         select_session = "<CR>",
         rename_session = "r",
         delete_session = "d",
@@ -229,7 +233,8 @@ function M.defaults()
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
       },
       buf_options = {
-        filetype = "markdown",
+        filetype = "ogpt-window",
+        syntax = "markdown",
       },
     },
     system_window = {
@@ -246,6 +251,9 @@ function M.defaults()
         foldcolumn = "2",
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
       },
+      buf_options = {
+        filetype = "ogpt-system-window",
+      },
     },
     popup_input = {
       prompt = "  ",
@@ -259,6 +267,9 @@ function M.defaults()
       },
       win_options = {
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+      },
+      buf_options = {
+        filetype = "ogpt-input",
       },
       submit = "<C-Enter>",
       submit_n = "<Enter>",
@@ -274,6 +285,9 @@ function M.defaults()
       },
       win_options = {
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+      },
+      buf_options = {
+        filetype = "ogpt-parameters-window",
       },
     },
     actions = {

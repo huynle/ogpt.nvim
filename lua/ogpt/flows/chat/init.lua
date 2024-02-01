@@ -1,10 +1,11 @@
 local Session = require("ogpt.flows.chat.session")
 local Prompts = require("ogpt.prompts")
 local Chat = require("ogpt.flows.chat.base")
--- local Chat = require("ogpt.flows.chat.simple")
+local SimpleChat = require("ogpt.flows.chat.simple")
 
 local M = {
   chat = nil,
+  simple_chat = nil,
 }
 
 M.open = function(opts)
@@ -25,6 +26,27 @@ M.focus = function(opts)
   else
     M.chat = Chat(opts)
     M.chat:open(opts)
+  end
+end
+
+M.open_simple_chat = function(opts)
+  if M.simple_chat ~= nil and M.simple_chat.active then
+    M.simple_chat:toggle()
+  else
+    M.simple_chat = SimpleChat(opts)
+    M.simple_chat:open(opts)
+  end
+end
+
+M.focus_simple_chat = function(opts)
+  if M.simple_chat ~= nil then
+    if not M.simple_chat.focused then
+      M.simple_chat:hide(opts)
+      M.simple_chat:show(opts)
+    end
+  else
+    M.simple_chat = SimpleChat(opts)
+    M.simple_chat:open(opts)
   end
 end
 

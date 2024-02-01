@@ -80,7 +80,7 @@ function PopupAction:run()
       end
     )
   elseif self.strategy == STRATEGY_DISPLAY_WINDOW or self.strategy == STRATEGY_NEW_DISPLAY_WINDOW then
-    self.popup = SimpleWindow("ogpt_popup", {
+    self.popup = SimpleWindow("ogpt-popup", {
       new_win = false,
       buf = {
         syntax = "markdown",

@@ -1,10 +1,9 @@
-local Popup = require("nui.popup")
+local Popup = require("nui.split")
 local Text = require("nui.text")
 local defaults = require("nui.utils").defaults
 local is_type = require("nui.utils").is_type
 local event = require("nui.utils.autocmd").event
 local Config = require("ogpt.config")
-local SimpleWindow = require("ogpt.common.ui.window")
 
 -- exiting insert mode places cursor one character backward,
 -- so patch the cursor position to one character forward
@@ -23,7 +22,7 @@ local function patch_cursor_position(target_cursor, force)
   end
 end
 
-local Input = SimpleWindow:extend("SimpleInput")
+local Input = Popup:extend("NuiInput")
 
 ---@param popup_options table
 ---@param options table
@@ -43,7 +42,7 @@ function Input:init(popup_options, options)
 
   popup_options.size.height = 2
 
-  Input.super.init(self, "ogpt_input", popup_options)
+  Input.super.init(self, popup_options)
 
   self._.default_value = defaults(options.default_value, "")
   self._.prompt = Text(defaults(options.prompt, ""))
@@ -54,7 +53,8 @@ function Input:init(popup_options, options)
   self.input_props = props
 
   props.on_submit = function(value)
-    local target_cursor = vim.api.nvim_win_get_cursor(self._.position.win)
+    -- local target_cursor = vim.api.nvim_win_get_cursor(self._.position.win)
+    local target_cursor = vim.api.nvim_win_get_cursor(vim.api.nvim_get_current_win())
 
     local prompt_normal_mode = vim.fn.mode() == "n"
 

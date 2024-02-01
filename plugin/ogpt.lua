@@ -8,6 +8,16 @@ vim.api.nvim_create_user_command("OGPTFocus", function(opts)
   require("ogpt").focusChat(opts)
 end, { nargs = "?", force = true, complete = "lua" })
 
+vim.api.nvim_create_user_command("OGPTSimpleChat", function(opts)
+  opts = loadstring("return " .. opts.args)() or {}
+  require("ogpt").openSimpleChat(opts)
+end, { nargs = "?", force = true, complete = "lua" })
+
+vim.api.nvim_create_user_command("OGPTFocusSimpleChat", function(opts)
+  opts = loadstring("return " .. opts.args)() or {}
+  require("ogpt").focusSimpleChat(opts)
+end, { nargs = "?", force = true, complete = "lua" })
+
 vim.api.nvim_create_user_command("OGPTActAs", function(opts)
   require("ogpt").selectAwesomePrompt()
 end, {})

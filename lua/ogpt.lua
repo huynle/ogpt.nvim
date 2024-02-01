@@ -79,6 +79,13 @@ end
 --
 -- public methods for the plugin
 --
+M.openSimpleChat = function(opts)
+  module.open_simple_chat(opts)
+end
+
+M.focusSimpleChat = function(opts)
+  module.focus_simple_chat(opts)
+end
 
 M.openChat = function(opts)
   module.open_chat(opts)

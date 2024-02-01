@@ -1,7 +1,7 @@
 local M = {}
 M.vts = {}
 
-local Popup = require("nui.popup")
+local Popup = require("nui.split")
 local Config = require("ogpt.config")
 local Session = require("ogpt.flows.chat.session")
 local Utils = require("ogpt.utils")
@@ -99,7 +99,6 @@ M.get_panel = function(set_session_cb)
   M.set_session_cb = set_session_cb
 
   M.panel = Popup(Config.options.chat.sessions_window)
-  -- M.panel = SimpleWindow(M.name, { params = M.params })
 
   M.panel:map("n", Config.options.chat.keymaps.select_session, function()
     M.set_session()

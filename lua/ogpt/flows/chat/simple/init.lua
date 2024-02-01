@@ -1,17 +1,18 @@
 local SimpleWindow = require("ogpt.common.ui.window")
 local Layout = require("nui.layout")
 local Popup = require("nui.popup")
+local Split = require("nui.split")
 
 local BaseChat = require("ogpt.flows.chat.base")
-local ChatInput = require("ogpt.input")
+local ChatInput = require("ogpt.common.simple_input")
 local Config = require("ogpt.config")
-local Parameters = require("ogpt.common.simple_parameters")
-local Sessions = require("ogpt.flows.chat.sessions")
+local Parameters = require("ogpt.common.parameters")
+local Sessions = require("ogpt.common.simple_sessions")
 local utils = require("ogpt.utils")
 local Signs = require("ogpt.signs")
 local Spinner = require("ogpt.spinner")
 local Session = require("ogpt.flows.chat.session")
-local SystemWindow = require("ogpt.flows.chat.system_window")
+local SystemWindow = require("ogpt.common.simple_system_window")
 
 QUESTION, ANSWER, SYSTEM = 1, 2, 3
 ROLE_ASSISTANT = "assistant"
@@ -19,6 +20,14 @@ ROLE_SYSTEM = "system"
 ROLE_USER = "user"
 
 local SimpleChat = BaseChat:extend("SimpleChat")
+
+function SimpleChat:init(opts)
+  SimpleChat.super.init(self, opts)
+
+  -- quit indicator
+  self.active = true
+  self.focused = true
+end
 
 function SimpleChat:welcome()
   self.messages = {}
@@ -97,16 +106,14 @@ end
 
 function SimpleChat:set_session(session)
   vim.api.nvim_buf_clear_namespace(self.chat_window.bufnr, Config.namespace_id, 0, -1)
-
   self.session = session
-
   self.messages = {}
   self.selectedIndex = 0
   self:set_lines(0, -1, false, {})
   self:set_cursor({ 1, 0 })
   self:welcome()
   self:configure_parameters_panel(session)
-  self:set_keymaps()
+  self:redraw()
 end
 
 function SimpleChat:isBusy()
@@ -571,6 +578,26 @@ function SimpleChat:set_active_panel(panel)
   end
 end
 
+function SimpleChat:get_simple_layout_params()
+  self.chat_window:show()
+  self.chat_input:show()
+
+  if self.parameters_open then
+    self:configure_parameters_panel()
+    self.parameters_panel:show()
+    self.sessions_panel:show()
+  else
+    self.parameters_panel:hide()
+    self.sessions_panel:hide()
+  end
+
+  if self.system_role_open then
+    self.system_role_panel:show()
+  else
+    self.system_role_panel:hide()
+  end
+end
+
 function SimpleChat:get_layout_params()
   local lines_height = vim.api.nvim_get_option("lines")
   local statusline_height = vim.o.laststatus == 0 and 0 or 1 -- height of the statusline if present
@@ -644,8 +671,7 @@ function SimpleChat:open()
   self.sessions_panel = Sessions.get_panel(function(session)
     self:set_session(session)
   end)
-  self.chat_window = SimpleWindow("ogpt_chat")
-  -- self.chat_window = Popup(Config.options.popup_window)
+  self.chat_window = Split(Config.options.popup_window)
   self.system_role_panel = SystemWindow({
     on_change = function(text)
       self:set_system_message(text)
@@ -698,11 +724,10 @@ function SimpleChat:open()
     end,
   })
 
-  self.layout = Layout(self:get_layout_params())
-  self:set_keymaps()
+  self:redraw()
 
   -- initialize
-  self.layout:mount()
+  -- self.layout:mount()
   self:welcome()
   self:set_events()
 end
@@ -895,19 +920,31 @@ end
 
 function SimpleChat:redraw(noinit)
   noinit = noinit or false
-  self.layout:update(self:get_layout_params())
+  self:get_simple_layout_params()
   if not noinit then
     self:welcome()
   end
+  self:set_keymaps()
 end
 
 function SimpleChat:hide()
-  self.layout:hide()
+  self.chat_window:hide()
+  self.chat_input:hide()
+  self.parameters_panel:hide()
+  self.system_role_panel:hide()
+  self.sessions_panel:hide()
+end
+
+function SimpleChat:unmount()
+  self.chat_window:unmount()
+  self.chat_input:unmount()
+  self.parameters_panel:unmount()
+  self.system_role_panel:unmount()
+  self.sessions_panel:unmount()
 end
 
 function SimpleChat:show()
   self:redraw(true)
-  self.layout:show()
 end
 
 function SimpleChat:toggle()
@@ -919,8 +956,10 @@ function SimpleChat:toggle()
 end
 
 function SimpleChat:configure_parameters_panel(session)
+  session = session or self.session
+  self.parameters_panel:unmount()
   self.parameters_panel = Parameters.get_panel(session)
-  self:redraw()
+  self.parameters_panel:mount()
 end
 
 return SimpleChat
