@@ -1,6 +1,4 @@
-local SimpleWindow = require("ogpt.common.ui.window")
 local Layout = require("nui.layout")
-local Popup = require("nui.popup")
 local Split = require("nui.split")
 
 local BaseChat = require("ogpt.flows.chat.base")
@@ -10,7 +8,6 @@ local Parameters = require("ogpt.common.parameters")
 local Sessions = require("ogpt.common.simple_sessions")
 local utils = require("ogpt.utils")
 local Signs = require("ogpt.signs")
-local Spinner = require("ogpt.spinner")
 local Session = require("ogpt.flows.chat.session")
 local SystemWindow = require("ogpt.common.simple_system_window")
 
