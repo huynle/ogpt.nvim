@@ -133,8 +133,12 @@ function SimpleView:mount(name, opts)
 end
 
 function SimpleView:map(mode, key, command)
-  mode = vim.tbl_islist(mode) and mode or { mode }
-  vim.keymap.set(mode, key, command, { buffer = self.bufnr })
+  if not self.bufnr then
+    utils.log("bufnr does not exist, to set mapping to", vim.log.levels.ERROR)
+  else
+    mode = vim.tbl_islist(mode) and mode or { mode }
+    vim.keymap.set(mode, key, command, { buffer = self.bufnr })
+  end
 end
 
 function SimpleView:on(events, command)

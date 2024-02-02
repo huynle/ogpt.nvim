@@ -94,7 +94,6 @@ function PopupAction:run()
         },
       },
     })
-    popup_keymap.apply_map(self.popup, opts)
 
     self:set_loading(true)
     if self.strategy == STRATEGY_NEW_DISPLAY_WINDOW then
@@ -102,6 +101,8 @@ function PopupAction:run()
     else
       self.popup:mount()
     end
+
+    popup_keymap.apply_map(self.popup, opts)
 
     params.stream = true
 
