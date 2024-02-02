@@ -157,6 +157,7 @@ function M.defaults()
         yank_code = "c",
         yank_to_register = "y",
       },
+      edgy = false,
     },
 
     chat = {
