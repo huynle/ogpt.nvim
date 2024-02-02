@@ -333,7 +333,8 @@ function M.setup(options)
   -- M.options.api_params.model = M.options.api_params.model or M.options.default_provider.model
 
   for _, to_replace in pairs(_complete_replace) do
-    for key, item in pairs(options[to_replace]) do
+    vim.tbl_contains(options, to_replace)
+    for key, item in pairs(options[to_replace] or {}) do
       M.options[to_replace][key] = item
     end
   end
