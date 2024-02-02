@@ -7,14 +7,18 @@ local PopupWindow = Popup:extend("PopupWindow")
 
 function PopupWindow:init(options)
   options = vim.tbl_deep_extend("keep", options or {}, Config.options.popup)
+  self.options = options
 
   PopupWindow.super.init(self, options)
 end
 
 function PopupWindow:update_popup_size(opts)
-  opts.lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
-  local ui_opts = self:calculate_size(opts)
-  self:update_layout(ui_opts)
+  opts = vim.tbl_extend("force", self.options, opts or {})
+  if not self.options.edgy then
+    opts.lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
+    local ui_opts = self:calculate_size(opts)
+    self:update_layout(ui_opts)
+  end
 end
 
 function PopupWindow:calculate_size(opts)
@@ -72,6 +76,7 @@ function PopupWindow:calculate_size(opts)
 end
 
 function PopupWindow:mount(opts)
+  opts = vim.tbl_extend("force", self.options, opts or {})
   PopupWindow.super.mount(self)
 
   self:update_popup_size(opts)
