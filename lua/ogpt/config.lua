@@ -369,6 +369,7 @@ function M.get_action_params(provider, override)
   provider = provider or M.options.default_provider
   local default_params = M.options.providers[provider].api_params
   default_params.model = default_params.model or M.options.providers[provider].model
+  default_params.provider = provider
   return vim.tbl_extend("force", default_params, override or {})
 end
 
