@@ -181,119 +181,147 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
 
   -- accept output window
   for _, window in ipairs({ input_window, output_window, instructions_input }) do
-    for _, mode in ipairs({ "n", "i" }) do
-      window:map(mode, Config.options.edit.keymaps.accept, function()
-        instructions_input.input_props.on_close()
-        local lines = vim.api.nvim_buf_get_lines(output_window.bufnr, 0, -1, false)
-        vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
-        vim.notify("Successfully applied the change!", vim.log.levels.INFO)
-      end, { noremap = true })
+    if window.bufnr then
+      for _, mode in ipairs({ "n", "i" }) do
+        window:map(mode, Config.options.edit.keymaps.accept, function()
+          instructions_input.input_props.on_close()
+          local lines = vim.api.nvim_buf_get_lines(output_window.bufnr, 0, -1, false)
+          vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
+          vim.notify("Successfully applied the change!", vim.log.levels.INFO)
+        end, { noremap = true })
+      end
     end
   end
 
   -- use output as input
   for _, window in ipairs({ input_window, output_window, instructions_input }) do
-    for _, mode in ipairs({ "n", "i" }) do
-      window:map(mode, Config.options.edit.keymaps.use_output_as_input, function()
-        local lines = vim.api.nvim_buf_get_lines(output_window.bufnr, 0, -1, false)
-        vim.api.nvim_buf_set_lines(input_window.bufnr, 0, -1, false, lines)
-        vim.api.nvim_buf_set_lines(output_window.bufnr, 0, -1, false, {})
-      end, { noremap = true })
+    if window.bufnr then
+      for _, mode in ipairs({ "n", "i" }) do
+        window:map(mode, Config.options.edit.keymaps.use_output_as_input, function()
+          local lines = vim.api.nvim_buf_get_lines(output_window.bufnr, 0, -1, false)
+          vim.api.nvim_buf_set_lines(input_window.bufnr, 0, -1, false, lines)
+          vim.api.nvim_buf_set_lines(output_window.bufnr, 0, -1, false, {})
+        end, { noremap = true })
+      end
     end
   end
 
   -- close
   for _, window in ipairs({ input_window, output_window, instructions_input, parameters_panel }) do
     for _, mode in ipairs({ "n", "i" }) do
-      window:map(mode, Config.options.edit.keymaps.close, function()
-        self.spinner:stop()
-        if vim.fn.mode() == "i" then
-          vim.api.nvim_command("stopinsert")
-        end
-        -- vim.cmd("q")
-        input_window:unmount()
-        output_window:unmount()
-        instructions_input:unmount()
-        parameters_panel:unmount()
-      end, { noremap = true })
+      if window.bufnr then
+        window:map(mode, Config.options.edit.keymaps.close, function()
+          self.spinner:stop()
+          if vim.fn.mode() == "i" then
+            vim.api.nvim_command("stopinsert")
+          end
+          -- vim.cmd("q")
+          input_window:unmount()
+          output_window:unmount()
+          instructions_input:unmount()
+          parameters_panel:unmount()
+        end, { noremap = true })
+      end
     end
   end
 
   -- toggle parameters
   local parameters_open = false
   for _, popup in ipairs({ parameters_panel, instructions_input, input_window, output_window }) do
-    for _, mode in ipairs({ "n", "i" }) do
-      popup:map(mode, Config.options.edit.keymaps.toggle_parameters, function()
-        if parameters_open then
-          layouts.edit_with_no_layout(layout, self, input_window, instructions_input, output_window, parameters_panel, {
-            show_parameters = false,
-          })
-        else
-          layouts.edit_with_no_layout(layout, self, input_window, instructions_input, output_window, parameters_panel, {
-            show_parameters = true,
-          })
-          SimpleParameters.refresh_panel()
-        end
-        parameters_open = not parameters_open
-        -- set input and output settings
-        --  TODO
-        -- for _, window in ipairs({ input_window, output_window }) do
-        --   vim.api.nvim_buf_set_option(window.bufnr, "filetype", filetype)
-        --   vim.api.nvim_win_set_option(window.winid, "number", true)
-        -- end
-      end, {})
+    if popup.bufnr then
+      for _, mode in ipairs({ "n", "i" }) do
+        popup:map(mode, Config.options.edit.keymaps.toggle_parameters, function()
+          if parameters_open then
+            layouts.edit_with_no_layout(
+              layout,
+              self,
+              input_window,
+              instructions_input,
+              output_window,
+              parameters_panel,
+              {
+                show_parameters = false,
+              }
+            )
+          else
+            layouts.edit_with_no_layout(
+              layout,
+              self,
+              input_window,
+              instructions_input,
+              output_window,
+              parameters_panel,
+              {
+                show_parameters = true,
+              }
+            )
+            SimpleParameters.refresh_panel()
+          end
+          parameters_open = not parameters_open
+          -- set input and output settings
+          --  TODO
+          -- for _, window in ipairs({ input_window, output_window }) do
+          --   vim.api.nvim_buf_set_option(window.bufnr, "filetype", filetype)
+          --   vim.api.nvim_win_set_option(window.winid, "number", true)
+          -- end
+        end, {})
+      end
     end
   end
 
   -- cycle windows
   local active_panel = instructions_input
   for _, popup in ipairs({ input_window, output_window, parameters_panel, instructions_input }) do
-    for _, mode in ipairs({ "n", "i" }) do
-      if mode == "i" and (popup == input_window or popup == output_window) then
-        goto continue
-      end
-      popup:map(mode, Config.options.edit.keymaps.cycle_windows, function()
-        if active_panel == instructions_input then
-          vim.api.nvim_set_current_win(input_window.winid)
-          active_panel = input_window
-          vim.api.nvim_command("stopinsert")
-        elseif active_panel == input_window and mode ~= "i" then
-          vim.api.nvim_set_current_win(output_window.winid)
-          active_panel = output_window
-          vim.api.nvim_command("stopinsert")
-        elseif active_panel == output_window and mode ~= "i" then
-          if parameters_open then
-            vim.api.nvim_set_current_win(parameters_panel.winid)
-            active_panel = parameters_panel
-          else
+    if popup.bufnr then
+      for _, mode in ipairs({ "n", "i" }) do
+        if mode == "i" and (popup == input_window or popup == output_window) then
+          goto continue
+        end
+        popup:map(mode, Config.options.edit.keymaps.cycle_windows, function()
+          if active_panel == instructions_input then
+            vim.api.nvim_set_current_win(input_window.winid)
+            active_panel = input_window
+            vim.api.nvim_command("stopinsert")
+          elseif active_panel == input_window and mode ~= "i" then
+            vim.api.nvim_set_current_win(output_window.winid)
+            active_panel = output_window
+            vim.api.nvim_command("stopinsert")
+          elseif active_panel == output_window and mode ~= "i" then
+            if parameters_open then
+              vim.api.nvim_set_current_win(parameters_panel.winid)
+              active_panel = parameters_panel
+            else
+              vim.api.nvim_set_current_win(instructions_input.winid)
+              active_panel = instructions_input
+            end
+          elseif active_panel == parameters_panel then
             vim.api.nvim_set_current_win(instructions_input.winid)
             active_panel = instructions_input
           end
-        elseif active_panel == parameters_panel then
-          vim.api.nvim_set_current_win(instructions_input.winid)
-          active_panel = instructions_input
-        end
-      end, {})
-      ::continue::
+        end, {})
+        ::continue::
+      end
     end
   end
 
   -- toggle diff mode
   local diff_mode = Config.options.edit.diff
   for _, popup in ipairs({ parameters_panel, instructions_input, output_window, input_window }) do
-    for _, mode in ipairs({ "n", "i" }) do
-      popup:map(mode, Config.options.edit.keymaps.toggle_diff, function()
-        diff_mode = not diff_mode
-        for _, winid in ipairs({ input_window.winid, output_window.winid }) do
-          vim.api.nvim_set_current_win(winid)
-          if diff_mode then
-            vim.api.nvim_command("diffthis")
-          else
-            vim.api.nvim_command("diffoff")
+    if popup.bufnr then
+      for _, mode in ipairs({ "n", "i" }) do
+        popup:map(mode, Config.options.edit.keymaps.toggle_diff, function()
+          diff_mode = not diff_mode
+          for _, winid in ipairs({ input_window.winid, output_window.winid }) do
+            vim.api.nvim_set_current_win(winid)
+            if diff_mode then
+              vim.api.nvim_command("diffthis")
+            else
+              vim.api.nvim_command("diffoff")
+            end
+            vim.api.nvim_set_current_win(instructions_input.winid)
           end
-          vim.api.nvim_set_current_win(instructions_input.winid)
-        end
-      end, {})
+        end, {})
+      end
     end
   end
 

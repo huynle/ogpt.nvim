@@ -134,7 +134,7 @@ end
 
 function SimpleView:map(mode, key, command)
   if not self.bufnr then
-    utils.log("bufnr does not exist, to set mapping to", vim.log.levels.ERROR)
+    utils.log(self.name .. " bufnr does not exist. Cannot map " .. key, vim.log.levels.ERROR)
   else
     mode = vim.tbl_islist(mode) and mode or { mode }
     vim.keymap.set(mode, key, command, { buffer = self.bufnr })

@@ -60,9 +60,9 @@ end
 M.edit_with_no_layout = function(layout, parent, input, instruction, output, parameters, opts)
   opts = opts or {}
 
-  vim.schedule_wrap(input:mount())
-  vim.schedule_wrap(output:mount())
-  vim.schedule_wrap(instruction:mount())
+  input:mount()
+  output:mount()
+  instruction:mount()
 
   if opts.show_parameters then
     parameters:mount()
