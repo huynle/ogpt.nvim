@@ -305,7 +305,7 @@ end
 function SimpleChat:configure_parameters_panel(session)
   session = session or self.session
   self.parameters_panel:unmount()
-  self.parameters_panel = Parameters.get_panel(session)
+  self.parameters_panel = Parameters.get_panel(session, self)
   self.parameters_panel:mount()
 end
 
