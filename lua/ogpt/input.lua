@@ -1,4 +1,4 @@
-local Popup = require("nui.popup")
+local Popup = require("ogpt.common.popup")
 local Text = require("nui.text")
 local defaults = require("nui.utils").defaults
 local is_type = require("nui.utils").is_type

@@ -124,6 +124,7 @@ function M.defaults()
         cycle_windows = "<Tab>",
         use_output_as_input = "<C-u>",
       },
+      edgy = false,
     },
     popup = {
       position = 1,
@@ -168,6 +169,7 @@ function M.defaults()
       border_left_sign = "|",
       border_right_sign = "|",
       max_line_length = 120,
+      edgy = true,
       sessions_window = {
         active_sign = " 󰄵 ",
         inactive_sign = " 󰄱 ",

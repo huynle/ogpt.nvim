@@ -1,4 +1,4 @@
-local Popup = require("nui.popup")
+local Popup = require("ogpt.common.popup")
 local Config = require("ogpt.config")
 local event = require("nui.utils.autocmd").event
 local Utils = require("ogpt.utils")
@@ -78,6 +78,7 @@ end
 function PopupWindow:mount(opts)
   opts = vim.tbl_extend("force", self.options, opts or {})
   PopupWindow.super.mount(self)
+  self.border:unmount()
 
   self:update_popup_size(opts)
 

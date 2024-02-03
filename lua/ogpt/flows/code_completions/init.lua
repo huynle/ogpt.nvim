@@ -85,7 +85,7 @@ M.complete = function()
     },
   }, function(answer, usage)
     set_loading(false)
-    local Popup = require("nui.popup")
+    local Popup = require("ogpt.common.popup")
     answer = M.extract_snippet(answer)
 
     local lines = Utils.split_string_by_line(answer)

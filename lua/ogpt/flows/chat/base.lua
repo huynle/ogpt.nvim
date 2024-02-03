@@ -1,6 +1,6 @@
 local Object = require("ogpt.common.object")
-local Layout = require("nui.layout")
-local Popup = require("nui.popup")
+local Layout = require("ogpt.common.layout")
+local Popup = require("ogpt.common.popup")
 
 local ChatInput = require("ogpt.input")
 local Config = require("ogpt.config")
@@ -743,6 +743,10 @@ function Chat:open()
 
   -- initialize
   self.layout:mount()
+  if Config.options.chat.edgy then
+    -- self.layout:hide()
+    -- self.layout:_close_window()
+  end
   self:welcome()
   self:set_events()
 end

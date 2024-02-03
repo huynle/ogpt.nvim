@@ -4,7 +4,7 @@ local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
 local Layout = require("nui.layout")
 local Split = require("nui.split")
-local Popup = require("nui.popup")
+local Popup = require("ogpt.common.popup")
 local ChatInput = require("ogpt.input")
 local Parameters = require("ogpt.parameters")
 

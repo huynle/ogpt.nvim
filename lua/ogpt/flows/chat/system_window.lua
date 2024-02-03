@@ -1,4 +1,4 @@
-local Popup = require("nui.popup")
+local Popup = require("ogpt.common.popup")
 local Config = require("ogpt.config")
 
 local SystemWindow = Popup:extend("SystemWindow")

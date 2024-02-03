@@ -1,7 +1,7 @@
 local M = {}
 M.vts = {}
 
-local Popup = require("nui.popup")
+local Popup = require("ogpt.common.popup")
 local Config = require("ogpt.config")
 local Session = require("ogpt.flows.chat.session")
 local Utils = require("ogpt.utils")
