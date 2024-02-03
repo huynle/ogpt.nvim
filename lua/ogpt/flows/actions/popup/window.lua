@@ -1,20 +1,24 @@
-local Popup = require("nui.popup")
+local Popup = require("ogpt.common.popup")
 local Config = require("ogpt.config")
 local event = require("nui.utils.autocmd").event
 local Utils = require("ogpt.utils")
 
 local PopupWindow = Popup:extend("PopupWindow")
 
-function PopupWindow:init(options)
+function PopupWindow:init(options, edgy)
   options = vim.tbl_deep_extend("keep", options or {}, Config.options.popup)
+  self.options = options
 
-  PopupWindow.super.init(self, options)
+  PopupWindow.super.init(self, options, self.edgy)
 end
 
 function PopupWindow:update_popup_size(opts)
-  opts.lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
-  local ui_opts = self:calculate_size(opts)
-  self:update_layout(ui_opts)
+  opts = vim.tbl_extend("force", self.options, opts or {})
+  if not self.options.edgy then
+    opts.lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
+    local ui_opts = self:calculate_size(opts)
+    self:update_layout(ui_opts)
+  end
 end
 
 function PopupWindow:calculate_size(opts)
@@ -92,14 +96,16 @@ function PopupWindow:mount(opts)
 
   -- accept output and replace
   self:map("n", Config.options.popup.keymaps.accept, function()
-    -- local _lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
+    local _lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
+    table.insert(_lines, "")
+    table.insert(_lines, "")
     vim.api.nvim_buf_set_text(
       opts.main_bufnr,
       opts.selection_idx.start_row - 1,
       opts.selection_idx.start_col - 1,
       opts.selection_idx.end_row - 1,
       opts.selection_idx.end_col,
-      opts.lines
+      _lines
     )
     vim.cmd("q")
   end)

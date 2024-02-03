@@ -114,7 +114,7 @@ function M.select_model(provider, opts)
         height = 0.5,
       },
       results_title = "Select Ollama Model",
-      prompt_prefix = Config.options.popup_input.prompt,
+      prompt_prefix = Config.options.input_window.prompt,
       selection_caret = Config.options.chat.answer_sign .. " ",
       prompt_title = "Models",
       finder = finder(provider),

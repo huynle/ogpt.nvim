@@ -1,7 +1,7 @@
-local classes = require("ogpt.common.classes")
+local Object = require("ogpt.common.object")
 local utils = require("ogpt.utils")
 
-local SimpleView = classes.class()
+local SimpleView = Object("SimpleView")
 
 function SimpleView:init(name, opts)
   local _defaults = {

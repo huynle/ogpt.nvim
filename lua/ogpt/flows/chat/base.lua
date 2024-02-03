@@ -1,6 +1,6 @@
-local classes = require("ogpt.common.classes")
+local Object = require("ogpt.common.object")
 local Layout = require("nui.layout")
-local Popup = require("nui.popup")
+local Popup = require("ogpt.common.popup")
 
 local ChatInput = require("ogpt.input")
 local Config = require("ogpt.config")
@@ -17,7 +17,7 @@ ROLE_ASSISTANT = "assistant"
 ROLE_SYSTEM = "system"
 ROLE_USER = "user"
 
-local Chat = classes.class()
+local Chat = Object("Chat")
 
 function Chat:init(opts)
   self.input_extmark_id = nil
@@ -30,6 +30,7 @@ function Chat:init(opts)
   self.focused = true
 
   -- UI ELEMENTS
+  self.edgy = Config.options.chat.edgy
   self.layout = nil
   self.chat_panel = nil
   self.chat_input = nil
@@ -685,12 +686,12 @@ function Chat:open()
   self.sessions_panel = Sessions.get_panel(function(session)
     self:set_session(session)
   end)
-  self.chat_window = Popup(Config.options.popup_window)
+  self.chat_window = Popup(Config.options.output_window, Config.options.chat.edgy)
   self.system_role_panel = SystemWindow({
     on_change = function(text)
       self:set_system_message(text)
     end,
-  })
+  }, Config.options.chat.edgy)
   self.stop = false
   self.should_stop = function()
     if self.stop then
@@ -700,8 +701,9 @@ function Chat:open()
       return false
     end
   end
-  self.chat_input = ChatInput(Config.options.popup_input, {
-    prompt = Config.options.popup_input.prompt,
+  self.chat_input = ChatInput(Config.options.input_window, {
+    edgy = Config.options.chat.edgy,
+    prompt = Config.options.input_window.prompt,
     on_close = function()
       self:hide()
     end,
@@ -959,7 +961,7 @@ function Chat:toggle()
 end
 
 function Chat:configure_parameters_panel(session)
-  self.parameters_panel = Parameters.get_panel(session)
+  self.parameters_panel = Parameters.get_panel(session, self)
   self:redraw()
 end
 

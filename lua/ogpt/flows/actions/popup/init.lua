@@ -1,23 +1,20 @@
-local classes = require("ogpt.common.classes")
 local BaseAction = require("ogpt.flows.actions.base")
+local Spinner = require("ogpt.spinner")
+local PopupWindow = require("ogpt.flows.actions.popup.window")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
-local SimpleWindow = require("ogpt.common.ui.window")
-local popup_keymap = require("ogpt.flows.actions.popup.keymaps")
 
-local PopupAction = classes.class(BaseAction)
+local PopupAction = BaseAction:extend("PopupAction")
 
 local STRATEGY_REPLACE = "replace"
 local STRATEGY_APPEND = "append"
 local STRATEGY_PREPEND = "prepend"
 local STRATEGY_DISPLAY = "display"
-local STRATEGY_DISPLAY_WINDOW = "display_window"
-local STRATEGY_NEW_DISPLAY_WINDOW = "new_display_window"
 local STRATEGY_QUICK_FIX = "quick_fix"
 
 function PopupAction:init(name, opts)
   self.name = name or ""
-  self.super:init(opts)
+  PopupAction.super.init(self, opts)
   self.provider = Config.get_provider(opts.provider, self)
   self.params = Config.get_action_params(self.provider.name, opts.params or {})
   self.system = type(opts.system) == "function" and opts.system() or opts.system or ""
@@ -26,8 +23,15 @@ function PopupAction:init(name, opts)
   self.strategy = opts.strategy or STRATEGY_DISPLAY
   self.ui = opts.ui or {}
   self.cur_win = vim.api.nvim_get_current_win()
+  self.edgy = Config.options.popup.edgy
+  self.popup = PopupWindow(Config.options.popup, Config.options.popup.edgy)
+  self.spinner = Spinner:new(function(state) end)
 
-  self:post_init()
+  self:update_variables()
+
+  self.popup:on({ "BufUnload" }, function()
+    self:set_loading(false)
+  end)
 end
 
 function PopupAction:run()
@@ -72,50 +76,6 @@ function PopupAction:run()
         if self.stop then
           -- self.stop = false
           -- self:run_spinner(false)
-          self:set_loading(false)
-          return true
-        else
-          return false
-        end
-      end
-    )
-  elseif self.strategy == STRATEGY_DISPLAY_WINDOW or self.strategy == STRATEGY_NEW_DISPLAY_WINDOW then
-    self.popup = SimpleWindow.new("ogpt_popup", {
-      new_win = false,
-      buf = {
-        syntax = "markdown",
-      },
-      events = {
-        -- {
-        --   events = { "BufUnload" },
-        --   callback = function()
-        --     opts.stop()
-        --   end,
-        -- },
-      },
-    })
-    popup_keymap.apply_map(self.popup, opts)
-
-    self:set_loading(true)
-    if self.strategy == STRATEGY_NEW_DISPLAY_WINDOW then
-      self.popup:mount(self.name)
-    else
-      self.popup:mount()
-    end
-
-    params.stream = true
-
-    self.provider.api:chat_completions(
-      params,
-      utils.partial(utils.add_partial_completion, {
-        panel = self.popup,
-        progress = function(flag)
-          self:run_spinner(flag)
-        end,
-      }),
-      function()
-        -- should stop function
-        if self.stop then
           self:set_loading(false)
           return true
         else

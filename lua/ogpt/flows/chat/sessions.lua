@@ -1,7 +1,7 @@
 local M = {}
 M.vts = {}
 
-local Popup = require("nui.popup")
+local Popup = require("ogpt.common.popup")
 local Config = require("ogpt.config")
 local Session = require("ogpt.flows.chat.session")
 local Utils = require("ogpt.utils")
@@ -17,7 +17,7 @@ end
 M.set_session = function()
   M.active_line = M.current_line
   local selected = M.sessions[M.current_line]
-  local session = Session.new({ filename = selected.filename })
+  local session = Session({ filename = selected.filename })
   M.render_list()
   M.set_session_cb(session)
 end
@@ -25,7 +25,7 @@ end
 M.rename_session = function()
   M.active_line = M.current_line
   local selected = M.sessions[M.current_line]
-  local session = Session.new({ filename = selected.filename })
+  local session = Session({ filename = selected.filename })
   local input_widget = InputWidget("New Name:", function(value)
     if value ~= nil and value ~= "" then
       session:rename(value)
@@ -39,7 +39,7 @@ end
 M.delete_session = function()
   local selected = M.sessions[M.current_line]
   if M.active_line ~= M.current_line then
-    local session = Session.new({ filename = selected.filename })
+    local session = Session({ filename = selected.filename })
     session:delete()
     M.sessions = Session.list_sessions()
     if M.active_line > M.current_line then
@@ -98,7 +98,7 @@ M.get_panel = function(set_session_cb)
   M.current_line = 1
   M.set_session_cb = set_session_cb
 
-  M.panel = Popup(Config.options.chat.sessions_window)
+  M.panel = Popup(Config.options.chat.sessions_window, Config.options.chat.edgy)
 
   M.panel:map("n", Config.options.chat.keymaps.select_session, function()
     M.set_session()

@@ -1,11 +1,10 @@
-local classes = require("ogpt.common.classes")
+local Object = require("ogpt.common.object")
 local Signs = require("ogpt.signs")
 local Spinner = require("ogpt.spinner")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
-local PopupWindow = require("ogpt.common.popup_window")
 
-local BaseAction = classes.class()
+local BaseAction = Object("BaseAction")
 
 local namespace_id = vim.api.nvim_create_namespace("OGPTNS")
 
@@ -20,17 +19,8 @@ end
 function BaseAction:init(opts)
   self.opts = opts
   self.stop = true
-end
-
-function BaseAction:post_init()
-  self.popup = PopupWindow()
-  self.spinner = Spinner:new(function(state)
-    -- vim.schedule(function()
-    --   self:display_input_suffix(state)
-    -- end)
-  end)
-
-  self:update_variables()
+  self.output_panel = nil
+  self.spinner = Spinner:new(function(state) end)
 end
 
 function BaseAction:get_bufnr()
@@ -164,7 +154,9 @@ function BaseAction:run_spinner(flag)
     self.spinner:start()
   else
     self.spinner:stop()
-    self:set_lines(self.popup.bufnr, 0, -1, false, {})
+    if self.output_panel then
+      self:set_lines(self.output_panel.bufnr, 0, -1, false, {})
+    end
   end
 end
 
@@ -177,12 +169,16 @@ function BaseAction:set_lines(bufnr, start_idx, end_idx, strict_indexing, lines)
 end
 
 function BaseAction:display_input_suffix(suffix)
-  if self.stop and self.extmark_id and utils.is_buf_exists(self.popup.bufnr) then
-    vim.api.nvim_buf_del_extmark(self.popup.bufnr, Config.namespace_id, self.extmark_id)
+  if not self.output_panel then
+    return
   end
 
-  if not self.stop and suffix and vim.fn.bufexists(self.popup.bufnr) then
-    self.extmark_id = vim.api.nvim_buf_set_extmark(self.popup.bufnr, Config.namespace_id, 0, -1, {
+  if self.stop and self.extmark_id and utils.is_buf_exists(self.output_panel.bufnr) then
+    vim.api.nvim_buf_del_extmark(self.output_panel.bufnr, Config.namespace_id, self.extmark_id)
+  end
+
+  if not self.stop and suffix and vim.fn.bufexists(self.output_panel.bufnr) then
+    self.extmark_id = vim.api.nvim_buf_set_extmark(self.output_panel.bufnr, Config.namespace_id, 0, -1, {
       virt_text = {
         { Config.options.chat.border_left_sign, "OGPTTotalTokensBorder" },
         { "" .. suffix, "OGPTTotalTokens" },

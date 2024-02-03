@@ -1,10 +1,10 @@
 local job = require("plenary.job")
 local Config = require("ogpt.config")
 local logger = require("ogpt.common.logger")
-local classes = require("ogpt.common.classes")
+local Object = require("ogpt.common.object")
 local utils = require("ogpt.utils")
 
-local Api = classes.class()
+local Api = Object("Api")
 
 function Api:init(provider, action, opts)
   self.opts = opts

@@ -10,7 +10,7 @@ M.open = function(opts)
   if M.chat ~= nil and M.chat.active then
     M.chat:toggle()
   else
-    M.chat = Chat.new(opts)
+    M.chat = Chat(opts)
     M.chat:open(opts)
   end
 end
@@ -22,7 +22,7 @@ M.focus = function(opts)
       M.chat:show(opts)
     end
   else
-    M.chat = Chat.new(opts)
+    M.chat = Chat(opts)
     M.chat:open(opts)
   end
 end
@@ -31,7 +31,7 @@ M.open_with_awesome_prompt = function()
   Prompts.selectAwesomePrompt({
     cb = vim.schedule_wrap(function(act, prompt)
       -- create new named session
-      local session = Session.new({ name = act })
+      local session = Session({ name = act })
       session:save()
 
       local chat = Chat:new()

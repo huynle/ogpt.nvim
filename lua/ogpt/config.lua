@@ -115,6 +115,7 @@ function M.defaults()
 
     edit = {
       layout = "default",
+      edgy = false,
       diff = false,
       keymaps = {
         close = "<C-c>",
@@ -126,6 +127,7 @@ function M.defaults()
       },
     },
     popup = {
+      edgy = false,
       position = 1,
       size = {
         width = "40%",
@@ -141,7 +143,8 @@ function M.defaults()
       buf_options = {
         modifiable = false,
         readonly = false,
-        filetype = "markdown",
+        filetype = "ogpt-popup",
+        syntax = "markdown",
       },
       win_options = {
         wrap = true,
@@ -166,6 +169,7 @@ function M.defaults()
       border_left_sign = "|",
       border_right_sign = "|",
       max_line_length = 120,
+      edgy = false,
       sessions_window = {
         active_sign = " 󰄵 ",
         inactive_sign = " 󰄱 ",
@@ -179,18 +183,21 @@ function M.defaults()
         win_options = {
           winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
         },
+        buf_options = {
+          filetype = "ogpt-sessions",
+        },
       },
       keymaps = {
         close = { "<C-c>" },
         yank_last = "<C-y>",
-        yank_last_code = "<C-k>",
+        yank_last_code = "<C-i>",
         scroll_up = "<C-u>",
         scroll_down = "<C-d>",
         new_session = "<C-n>",
         cycle_windows = "<Tab>",
         cycle_modes = "<C-f>",
-        next_message = "<C-j>",
-        prev_message = "<C-k>",
+        next_message = "J",
+        prev_message = "K",
         select_session = "<CR>",
         rename_session = "r",
         delete_session = "d",
@@ -214,7 +221,7 @@ function M.defaults()
         width_parameters_open = "50%",
       },
     },
-    popup_window = {
+    output_window = {
       border = {
         highlight = "FloatBorder",
         style = "rounded",
@@ -229,7 +236,8 @@ function M.defaults()
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
       },
       buf_options = {
-        filetype = "markdown",
+        filetype = "ogpt-window",
+        syntax = "markdown",
       },
     },
     system_window = {
@@ -246,8 +254,11 @@ function M.defaults()
         foldcolumn = "2",
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
       },
+      buf_options = {
+        filetype = "ogpt-system-window",
+      },
     },
-    popup_input = {
+    input_window = {
       prompt = "  ",
       border = {
         highlight = "FloatBorder",
@@ -259,6 +270,9 @@ function M.defaults()
       },
       win_options = {
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+      },
+      buf_options = {
+        filetype = "ogpt-input",
       },
       submit = "<C-Enter>",
       submit_n = "<Enter>",
@@ -274,6 +288,9 @@ function M.defaults()
       },
       win_options = {
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+      },
+      buf_options = {
+        filetype = "ogpt-parameters-window",
       },
     },
     actions = {
@@ -348,7 +365,7 @@ function M.get_provider(provider_name, action, override)
   local envs = provider.load_envs(override.envs)
   provider = vim.tbl_extend("force", provider, override)
   provider.envs = envs
-  provider.api = Api.new(provider, action, {})
+  provider.api = Api(provider, action, {})
   return provider
 end
 
@@ -356,6 +373,7 @@ function M.get_action_params(provider, override)
   provider = provider or M.options.default_provider
   local default_params = M.options.providers[provider].api_params
   default_params.model = default_params.model or M.options.providers[provider].model
+  default_params.provider = provider
   return vim.tbl_extend("force", default_params, override or {})
 end
 

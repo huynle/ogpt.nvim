@@ -7,7 +7,7 @@ local action_state = require("telescope.actions.state")
 local M = {}
 M.vts = {}
 
-local Popup = require("nui.popup")
+local Popup = require("ogpt.common.popup")
 local Config = require("ogpt.config")
 
 local namespace_id = vim.api.nvim_create_namespace("OGPTNS")
@@ -155,7 +155,7 @@ function M.select_parameter(opts)
         height = 0.5,
       },
       results_title = "Select Additional Parameter",
-      prompt_prefix = Config.options.popup_input.prompt,
+      prompt_prefix = Config.options.input_window.prompt,
       selection_caret = Config.options.chat.answer_sign .. " ",
       prompt_title = "Parameter",
       finder = finder({
@@ -255,9 +255,7 @@ M.get_parameters_panel = function(type, default_params, session, parent)
     M.params = session.parameters
   end
 
-  M.panel = Popup(Config.options.parameters_window)
-  -- M.panel = SimpleWindow.new(Config.options.parameters_window)
-  -- M.panel:mount()
+  M.panel = Popup(Config.options.parameters_window, parent.edgy)
   M.refresh_panel()
 
   M.panel:map("n", "d", function()
@@ -365,7 +363,7 @@ M.open_edit_property_input = function(key, value, row, cb)
       winhighlight = "Normal:Normal,FloatBorder:Normal",
     },
   }, {
-    prompt = Config.options.popup_input.prompt .. key .. ": ",
+    prompt = Config.options.input_window.prompt .. key .. ": ",
     default_value = "" .. value,
     on_submit = cb,
   })

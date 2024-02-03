@@ -59,7 +59,7 @@ function M.select_action(opts)
         height = 0.5,
       },
       results_title = "Select Ollama action",
-      prompt_prefix = Config.options.popup_input.prompt,
+      prompt_prefix = Config.options.input_window.prompt,
       selection_caret = Config.options.chat.answer_sign .. " ",
       prompt_title = "actions",
       finder = finder(action_definitions),

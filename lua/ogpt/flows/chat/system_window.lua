@@ -1,15 +1,15 @@
-local Popup = require("nui.popup")
+local Popup = require("ogpt.common.popup")
 local Config = require("ogpt.config")
 
 local SystemWindow = Popup:extend("SystemWindow")
 
-function SystemWindow:init(options)
+function SystemWindow:init(options, edgy)
   self.working = false
   self.on_change = options.on_change
 
   options = vim.tbl_deep_extend("force", options or {}, Config.options.system_window)
 
-  SystemWindow.super.init(self, options)
+  SystemWindow.super.init(self, options, edgy)
 end
 
 function SystemWindow:toggle_placeholder()

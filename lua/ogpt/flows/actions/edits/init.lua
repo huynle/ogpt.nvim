@@ -1,30 +1,35 @@
-local classes = require("ogpt.common.classes")
 local BaseAction = require("ogpt.flows.actions.base")
+local Spinner = require("ogpt.spinner")
+local PopupWindow = require("ogpt.flows.actions.popup.window")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
 local Layout = require("nui.layout")
-local Split = require("nui.split")
-local Popup = require("nui.popup")
+local Popup = require("ogpt.common.popup")
 local ChatInput = require("ogpt.input")
 local Parameters = require("ogpt.parameters")
 
-local EditAction = classes.class(BaseAction)
+local EditAction = BaseAction:extend("EditAction")
 
 local STRATEGY_EDIT = "edit"
 local STRATEGY_EDIT_CODE = "edit_code"
 
+local instructions_input, layout, input_window, output_window, output, timer, filetype, bufnr, extmark_id
+
 function EditAction:init(name, opts)
   self.name = name or ""
   opts = opts or {}
-  self.super:init(opts)
+  EditAction.super.init(self, opts)
   self.provider = Config.get_provider(opts.provider, self)
   self.params = Config.get_action_params(self.provider.name, opts.params or {})
   self.system = type(opts.system) == "function" and opts.system() or opts.system or ""
   self.template = type(opts.template) == "function" and opts.template() or opts.template or "{{input}}"
   self.variables = opts.variables or {}
   self.strategy = opts.strategy or STRATEGY_EDIT
+  self.edgy = Config.options.edit.edgy
+
   self.ui = opts.ui or {}
-  self:post_init()
+
+  self:update_variables()
 end
 
 function EditAction:run()
@@ -60,8 +65,6 @@ function EditAction:run()
   end)
 end
 
-local instructions_input, layout, input_window, output_window, output, timer, filetype, bufnr, extmark_id
-
 local setup_and_mount = vim.schedule_wrap(function(lines, output_lines, ...)
   layout:mount()
   -- set input
@@ -96,17 +99,20 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   else
     visual_lines, start_row, start_col, end_row, end_col = unpack(selection)
   end
-  local parameters_panel = Parameters.get_parameters_panel("edits", api_params)
-  input_window = Popup(Config.options.popup_window)
-  output_window = Popup(Config.options.popup_window)
-  instructions_input = ChatInput(Config.options.popup_input, {
-    prompt = Config.options.popup_input.prompt,
+  local parameters_panel = Parameters.get_parameters_panel("edits", api_params, nil, self)
+  input_window = Popup(Config.options.input_window, Config.options.edit.edgy)
+
+  output_window = Popup(Config.options.output_window, Config.options.edit.edgy)
+  self.output_panel = output_window
+  instructions_input = ChatInput(Config.options.input_window, {
+    edgy = Config.options.edit.edgy,
+    prompt = Config.options.input_window.prompt,
     default_value = opts.instruction or "",
     on_close = function()
       -- if self.spinner:is_running() then
       --   self.spinner:stop()
       -- end
-      self:run_spinner(false)
+      self:run_spinner(instructions_input, false)
       if timer ~= nil then
         timer:stop()
       end
@@ -116,7 +122,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       vim.api.nvim_buf_set_lines(instructions_input.bufnr, 0, -1, false, { "" })
       vim.api.nvim_buf_set_lines(output_window.bufnr, 0, -1, false, { "" })
       -- show_progress()
-      self:run_spinner(true)
+      self:run_spinner(instructions_input, true)
 
       local input = table.concat(vim.api.nvim_buf_get_lines(input_window.bufnr, 0, -1, false), "\n")
 
@@ -161,22 +167,15 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
     end),
   })
 
-  local _layout
-  if Config.options.edit.layout == "default" then
-    _layout = {
+  layout = Layout(
+    {
       relative = "editor",
       position = "50%",
       size = {
         width = Config.options.popup_layout.center.width,
         height = Config.options.popup_layout.center.height,
       },
-    }
-  else
-    _layout = Split(Config.options.edit.layout)
-  end
-
-  layout = Layout(
-    _layout,
+    },
 
     Layout.Box({
       Layout.Box({
@@ -258,7 +257,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
         -- set input and output settings
         --  TODO
         for _, window in ipairs({ input_window, output_window }) do
-          vim.api.nvim_buf_set_option(window.bufnr, "filetype", filetype)
+          vim.api.nvim_buf_set_option(window.bufnr, "syntax", filetype)
           vim.api.nvim_win_set_option(window.winid, "number", true)
         end
       end, {})
@@ -315,6 +314,13 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
         end
       end, {})
     end
+  end
+
+  -- set events
+  for _, popup in ipairs({ parameters_panel, instructions_input, output_window, input_window }) do
+    popup:on({ "BufUnload" }, function()
+      self:set_loading(false)
+    end)
   end
 
   setup_and_mount(visual_lines, output_lines)

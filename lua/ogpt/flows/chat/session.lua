@@ -1,9 +1,9 @@
-local classes = require("ogpt.common.classes")
+local Object = require("ogpt.common.object")
 local Path = require("plenary.path")
 local scan = require("plenary.scandir")
 local Config = require("ogpt.config")
 
-local Session = classes.class()
+local Session = Object("Session")
 
 local function get_current_date()
   return os.date("%Y-%m-%d_%H:%M:%S")
@@ -199,9 +199,9 @@ function Session.latest(opts)
   local sessions = Session.list_sessions()
   if #sessions > 0 then
     local session = sessions[1]
-    return Session.new({ filename = session.filename })
+    return Session({ filename = session.filename })
   end
-  return Session.new(opts)
+  return Session(opts)
 end
 
 return Session

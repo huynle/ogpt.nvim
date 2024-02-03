@@ -290,7 +290,7 @@ function M.add_partial_completion(opts, text, state)
     local buffer = panel.bufnr
 
     for i, line in ipairs(lines) do
-      if vim.fn.bufexists(buffer) then
+      if buffer and vim.fn.bufexists(buffer) then
         local currentLine = vim.api.nvim_buf_get_lines(buffer, -2, -1, false)[1]
         if currentLine then
           vim.api.nvim_buf_set_lines(buffer, -2, -1, false, { currentLine .. line })
