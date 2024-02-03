@@ -62,7 +62,8 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
             partial_result_fn(table.concat(error_msg, " "), "ERROR", ctx)
             return
           end
-          ctx, raw_chunks, state = self.provider.process_line(json, ctx, raw_chunks, state, partial_result_fn)
+          ctx, raw_chunks, state =
+            self.provider.process_line({ json = json, raw = chunk }, ctx, raw_chunks, state, partial_result_fn)
           return
         end
 
@@ -70,7 +71,11 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
           local raw_json = string.gsub(line, "^data:", "")
           local _ok, _json = pcall(vim.json.decode, raw_json)
           if _ok then
-            ctx, raw_chunks, state = self.provider.process_line(_json, ctx, raw_chunks, state, partial_result_fn)
+            ctx, raw_chunks, state =
+              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, partial_result_fn)
+          else
+            ctx, raw_chunks, state =
+              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, partial_result_fn)
           end
         end
       end,
