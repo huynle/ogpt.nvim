@@ -18,7 +18,7 @@ function Sessions:set_session()
   local selected = self.sessions[self.current_line]
   local session = Session({ filename = selected.filename })
   self:render_list()
-  self:set_session_cb(session)
+  self.set_session_cb(session)
 end
 
 function Sessions:rename_session()

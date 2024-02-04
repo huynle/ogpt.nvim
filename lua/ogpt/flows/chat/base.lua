@@ -28,6 +28,7 @@ function Chat:init(opts)
   -- quit indicator
   self.active = true
   self.focused = true
+  self.session = nil
 
   -- UI ELEMENTS
   self.edgy = Config.options.chat.edgy
@@ -80,7 +81,7 @@ function Chat:welcome()
     end
   end
 
-  if #self.session.conversation == 0 or (#self.session.conversation == 1 and self.system_message ~= nil) then
+  if #conversation == 0 or (#conversation == 1 and self.system_message ~= nil) then
     local lines = utils.split_string_by_line(Config.options.chat.welcome_message)
     self:set_lines(0, 0, false, lines)
     for line_num = 0, #lines do
