@@ -1,5 +1,5 @@
 local Object = require("ogpt.common.object")
-local Layout = require("nui.layout")
+local Layout = require("ogpt.common.layout")
 local Popup = require("ogpt.common.popup")
 
 local ChatInput = require("ogpt.input")
@@ -740,7 +740,8 @@ function Chat:open()
     end,
   })
 
-  self.layout = Layout(self:get_layout_params())
+  local _layout_options, _layout_box = self:get_layout_params()
+  self.layout = Layout(_layout_options, _layout_box, Config.options.chat.edgy)
   self:set_keymaps()
 
   -- initialize

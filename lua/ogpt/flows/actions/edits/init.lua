@@ -1,9 +1,7 @@
 local BaseAction = require("ogpt.flows.actions.base")
-local Spinner = require("ogpt.spinner")
-local PopupWindow = require("ogpt.flows.actions.popup.window")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
-local Layout = require("nui.layout")
+local Layout = require("ogpt.common.layout")
 local Popup = require("ogpt.common.popup")
 local ChatInput = require("ogpt.input")
 local Parameters = require("ogpt.parameters")
@@ -183,7 +181,8 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
         Layout.Box(instructions_input, { size = 3 }),
       }, { dir = "col", size = "50%" }),
       Layout.Box(output_window, { size = "50%" }),
-    }, { dir = "row" })
+    }, { dir = "row" }),
+    Config.options.edit.edgy
   )
 
   -- accept output window
