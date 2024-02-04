@@ -1,7 +1,4 @@
 local Popup = require("ogpt.common.popup")
-local Sessions = Popup:extend("Parameters")
-
-local Popup = require("ogpt.common.popup")
 local Config = require("ogpt.config")
 local Session = require("ogpt.flows.chat.session")
 local Utils = require("ogpt.utils")
@@ -9,8 +6,10 @@ local InputWidget = require("ogpt.common.input_widget")
 
 local namespace_id = vim.api.nvim_create_namespace("OGPTNS")
 
+local Sessions = Popup:extend("Sessions")
+
 function Sessions:set_current_line()
-  self.current_line, _ = unpack(vim.api.nvim_win_get_cursor(self.panel.winid))
+  self.current_line, _ = unpack(vim.api.nvim_win_get_cursor(self.winid))
   self:render_list()
 end
 
@@ -52,7 +51,7 @@ function Sessions:delete_session()
 end
 
 function Sessions:render_list()
-  vim.api.nvim_buf_clear_namespace(self.panel.bufnr, namespace_id, 0, -1)
+  vim.api.nvim_buf_clear_namespace(self.bufnr, namespace_id, 0, -1)
 
   local details = {}
   for i, session in pairs(self.sessions) do
@@ -75,15 +74,10 @@ function Sessions:render_list()
     table.insert(empty_lines, "")
   end
 
-  vim.api.nvim_buf_set_lines(self.panel.bufnr, line - 1, line - 1 + #empty_lines, false, empty_lines)
+  vim.api.nvim_buf_set_lines(self.bufnr, line - 1, line - 1 + #empty_lines, false, empty_lines)
   for _, d in ipairs(details) do
-    self.vts[line - 1] = vim.api.nvim_buf_set_extmark(
-      self.panel.bufnr,
-      namespace_id,
-      line - 1,
-      0,
-      { virt_text = d, virt_text_pos = "overlay" }
-    )
+    self.vts[line - 1] =
+      vim.api.nvim_buf_set_extmark(self.bufnr, namespace_id, line - 1, 0, { virt_text = d, virt_text_pos = "overlay" })
     line = line + 1
   end
 end
@@ -98,39 +92,35 @@ end
 function Sessions:init(opts)
   Sessions.super.init(self, vim.tbl_extend("force", Config.options.chat.sessions_window, opts), opts.edgy)
   self.vts = {}
-  self:get_panel(opts)
-end
 
-function Sessions:get_panel(opts)
   local set_session_cb = opts.set_session_cb
-
   self.sessions = Session.list_sessions()
   self.active_line = 1
   self.current_line = 1
   self.set_session_cb = set_session_cb
+  self:set_keymaps(opts)
+  self:render_list()
+end
 
-  self.panel = Popup(Config.options.chat.sessions_window, Config.options.chat.edgy)
-
-  self.panel:map("n", Config.options.chat.keymaps.select_session, function()
+function Sessions:set_keymaps(opts)
+  self:map("n", Config.options.chat.keymaps.select_session, function()
     self:set_session()
   end, { noremap = true })
 
-  self.panel:map("n", Config.options.chat.keymaps.rename_session, function()
+  self:map("n", Config.options.chat.keymaps.rename_session, function()
     self:rename_session()
   end, { noremap = true })
 
-  self.panel:map("n", Config.options.chat.keymaps.delete_session, function()
+  self:map("n", Config.options.chat.keymaps.delete_session, function()
     self:delete_session()
   end, { noremap = true, silent = true })
 
   vim.api.nvim_create_autocmd("CursorMoved", {
-    buffer = self.panel.bufnr,
-    callback = self.set_current_line,
+    buffer = self.bufnr,
+    callback = function()
+      self:set_current_line()
+    end,
   })
-
-  self:render_list()
-
-  return self.panel
 end
 
 return Sessions

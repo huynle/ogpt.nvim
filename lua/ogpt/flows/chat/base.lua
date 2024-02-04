@@ -69,7 +69,8 @@ function Chat:welcome()
   self:set_cursor({ 1, 0 })
   self:set_system_message(nil, true)
 
-  if #self.session.conversation > 0 then
+  local conversation = self.session.conversation or {}
+  if #conversation > 0 then
     for idx, item in ipairs(self.session.conversation) do
       if item.type == SYSTEM then
         self:set_system_message(item.text, true)
@@ -852,7 +853,7 @@ function Chat:set_keymaps()
   -- new session
   self:map(Config.options.chat.keymaps.new_session, function()
     self:new_session()
-    Sessions:refresh()
+    self.sessions_panel:refresh()
   end, { self.parameters_panel, self.chat_input, self.chat_window })
 
   -- cycle panes
