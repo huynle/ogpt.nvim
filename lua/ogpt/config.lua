@@ -266,7 +266,7 @@ function M.defaults()
         style = "rounded",
         text = {
           top_align = "center",
-          top = " Instruction ",
+          top = " {{input}} ",
         },
       },
       win_options = {
@@ -274,6 +274,26 @@ function M.defaults()
       },
       buf_options = {
         filetype = "ogpt-input",
+      },
+      submit = "<C-Enter>",
+      submit_n = "<Enter>",
+      max_visible_lines = 20,
+    },
+    instruction_window = {
+      prompt = "  ",
+      border = {
+        highlight = "FloatBorder",
+        style = "rounded",
+        text = {
+          top_align = "center",
+          top = " Instruction ",
+        },
+      },
+      win_options = {
+        winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+      },
+      buf_options = {
+        filetype = "ogpt-instruction",
       },
       submit = "<C-Enter>",
       submit_n = "<Enter>",
