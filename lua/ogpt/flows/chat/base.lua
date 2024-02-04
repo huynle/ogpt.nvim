@@ -28,6 +28,7 @@ function Chat:init(opts)
   -- quit indicator
   self.active = true
   self.focused = true
+  self.session = nil
 
   -- UI ELEMENTS
   self.edgy = Config.options.chat.edgy
@@ -69,7 +70,8 @@ function Chat:welcome()
   self:set_cursor({ 1, 0 })
   self:set_system_message(nil, true)
 
-  if #self.session.conversation > 0 then
+  local conversation = self.session.conversation or {}
+  if #conversation > 0 then
     for idx, item in ipairs(self.session.conversation) do
       if item.type == SYSTEM then
         self:set_system_message(item.text, true)
@@ -79,7 +81,7 @@ function Chat:welcome()
     end
   end
 
-  if #self.session.conversation == 0 or (#self.session.conversation == 1 and self.system_message ~= nil) then
+  if #conversation == 0 or (#conversation == 1 and self.system_message ~= nil) then
     local lines = utils.split_string_by_line(Config.options.chat.welcome_message)
     self:set_lines(0, 0, false, lines)
     for line_num = 0, #lines do
@@ -852,7 +854,7 @@ function Chat:set_keymaps()
   -- new session
   self:map(Config.options.chat.keymaps.new_session, function()
     self:new_session()
-    Sessions:refresh()
+    self.sessions_panel:refresh()
   end, { self.parameters_panel, self.chat_input, self.chat_window })
 
   -- cycle panes
