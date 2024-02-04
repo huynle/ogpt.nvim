@@ -161,22 +161,22 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       },
     },
 
-    -- Layout.Box({
-    --   Layout.Box({
-    --     Layout.Box(self.input_window, { grow = 1 }),
-    --     Layout.Box(self.instructions_input, { size = 3 }),
-    --   }, { dir = "col", size = "50%" }),
-    --   Layout.Box(self.output_window, { size = "50%" }),
-    -- }, { dir = "row" }),
-
     Layout.Box({
       Layout.Box({
         Layout.Box(self.input_panel, { grow = 1 }),
         Layout.Box(self.instructions_input, { size = 3 }),
-      }, { dir = "col", grow = 1 }),
-      Layout.Box(self.output_panel, { grow = 1 }),
-      Layout.Box(self.parameters_panel, { size = 40 }),
+      }, { dir = "col", size = "50%" }),
+      Layout.Box(self.output_panel, { size = "50%" }),
     }, { dir = "row" }),
+
+    -- Layout.Box({
+    --   Layout.Box({
+    --     Layout.Box(self.input_panel, { grow = 1 }),
+    --     Layout.Box(self.instructions_input, { size = 3 }),
+    --   }, { dir = "col", grow = 1 }),
+    --   Layout.Box(self.output_panel, { grow = 1 }),
+    --   Layout.Box(self.parameters_panel, { size = 40 }),
+    -- }, { dir = "row" }),
 
     Config.options.edit.edgy
   )
@@ -218,7 +218,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   end
 
   -- toggle parameters
-  local parameters_open = true
+  local parameters_open = false
   for _, popup in ipairs({ self.parameters_panel, self.instructions_input, self.input_panel, self.output_panel }) do
     for _, mode in ipairs({ "n", "i" }) do
       popup:map(mode, Config.options.edit.keymaps.toggle_parameters, function()

@@ -13,7 +13,7 @@ M.logs = {}
 function M.defaults()
   local defaults = {
     debug = false,
-    edgy = true,
+    edgy = false,
     yank_register = "+",
     default_provider = "ollama",
     providers = {
