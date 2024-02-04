@@ -74,7 +74,7 @@ end
 
 function Session:previous_context()
   for ith = #self.conversation, 1, -1 do
-    local context = self.conversation[ith].context
+    local context = self.conversation[ith].text
     if context then
       return context
     end

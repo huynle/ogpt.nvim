@@ -76,10 +76,14 @@ function M._conform_messages(params)
   return params
 end
 
-function M.process_line(_json, ctx, raw_chunks, state, cb)
+function M.process_line(content, ctx, raw_chunks, state, cb)
+  local _json = content.json
+  local raw = content.raw
   -- given a JSON response from the STREAMING api, processs it
   if _json and _json.done then
     ctx.context = _json.context
+    cb(raw_chunks, "END", ctx)
+  elseif type(_json) == "string" and string.find(_json, "[DONE]") then
     cb(raw_chunks, "END", ctx)
   else
     if

@@ -13,6 +13,7 @@ M.logs = {}
 function M.defaults()
   local defaults = {
     debug = false,
+    edgy = false,
     yank_register = "+",
     default_provider = "ollama",
     providers = {
@@ -115,7 +116,7 @@ function M.defaults()
 
     edit = {
       layout = "default",
-      edgy = false,
+      edgy = nil, -- use global default
       diff = false,
       keymaps = {
         close = "<C-c>",
@@ -127,7 +128,7 @@ function M.defaults()
       },
     },
     popup = {
-      edgy = false,
+      edgy = nil, -- use global default
       position = 1,
       size = {
         width = "40%",
@@ -169,7 +170,7 @@ function M.defaults()
       border_left_sign = "|",
       border_right_sign = "|",
       max_line_length = 120,
-      edgy = false,
+      edgy = nil, -- use global default
       sessions_window = {
         active_sign = " 󰄵 ",
         inactive_sign = " 󰄱 ",
@@ -265,7 +266,7 @@ function M.defaults()
         style = "rounded",
         text = {
           top_align = "center",
-          top = " Instruction ",
+          top = " {{input}} ",
         },
       },
       win_options = {
@@ -273,6 +274,26 @@ function M.defaults()
       },
       buf_options = {
         filetype = "ogpt-input",
+      },
+      submit = "<C-Enter>",
+      submit_n = "<Enter>",
+      max_visible_lines = 20,
+    },
+    instruction_window = {
+      prompt = "  ",
+      border = {
+        highlight = "FloatBorder",
+        style = "rounded",
+        text = {
+          top_align = "center",
+          top = " Instruction ",
+        },
+      },
+      win_options = {
+        winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+      },
+      buf_options = {
+        filetype = "ogpt-instruction",
       },
       submit = "<C-Enter>",
       submit_n = "<Enter>",
@@ -346,8 +367,19 @@ function M.setup(options)
     "actions",
   }
 
-  -- -- allow to use a default provider model
-  -- M.options.api_params.model = M.options.api_params.model or M.options.default_provider.model
+  local function update_edgy_flag(chat_type)
+    for _, t in ipairs(chat_type) do
+      if not M.options[t].edgy then
+        M.options[t].edgy = M.options.edgy
+      end
+    end
+  end
+
+  update_edgy_flag({
+    "chat",
+    "edit",
+    "popup",
+  })
 
   for _, to_replace in pairs(_complete_replace) do
     vim.tbl_contains(options, to_replace)

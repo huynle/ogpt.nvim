@@ -1,5 +1,5 @@
 local Object = require("ogpt.common.object")
-local Layout = require("nui.layout")
+local Layout = require("ogpt.common.layout")
 local Popup = require("ogpt.common.popup")
 
 local ChatInput = require("ogpt.input")
@@ -659,11 +659,7 @@ function Chat:get_layout_params()
     }, { dir = self.display_mode == "center" and "row" or "col", grow = 1 })
   end
 
-  local box = Layout.Box({
-    left_layout,
-    Layout.Box(self.chat_input, { size = 2 + self.prompt_lines }),
-  }, { dir = "col" })
-
+  local box
   if self.parameters_open then
     box = Layout.Box({
       Layout.Box({
@@ -675,6 +671,11 @@ function Chat:get_layout_params()
         Layout.Box(self.sessions_panel, { grow = 1 }),
       }, { dir = "col", size = 40 }),
     }, { dir = "row" })
+  else
+    box = Layout.Box({
+      left_layout,
+      Layout.Box(self.chat_input, { size = 2 + self.prompt_lines }),
+    }, { dir = "col" })
   end
 
   return config, box
@@ -682,10 +683,19 @@ end
 
 function Chat:open()
   self.session.parameters = vim.tbl_extend("keep", self.session.parameters, self.params)
-  self.parameters_panel = Parameters.get_panel(self.session, self)
-  self.sessions_panel = Sessions.get_panel(function(session)
-    self:set_session(session)
-  end)
+  self.parameters_panel = Parameters({
+    type = "chat",
+    default_params = self.session.parameters,
+    session = self.session,
+    parent = self,
+    edgy = Config.options.chat.edgy,
+  })
+  self.sessions_panel = Sessions({
+    edgy = Config.options.chat.edgy,
+    set_session_cb = function(session)
+      self:set_session(session)
+    end,
+  })
   self.chat_window = Popup(Config.options.output_window, Config.options.chat.edgy)
   self.system_role_panel = SystemWindow({
     on_change = function(text)
@@ -732,7 +742,7 @@ function Chat:open()
           -- prompt = self.messages[#self.messages].text,
           messages = self:toMessages(),
           system = self.system_message,
-        }, Parameters.params)
+        }, self.parameters_panel.params)
         self.provider.api:chat_completions(params, function(answer, state, ctx)
           self:addAnswerPartial(answer, state, ctx)
         end, self.should_stop)
@@ -740,7 +750,8 @@ function Chat:open()
     end,
   })
 
-  self.layout = Layout(self:get_layout_params())
+  local _layout_options, _layout_box = self:get_layout_params()
+  self.layout = Layout(_layout_options, _layout_box, Config.options.chat.edgy)
   self:set_keymaps()
 
   -- initialize
@@ -825,11 +836,15 @@ function Chat:set_keymaps()
     self:redraw()
 
     if self.parameters_open then
+      self.parameters_panel:show()
+      self.sessions_panel:show()
       vim.api.nvim_buf_set_option(self.parameters_panel.bufnr, "modifiable", false)
       vim.api.nvim_win_set_option(self.parameters_panel.winid, "cursorline", true)
 
       self:set_active_panel(self.parameters_panel)
     else
+      self.parameters_panel:hide()
+      self.sessions_panel:hide()
       self:set_active_panel(self.chat_input)
     end
   end)
@@ -961,7 +976,14 @@ function Chat:toggle()
 end
 
 function Chat:configure_parameters_panel(session)
-  self.parameters_panel = Parameters.get_panel(session, self)
+  -- self.parameters_panel = Parameters(session, self)
+  -- self.parameters_panel = Parameters({
+  --   type = " ",
+  --   default_params = self.session.parameters,
+  --   session = self.session,
+  --   parent = self,
+  -- })
+  --
   self:redraw()
 end
 

@@ -94,7 +94,9 @@ function M._conform_messages(messages)
   return final_string
 end
 
-function M.process_line(_json, ctx, raw_chunks, state, cb)
+function M.process_line(content, ctx, raw_chunks, state, cb)
+  local _json = content.json
+  local raw = content.raw
   if _json.token then
     if _json.token.text == "</s>" then
       ctx.context = _json.context

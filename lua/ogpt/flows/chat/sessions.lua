@@ -1,5 +1,5 @@
-local M = {}
-M.vts = {}
+local Popup = require("ogpt.common.popup")
+local Sessions = Popup:extend("Parameters")
 
 local Popup = require("ogpt.common.popup")
 local Config = require("ogpt.config")
@@ -9,59 +9,62 @@ local InputWidget = require("ogpt.common.input_widget")
 
 local namespace_id = vim.api.nvim_create_namespace("OGPTNS")
 
-M.set_current_line = function()
-  M.current_line, _ = unpack(vim.api.nvim_win_get_cursor(M.panel.winid))
-  M.render_list()
+function Sessions:set_current_line()
+  self.current_line, _ = unpack(vim.api.nvim_win_get_cursor(self.panel.winid))
+  self:render_list()
 end
 
-M.set_session = function()
-  M.active_line = M.current_line
-  local selected = M.sessions[M.current_line]
+function Sessions:set_session()
+  self.active_line = self.current_line
+  local selected = self.sessions[self.current_line]
   local session = Session({ filename = selected.filename })
-  M.render_list()
-  M.set_session_cb(session)
+  self:render_list()
+  self:set_session_cb(session)
 end
 
-M.rename_session = function()
-  M.active_line = M.current_line
-  local selected = M.sessions[M.current_line]
+function Sessions:rename_session()
+  self.active_line = self.current_line
+  local selected = self.sessions[self.current_line]
   local session = Session({ filename = selected.filename })
   local input_widget = InputWidget("New Name:", function(value)
     if value ~= nil and value ~= "" then
       session:rename(value)
-      M.sessions = Session.list_sessions()
-      M.render_list()
+      self.sessions = Session.list_sessions()
+      self:render_list()
     end
   end)
   input_widget:mount()
 end
 
-M.delete_session = function()
-  local selected = M.sessions[M.current_line]
-  if M.active_line ~= M.current_line then
+function Sessions:delete_session()
+  local selected = self.sessions[self.current_line]
+  if self.active_line ~= self.current_line then
     local session = Session({ filename = selected.filename })
     session:delete()
-    M.sessions = Session.list_sessions()
-    if M.active_line > M.current_line then
-      M.active_line = M.active_line - 1
+    self.sessions = Session.list_sessions()
+    if self.active_line > self.current_line then
+      self.active_line = self.active_line - 1
     end
-    M.render_list()
+    self:render_list()
   else
     vim.notify("Cannot remove active session", vim.log.levels.ERROR)
   end
 end
 
-M.render_list = function()
-  vim.api.nvim_buf_clear_namespace(M.panel.bufnr, namespace_id, 0, -1)
+function Sessions:render_list()
+  vim.api.nvim_buf_clear_namespace(self.panel.bufnr, namespace_id, 0, -1)
 
   local details = {}
-  for i, session in pairs(M.sessions) do
-    local icon = i == M.active_line and Config.options.chat.sessions_window.active_sign
+  for i, session in pairs(self.sessions) do
+    local icon = i == self.active_line and Config.options.chat.sessions_window.active_sign
       or Config.options.chat.sessions_window.inactive_sign
-    local cls = i == M.active_line and "ErrorMsg" or "Comment"
+    local cls = i == self.active_line and "ErrorMsg" or "Comment"
     local name = Utils.trimText(session.name, 30)
     local vt = {
-      { (M.current_line == i and Config.options.chat.sessions_window.current_line_sign or " ") .. icon .. name, cls },
+      {
+        (self.current_line == i and Config.options.chat.sessions_window.current_line_sign or " ") .. icon .. name,
+        cls,
+      },
     }
     table.insert(details, vt)
   end
@@ -72,10 +75,10 @@ M.render_list = function()
     table.insert(empty_lines, "")
   end
 
-  vim.api.nvim_buf_set_lines(M.panel.bufnr, line - 1, line - 1 + #empty_lines, false, empty_lines)
+  vim.api.nvim_buf_set_lines(self.panel.bufnr, line - 1, line - 1 + #empty_lines, false, empty_lines)
   for _, d in ipairs(details) do
-    M.vts[line - 1] = vim.api.nvim_buf_set_extmark(
-      M.panel.bufnr,
+    self.vts[line - 1] = vim.api.nvim_buf_set_extmark(
+      self.panel.bufnr,
       namespace_id,
       line - 1,
       0,
@@ -85,41 +88,49 @@ M.render_list = function()
   end
 end
 
-M.refresh = function()
-  M.sessions = Session.list_sessions()
-  M.active_line = 1
-  M.current_line = 1
-  M.render_list()
+function Sessions:refresh()
+  self.sessions = Session.list_sessions()
+  self.active_line = 1
+  self.current_line = 1
+  self:render_list()
 end
 
-M.get_panel = function(set_session_cb)
-  M.sessions = Session.list_sessions()
-  M.active_line = 1
-  M.current_line = 1
-  M.set_session_cb = set_session_cb
+function Sessions:init(opts)
+  Sessions.super.init(self, vim.tbl_extend("force", Config.options.chat.sessions_window, opts), opts.edgy)
+  self.vts = {}
+  self:get_panel(opts)
+end
 
-  M.panel = Popup(Config.options.chat.sessions_window, Config.options.chat.edgy)
+function Sessions:get_panel(opts)
+  local set_session_cb = opts.set_session_cb
 
-  M.panel:map("n", Config.options.chat.keymaps.select_session, function()
-    M.set_session()
+  self.sessions = Session.list_sessions()
+  self.active_line = 1
+  self.current_line = 1
+  self.set_session_cb = set_session_cb
+
+  self.panel = Popup(Config.options.chat.sessions_window, Config.options.chat.edgy)
+
+  self.panel:map("n", Config.options.chat.keymaps.select_session, function()
+    self:set_session()
   end, { noremap = true })
 
-  M.panel:map("n", Config.options.chat.keymaps.rename_session, function()
-    M.rename_session()
+  self.panel:map("n", Config.options.chat.keymaps.rename_session, function()
+    self:rename_session()
   end, { noremap = true })
 
-  M.panel:map("n", Config.options.chat.keymaps.delete_session, function()
-    M.delete_session()
+  self.panel:map("n", Config.options.chat.keymaps.delete_session, function()
+    self:delete_session()
   end, { noremap = true, silent = true })
 
   vim.api.nvim_create_autocmd("CursorMoved", {
-    buffer = M.panel.bufnr,
-    callback = M.set_current_line,
+    buffer = self.panel.bufnr,
+    callback = self.set_current_line,
   })
 
-  M.render_list()
+  self:render_list()
 
-  return M.panel
+  return self.panel
 end
 
-return M
+return Sessions
