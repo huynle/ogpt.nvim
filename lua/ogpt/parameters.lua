@@ -1,16 +1,16 @@
+-- local Object = require("ogpt.common.object")
 local pickers = require("telescope.pickers")
 local Utils = require("ogpt.utils")
 local conf = require("telescope.config").values
 local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
 
-local M = {}
-M.vts = {}
-
 local Popup = require("ogpt.common.popup")
 local Config = require("ogpt.config")
 
 local namespace_id = vim.api.nvim_create_namespace("OGPTNS")
+
+local Parameters = Popup:extend("Parameters")
 
 local float_validator = function(min, max)
   return function(value)
@@ -146,7 +146,7 @@ local function write_virtual_text(bufnr, ns, line, chunks, mode)
   end
 end
 
-function M.select_parameter(opts)
+function Parameters:select_parameter(opts)
   opts = opts or {}
   pickers
     .new(opts, {
@@ -174,10 +174,10 @@ function M.select_parameter(opts)
     :find()
 end
 
-M.read_config = function(session)
+function Parameters:read_config(session)
   if not session then
     local home = os.getenv("HOME") or os.getenv("USERPROFILE")
-    local file = io.open(home .. "/" .. ".ogpt-" .. M.type .. "-params.json", "rb")
+    local file = io.open(home .. "/" .. ".ogpt-" .. self.parent_type .. "-params.json", "rb")
     if not file then
       return nil
     end
@@ -190,10 +190,10 @@ M.read_config = function(session)
   end
 end
 
-M.write_config = function(config, session)
+function Parameters:write_config(config, session)
   if not session then
     local home = os.getenv("HOME") or os.getenv("USERPROFILE")
-    local file, err = io.open(home .. "/" .. ".ogpt-" .. M.type .. "-params.json", "w")
+    local file, err = io.open(home .. "/" .. ".ogpt-" .. self.parent_type .. "-params.json", "w")
     if file ~= nil then
       local json_string = vim.json.encode(config)
       file:write(json_string)
@@ -207,17 +207,17 @@ M.write_config = function(config, session)
   end
 end
 
-M.refresh_panel = function()
+function Parameters:refresh_panel()
   -- write details as virtual text
   local details = {}
   for _, key in pairs(params_order) do
-    if M.params[key] ~= nil then
-      local display_text = M.params[key]
+    if self.params[key] ~= nil then
+      local display_text = self.params[key]
       if type(display_text) == "table" then
         if display_text.name then
           display_text = display_text.name
         else
-          display_text = table.concat(M.params[key], ", ")
+          display_text = table.concat(self.params[key], ", ")
         end
       end
 
@@ -229,7 +229,7 @@ M.refresh_panel = function()
     end
   end
 
-  vim.api.nvim_buf_clear_namespace(M.panel.bufnr, namespace_id, 0, -1)
+  vim.api.nvim_buf_clear_namespace(self.bufnr, namespace_id, 0, -1)
 
   local line = 1
   local empty_lines = {}
@@ -237,57 +237,64 @@ M.refresh_panel = function()
     table.insert(empty_lines, "")
   end
 
-  vim.api.nvim_buf_set_option(M.panel.bufnr, "modifiable", true)
-  vim.api.nvim_buf_set_lines(M.panel.bufnr, line - 1, line - 1 + #empty_lines, false, empty_lines)
-  vim.api.nvim_buf_set_option(M.panel.bufnr, "modifiable", false)
+  vim.api.nvim_buf_set_option(self.bufnr, "modifiable", true)
+  vim.api.nvim_buf_set_lines(self.bufnr, line - 1, line - 1 + #empty_lines, false, empty_lines)
+  vim.api.nvim_buf_set_option(self.bufnr, "modifiable", false)
   for _, d in ipairs(details) do
-    M.vts[line - 1] = write_virtual_text(M.panel.bufnr, namespace_id, line - 1, d)
+    self.vts[line - 1] = write_virtual_text(self.bufnr, namespace_id, line - 1, d)
     line = line + 1
   end
 end
 
-M.get_parameters_panel = function(type, default_params, session, parent)
-  M.type = type
-  local custom_params = M.read_config(session or {})
+function Parameters:init(opts)
+  Parameters.super.init(self, vim.tbl_extend("force", Config.options.parameters_window, opts), opts.edgy)
+  self.vts = {}
 
-  M.params = vim.tbl_deep_extend("force", {}, default_params, custom_params or {})
+  local type = opts.type
+  local default_params = opts.default_params
+  local session = opts.session
+  local parent = opts.parent
+
+  self.parent_type = type
+  local custom_params = self:read_config(session or {})
+
+  self.params = vim.tbl_deep_extend("force", {}, default_params, custom_params or {})
   if session then
-    M.params = session.parameters
+    self.params = session.parameters
   end
 
-  M.panel = Popup(Config.options.parameters_window, parent.edgy)
-  M.refresh_panel()
+  self:refresh_panel()
 
-  M.panel:map("n", "d", function()
-    local row, _ = unpack(vim.api.nvim_win_get_cursor(M.panel.winid))
+  self:map("n", "d", function()
+    local row, _ = unpack(vim.api.nvim_win_get_cursor(self.winid))
 
     local existing_order = {}
     for _, key in ipairs(params_order) do
-      if M.params[key] ~= nil then
+      if self.params[key] ~= nil then
         table.insert(existing_order, key)
       end
     end
 
     local key = existing_order[row]
-    M.update_property(key, row, nil, session)
-    M.refresh_panel()
+    self:update_property(key, row, nil, session)
+    self:refresh_panel()
   end)
 
-  M.panel:map("n", "a", function()
-    local row, _ = unpack(vim.api.nvim_win_get_cursor(M.panel.winid))
-    M.select_parameter({
+  self:map("n", "a", function()
+    local row, _ = unpack(vim.api.nvim_win_get_cursor(self.winid))
+    self:select_parameter({
       cb = function(key, value)
-        M.update_property(key, row + 1, value, session)
+        self:update_property(key, row + 1, value, session)
       end,
     })
   end)
 
-  M.panel:map("n", "<Enter>", function()
-    local row, _ = unpack(vim.api.nvim_win_get_cursor(M.panel.winid))
+  self:map("n", "<Enter>", function()
+    local row, _ = unpack(vim.api.nvim_win_get_cursor(self.winid))
 
     local existing_order = {}
     for _, key in ipairs(params_order) do
-      if M.params[key] ~= nil then
+      if self.params[key] ~= nil then
         table.insert(existing_order, key)
       end
     end
@@ -297,46 +304,40 @@ M.get_parameters_panel = function(type, default_params, session, parent)
       local models = require("ogpt.models")
       models.select_model(parent.provider, {
         cb = function(display, value)
-          M.update_property(key, row, value, session)
+          self:update_property(key, row, value, session)
         end,
       })
     elseif key == "provider" then
       local provider = require("ogpt.provider")
       provider.select_provider({
         cb = function(display, value)
-          M.update_property(key, row, value, session)
+          self:update_property(key, row, value, session)
           parent.provider = Config.get_provider(value)
         end,
       })
     else
-      local value = M.params[key]
-      M.open_edit_property_input(key, value, row, function(new_value)
-        M.update_property(key, row, Utils.process_string(new_value), session)
+      local value = self.params[key]
+      self:open_edit_property_input(key, value, row, function(new_value)
+        self:update_property(key, row, Utils.process_string(new_value), session)
       end)
     end
   end, {})
-
-  return M.panel
 end
 
-M.update_property = function(key, row, new_value, session)
+function Parameters:update_property(key, row, new_value, session)
   if not key or not new_value then
-    M.params[key] = nil
-    vim.api.nvim_buf_set_option(M.panel.bufnr, "modifiable", true)
+    self.params[key] = nil
+    vim.api.nvim_buf_set_option(self.bufnr, "modifiable", true)
     vim.api.nvim_del_current_line()
-    vim.api.nvim_buf_set_option(M.panel.bufnr, "modifiable", false)
+    vim.api.nvim_buf_set_option(self.bufnr, "modifiable", false)
   else
-    M.params[key] = params_validators[key](new_value)
+    self.params[key] = params_validators[key](new_value)
   end
-  M.write_config(M.params, session)
-  M.refresh_panel()
+  self:write_config(self.params, session)
+  self:refresh_panel()
 end
 
-M.get_panel = function(session, parent)
-  return M.get_parameters_panel(" ", session.parameters or {}, session, parent)
-end
-
-M.open_edit_property_input = function(key, value, row, cb)
+function Parameters:open_edit_property_input(key, value, row, cb)
   -- convert table to string first
   if type(value) == "table" then
     value = table.concat(value, ", ")
@@ -347,7 +348,7 @@ M.open_edit_property_input = function(key, value, row, cb)
   local input = Input({
     relative = {
       type = "win",
-      winid = M.panel.winid,
+      winid = self.winid,
     },
     position = {
       row = row - 1,
@@ -372,4 +373,4 @@ M.open_edit_property_input = function(key, value, row, cb)
   input:mount()
 end
 
-return M
+return Parameters

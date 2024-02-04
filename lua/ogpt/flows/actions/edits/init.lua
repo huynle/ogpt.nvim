@@ -11,8 +11,6 @@ local EditAction = BaseAction:extend("EditAction")
 local STRATEGY_EDIT = "edit"
 local STRATEGY_EDIT_CODE = "edit_code"
 
-local instructions_input, layout, input_window, output_window, output, timer, filetype, bufnr, extmark_id
-
 function EditAction:init(name, opts)
   self.name = name or ""
   opts = opts or {}
@@ -24,6 +22,14 @@ function EditAction:init(name, opts)
   self.variables = opts.variables or {}
   self.strategy = opts.strategy or STRATEGY_EDIT
   self.edgy = Config.options.edit.edgy
+
+  self.instructions_input = nil
+  self.layout = nil
+  self.input_panel = nil
+  self.output_panel = nil
+  self.parameters_panel = nil
+  self.timer = nil
+  self.filetype = vim.api.nvim_buf_get_option(self:get_bufnr(), "filetype")
 
   self.ui = opts.ui or {}
 
@@ -49,13 +55,11 @@ function EditAction:run()
       self:edit_with_instructions({}, { self:get_visual_selection() }, {
         template = self.template,
         variables = self.variables,
-        -- params = self:get_params(),
       })
     elseif self.strategy == STRATEGY_EDIT_CODE then
       self:edit_with_instructions({}, { self:get_visual_selection() }, {
         template = self.template,
         variables = self.variables,
-        -- params = self:get_params(),
         edit_code = true,
         filetype = self:get_filetype(),
       })
@@ -63,46 +67,28 @@ function EditAction:run()
   end)
 end
 
-local setup_and_mount = vim.schedule_wrap(function(lines, output_lines, ...)
-  layout:mount()
-  -- set input
-  if lines then
-    vim.api.nvim_buf_set_lines(input_window.bufnr, 0, -1, false, lines)
-  end
-
-  -- set output
-  if output_lines then
-    vim.api.nvim_buf_set_lines(output_window.bufnr, 0, -1, false, output_lines)
-  end
-
-  -- set input and output settings
-  for _, window in ipairs({ input_window, output_window }) do
-    vim.api.nvim_buf_set_option(window.bufnr, "syntax", "markdown")
-    vim.api.nvim_win_set_option(window.winid, "number", true)
-  end
-end)
-
 function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   opts = opts or {}
   opts.params = opts.params or self.params
   local api_params = opts.params
 
-  bufnr = self:get_bufnr()
-
-  filetype = vim.api.nvim_buf_get_option(bufnr, "filetype")
-
   local visual_lines, start_row, start_col, end_row, end_col
   if selection == nil then
-    visual_lines, start_row, start_col, end_row, end_col = utils.get_visual_lines(bufnr)
+    visual_lines, start_row, start_col, end_row, end_col = utils.get_visual_lines(self.bufnr)
   else
     visual_lines, start_row, start_col, end_row, end_col = unpack(selection)
   end
-  local parameters_panel = Parameters.get_parameters_panel("edits", api_params, nil, self)
-  input_window = Popup(Config.options.input_window, Config.options.edit.edgy)
 
-  output_window = Popup(Config.options.output_window, Config.options.edit.edgy)
-  self.output_panel = output_window
-  instructions_input = ChatInput(Config.options.input_window, {
+  self.parameters_panel = Parameters({
+    type = "edits",
+    default_params = api_params,
+    session = nil,
+    parent = self,
+    edgy = Config.options.edit.edgy,
+  })
+  self.input_panel = Popup(Config.options.input_window, Config.options.edit.edgy)
+  self.output_panel = Popup(Config.options.output_window, Config.options.edit.edgy)
+  self.instructions_input = ChatInput(Config.options.input_window, {
     edgy = Config.options.edit.edgy,
     prompt = Config.options.input_window.prompt,
     default_value = opts.instruction or "",
@@ -110,30 +96,30 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       -- if self.spinner:is_running() then
       --   self.spinner:stop()
       -- end
-      self:run_spinner(instructions_input, false)
-      if timer ~= nil then
-        timer:stop()
+      self:run_spinner(self.instructions_input, false)
+      if self.timer ~= nil then
+        self.timer:stop()
       end
     end,
     on_submit = vim.schedule_wrap(function(instruction)
       -- clear input
-      vim.api.nvim_buf_set_lines(instructions_input.bufnr, 0, -1, false, { "" })
-      vim.api.nvim_buf_set_lines(output_window.bufnr, 0, -1, false, { "" })
+      vim.api.nvim_buf_set_lines(self.instructions_input.bufnr, 0, -1, false, { "" })
+      vim.api.nvim_buf_set_lines(self.output_panel.bufnr, 0, -1, false, { "" })
       -- show_progress()
-      self:run_spinner(instructions_input, true)
+      self:run_spinner(self.instructions_input, true)
 
-      local input = table.concat(vim.api.nvim_buf_get_lines(input_window.bufnr, 0, -1, false), "\n")
+      local input = table.concat(vim.api.nvim_buf_get_lines(self.input_panel.bufnr, 0, -1, false), "\n")
 
       -- if instruction is empty, try to get the original instruction from opts
       if instruction == "" then
         instruction = opts.instruction or ""
       end
       local messages = self:build_edit_messages(input, instruction, opts)
-      local params = vim.tbl_extend("keep", { messages = messages }, Parameters.params)
+      local params = vim.tbl_extend("keep", { messages = messages }, self.parameters_panel.params)
       self.provider.api:edits(
         params,
         utils.partial(utils.add_partial_completion, {
-          panel = output_window,
+          panel = self.output_panel,
           on_complete = function(response)
             -- on the completion, execute this function to extract out codeblocks
             local nlcount = utils.count_newlines_at_end(response)
@@ -153,8 +139,8 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
             end
             local output_txt_nlfixed = utils.replace_newlines_at_end(output_txt, nlcount)
             local _output = utils.split_string_by_line(output_txt_nlfixed)
-            if output_window.bufnr then
-              vim.api.nvim_buf_set_lines(output_window.bufnr, 0, -1, false, _output)
+            if self.output_panel.bufnr then
+              vim.api.nvim_buf_set_lines(self.output_panel.bufnr, 0, -1, false, _output)
             end
           end,
           progress = function(flag)
@@ -165,7 +151,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
     end),
   })
 
-  layout = Layout(
+  self.layout = Layout(
     {
       relative = "editor",
       position = "50%",
@@ -175,22 +161,32 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       },
     },
 
+    -- Layout.Box({
+    --   Layout.Box({
+    --     Layout.Box(self.input_window, { grow = 1 }),
+    --     Layout.Box(self.instructions_input, { size = 3 }),
+    --   }, { dir = "col", size = "50%" }),
+    --   Layout.Box(self.output_window, { size = "50%" }),
+    -- }, { dir = "row" }),
+
     Layout.Box({
       Layout.Box({
-        Layout.Box(input_window, { grow = 1 }),
-        Layout.Box(instructions_input, { size = 3 }),
-      }, { dir = "col", size = "50%" }),
-      Layout.Box(output_window, { size = "50%" }),
+        Layout.Box(self.input_panel, { grow = 1 }),
+        Layout.Box(self.instructions_input, { size = 3 }),
+      }, { dir = "col", grow = 1 }),
+      Layout.Box(self.output_panel, { grow = 1 }),
+      Layout.Box(self.parameters_panel, { size = 40 }),
     }, { dir = "row" }),
+
     Config.options.edit.edgy
   )
 
   -- accept output window
-  for _, window in ipairs({ input_window, output_window, instructions_input }) do
+  for _, window in ipairs({ self.input_panel, self.output_panel, self.instructions_input }) do
     for _, mode in ipairs({ "n", "i" }) do
       window:map(mode, Config.options.edit.keymaps.accept, function()
-        instructions_input.input_props.on_close()
-        local lines = vim.api.nvim_buf_get_lines(output_window.bufnr, 0, -1, false)
+        self.instructions_input.input_props.on_close()
+        local lines = vim.api.nvim_buf_get_lines(self.output_panel.bufnr, 0, -1, false)
         vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
         vim.notify("Successfully applied the change!", vim.log.levels.INFO)
       end, { noremap = true })
@@ -198,18 +194,18 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   end
 
   -- use output as input
-  for _, window in ipairs({ input_window, output_window, instructions_input }) do
+  for _, window in ipairs({ self.input_panel, self.output_panel, self.instructions_input }) do
     for _, mode in ipairs({ "n", "i" }) do
       window:map(mode, Config.options.edit.keymaps.use_output_as_input, function()
-        local lines = vim.api.nvim_buf_get_lines(output_window.bufnr, 0, -1, false)
-        vim.api.nvim_buf_set_lines(input_window.bufnr, 0, -1, false, lines)
-        vim.api.nvim_buf_set_lines(output_window.bufnr, 0, -1, false, {})
+        local lines = vim.api.nvim_buf_get_lines(self.output_panel.bufnr, 0, -1, false)
+        vim.api.nvim_buf_set_lines(self.input_panel.bufnr, 0, -1, false, lines)
+        vim.api.nvim_buf_set_lines(self.output_panel.bufnr, 0, -1, false, {})
       end, { noremap = true })
     end
   end
 
   -- close
-  for _, window in ipairs({ input_window, output_window, instructions_input }) do
+  for _, window in ipairs({ self.input_panel, self.output_panel, self.instructions_input }) do
     for _, mode in ipairs({ "n", "i" }) do
       window:map(mode, Config.options.edit.keymaps.close, function()
         self.spinner:stop()
@@ -222,41 +218,41 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   end
 
   -- toggle parameters
-  local parameters_open = false
-  for _, popup in ipairs({ parameters_panel, instructions_input, input_window, output_window }) do
+  local parameters_open = true
+  for _, popup in ipairs({ self.parameters_panel, self.instructions_input, self.input_panel, self.output_panel }) do
     for _, mode in ipairs({ "n", "i" }) do
       popup:map(mode, Config.options.edit.keymaps.toggle_parameters, function()
         if parameters_open then
-          layout:update(Layout.Box({
+          self.layout:update(Layout.Box({
             Layout.Box({
-              Layout.Box(input_window, { grow = 1 }),
-              Layout.Box(instructions_input, { size = 3 }),
+              Layout.Box(self.input_panel, { grow = 1 }),
+              Layout.Box(self.instructions_input, { size = 3 }),
             }, { dir = "col", size = "50%" }),
-            Layout.Box(output_window, { size = "50%" }),
+            Layout.Box(self.output_panel, { size = "50%" }),
           }, { dir = "row" }))
-          parameters_panel:hide()
-          vim.api.nvim_set_current_win(instructions_input.winid)
+          self.parameters_panel:hide()
+          vim.api.nvim_set_current_win(self.instructions_input.winid)
         else
-          layout:update(Layout.Box({
+          self.layout:update(Layout.Box({
             Layout.Box({
-              Layout.Box(input_window, { grow = 1 }),
-              Layout.Box(instructions_input, { size = 3 }),
+              Layout.Box(self.input_panel, { grow = 1 }),
+              Layout.Box(self.instructions_input, { size = 3 }),
             }, { dir = "col", grow = 1 }),
-            Layout.Box(output_window, { grow = 1 }),
-            Layout.Box(parameters_panel, { size = 40 }),
+            Layout.Box(self.output_panel, { grow = 1 }),
+            Layout.Box(self.parameters_panel, { size = 40 }),
           }, { dir = "row" }))
-          parameters_panel:show()
-          parameters_panel:mount()
+          self.parameters_panel:show()
+          self.parameters_panel:mount()
 
-          vim.api.nvim_set_current_win(parameters_panel.winid)
-          vim.api.nvim_buf_set_option(parameters_panel.bufnr, "modifiable", false)
-          vim.api.nvim_win_set_option(parameters_panel.winid, "cursorline", true)
+          vim.api.nvim_set_current_win(self.parameters_panel.winid)
+          vim.api.nvim_buf_set_option(self.parameters_panel.bufnr, "modifiable", false)
+          vim.api.nvim_win_set_option(self.parameters_panel.winid, "cursorline", true)
         end
         parameters_open = not parameters_open
         -- set input and output settings
         --  TODO
-        for _, window in ipairs({ input_window, output_window }) do
-          vim.api.nvim_buf_set_option(window.bufnr, "syntax", filetype)
+        for _, window in ipairs({ self.input_panel, self.output_panel }) do
+          vim.api.nvim_buf_set_option(window.bufnr, "syntax", self.filetype)
           vim.api.nvim_win_set_option(window.winid, "number", true)
         end
       end, {})
@@ -264,32 +260,32 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   end
 
   -- cycle windows
-  local active_panel = instructions_input
-  for _, popup in ipairs({ input_window, output_window, parameters_panel, instructions_input }) do
+  local active_panel = self.instructions_input
+  for _, popup in ipairs({ self.input_panel, self.output_panel, self.parameters_panel, self.instructions_input }) do
     for _, mode in ipairs({ "n", "i" }) do
-      if mode == "i" and (popup == input_window or popup == output_window) then
+      if mode == "i" and (popup == self.input_panel or popup == self.output_panel) then
         goto continue
       end
       popup:map(mode, Config.options.edit.keymaps.cycle_windows, function()
-        if active_panel == instructions_input then
-          vim.api.nvim_set_current_win(input_window.winid)
-          active_panel = input_window
+        if active_panel == self.instructions_input then
+          vim.api.nvim_set_current_win(self.input_panel.winid)
+          active_panel = self.input_panel
           vim.api.nvim_command("stopinsert")
-        elseif active_panel == input_window and mode ~= "i" then
-          vim.api.nvim_set_current_win(output_window.winid)
-          active_panel = output_window
+        elseif active_panel == self.input_panel and mode ~= "i" then
+          vim.api.nvim_set_current_win(self.output_panel.winid)
+          active_panel = self.output_panel
           vim.api.nvim_command("stopinsert")
-        elseif active_panel == output_window and mode ~= "i" then
+        elseif active_panel == self.output_panel and mode ~= "i" then
           if parameters_open then
-            vim.api.nvim_set_current_win(parameters_panel.winid)
-            active_panel = parameters_panel
+            vim.api.nvim_set_current_win(self.parameters_panel.winid)
+            active_panel = self.parameters_panel
           else
-            vim.api.nvim_set_current_win(instructions_input.winid)
-            active_panel = instructions_input
+            vim.api.nvim_set_current_win(self.instructions_input.winid)
+            active_panel = self.instructions_input
           end
-        elseif active_panel == parameters_panel then
-          vim.api.nvim_set_current_win(instructions_input.winid)
-          active_panel = instructions_input
+        elseif active_panel == self.parameters_panel then
+          vim.api.nvim_set_current_win(self.instructions_input.winid)
+          active_panel = self.instructions_input
         end
       end, {})
       ::continue::
@@ -298,31 +294,47 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
 
   -- toggle diff mode
   local diff_mode = Config.options.edit.diff
-  for _, popup in ipairs({ parameters_panel, instructions_input, output_window, input_window }) do
+  for _, popup in ipairs({ self.parameters_panel, self.instructions_input, self.output_panel, self.input_panel }) do
     for _, mode in ipairs({ "n", "i" }) do
       popup:map(mode, Config.options.edit.keymaps.toggle_diff, function()
         diff_mode = not diff_mode
-        for _, winid in ipairs({ input_window.winid, output_window.winid }) do
+        for _, winid in ipairs({ self.input_panel.winid, self.output_panel.winid }) do
           vim.api.nvim_set_current_win(winid)
           if diff_mode then
             vim.api.nvim_command("diffthis")
           else
             vim.api.nvim_command("diffoff")
           end
-          vim.api.nvim_set_current_win(instructions_input.winid)
+          vim.api.nvim_set_current_win(self.instructions_input.winid)
         end
       end, {})
     end
   end
 
   -- set events
-  for _, popup in ipairs({ parameters_panel, instructions_input, output_window, input_window }) do
+  for _, popup in ipairs({ self.parameters_panel, self.instructions_input, self.output_panel, self.input_panel }) do
     popup:on({ "BufUnload" }, function()
       self:set_loading(false)
     end)
   end
 
-  setup_and_mount(visual_lines, output_lines)
+  self.layout:mount()
+  -- set input
+  if visual_lines then
+    vim.api.nvim_buf_set_lines(self.input_panel.bufnr, 0, -1, false, visual_lines)
+  end
+
+  -- set output
+  if output_lines then
+    vim.api.nvim_buf_set_lines(self.output_panel.bufnr, 0, -1, false, output_lines)
+  end
+
+  -- set input and output settings
+  for _, window in ipairs({ self.input_panel, self.output_panel }) do
+    vim.api.nvim_buf_set_option(window.bufnr, "syntax", "markdown")
+    vim.api.nvim_win_set_option(window.winid, "number", true)
+  end
+  -- end)
 end
 
 function EditAction:build_edit_messages(input, instructions, opts)
