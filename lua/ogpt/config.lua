@@ -369,7 +369,7 @@ function M.setup(options)
 
   local function update_edgy_flag(chat_type)
     for _, t in ipairs(chat_type) do
-      if not M.options[t].edgy then
+      if M.options[t].edgy == nil then
         M.options[t].edgy = M.options.edgy
       end
     end
