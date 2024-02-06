@@ -100,7 +100,11 @@ function Api:edits(custom_params, cb)
   self:chat_completions(params, cb)
 end
 
-function Api:make_call(url, params, cb)
+function Api:make_call(url, params, cb, ctx, raw_chunks, state)
+  ctx = ctx or {}
+  raw_chunks = raw_chunks or ""
+  state = state or "START"
+
   TMP_MSG_FILENAME = os.tmpname()
   local f = io.open(TMP_MSG_FILENAME, "w+")
   if f == nil then
@@ -135,35 +139,34 @@ function Api:make_call(url, params, cb)
         end
 
         local result = table.concat(response:result(), "\n")
-        local ok, json = pcall(vim.fn.json_decode, result)
-        if not ok then
-          cb("// API ERROR: turn on debug ")
-        elseif ok and json.error then
-          cb("// API ERROR: " .. json.error)
-        elseif json == nil then
-          cb("No Response.")
-        else
-          local message = json.message
-          if message ~= nil then
-            local message_response
-            local first_message = json.message.content
-            if first_message.function_call then
-              message_response = vim.fn.json_decode(first_message.function_call.arguments)
-            else
-              message_response = first_message
-            end
-            if (type(message_response) == "string" and message_response ~= "") or type(message_response) == "table" then
-              cb(message_response, "CONTINUE")
-            else
-              cb("...")
-            end
+
+        local ok, json = pcall(vim.json.decode, result)
+        if ok then
+          if json.error ~= nil then
+            local error_msg = {
+              "OGPT ERROR:",
+              self.provider.name,
+              vim.inspect(json.error) or "",
+              "Something went wrong.",
+            }
+            table.insert(error_msg, vim.inspect(params))
+            -- local error_msg = "OGPT ERROR: " .. (json.error.message or "Something went wrong")
+            cb(table.concat(error_msg, " "), "ERROR", ctx)
+            return
+          end
+          ctx, raw_chunks, state = self.provider.process_line({ json = json, raw = result }, ctx, raw_chunks, state, cb)
+          return
+        end
+
+        for line in result:gmatch("[^\n]+") do
+          local raw_json = string.gsub(line, "^data:", "")
+          local _ok, _json = pcall(vim.json.decode, raw_json)
+          if _ok then
+            ctx, raw_chunks, state =
+              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb)
           else
-            local response_text = json.response
-            if type(response_text) == "string" and response_text ~= "" then
-              cb(response_text, "CONTINUE")
-            else
-              cb("...")
-            end
+            ctx, raw_chunks, state =
+              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb)
           end
         end
       end),
@@ -243,31 +246,6 @@ local function loadApiKey(envName, configName, optionName, callback, defaultValu
       logger.warn(envName .. " environment variable not set")
       return
     end
-  end
-end
-
-local function loadAzureConfigs()
-  loadApiKey("OPENAI_API_BASE", "OPENAI_API_BASE", "azure_api_base_cmd", function(value)
-    self.OPENAI_API_BASE = value
-  end)
-  loadApiKey("OPENAI_API_AZURE_ENGINE", "OPENAI_API_AZURE_ENGINE", "azure_api_engine_cmd", function(value)
-    self.OPENAI_API_AZURE_ENGINE = value
-  end)
-  loadApiHost("OPENAI_API_AZURE_VERSION", "OPENAI_API_AZURE_VERSION", "azure_api_version_cmd", function(value)
-    self.OPENAI_API_AZURE_VERSION = value
-  end, "2023-05-15")
-
-  if Api["OPENAI_API_BASE"] and Api["OPENAI_API_AZURE_ENGINE"] then
-    self.COMPLETIONS_URL = self.OPENAI_API_BASE
-      .. "/openai/deployments/"
-      .. self.OPENAI_API_AZURE_ENGINE
-      .. "/completions?api-version="
-      .. self.OPENAI_API_AZURE_VERSION
-    self.CHAT_COMPLETIONS_URL = self.OPENAI_API_BASE
-      .. "/openai/deployments/"
-      .. self.OPENAI_API_AZURE_ENGINE
-      .. "/chat/completions?api-version="
-      .. self.OPENAI_API_AZURE_VERSION
   end
 end
 

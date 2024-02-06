@@ -10,37 +10,12 @@
 - **Mix-match Provider**: default provider is used, but you can mix and match different provider AND specific model to different actions.
 - **Interactive Q&A**: Engage in interactive question-and-answer sessions with the powerful gpt model (OGPT) using an intuitive interface.
 - **Persona-based Conversations**: Explore various perspectives and have conversations with different personas by selecting prompts from Awesome ChatGPT Prompts.
-- **Customizable Actions**: Execute a range of actions utilizing the gpt model, such as grammar correction, translation, keyword generation, docstring creation, test addition, code optimization, summarization, bug fixing, code explanation, Roxygen editing, and code readability analysis. Additionally, you can define your own custom actions using a JSON file.
+- **Customizable Actions**: Execute a range of actions utilizing the gpt model, such as grammar
+  correction, translation, keyword generation, docstring creation, test addition, code
+optimization, summarization, bug fixing, code explanation, and code readability
+analysis. Additionally, you can define your own custom actions using a JSON file or just through
+plugin configurations.
 
-For a comprehensive understanding of the extension's functionality, you can watch a plugin showcase [video](https://www.youtube.com/watch?v=7k0KZsheLP4)
-
-## OGPT Specific Features:
-+ [x] Use default provider, but can be overriden at anytime for specific action
-+ [x] original functionality of ChatGPT.nvim to work with Ollama, TextGenUI(huggingface), OpenAI via `providers`
-  + Look at the "default_provider" in the `config.lua`, default is `ollama`
-  + look at "providers" for the provider default options
-+ [x] Choose different provider and model for "edit" and "chat"
-+ [x] Custom settings per session
-  + [x] Add/remove parameters in Chat and Edit
-  + [x] Choose provider, as well as model for Chat and Edit
-  + [x] Customizable actions, with specific provider and model
-+ [ ] Another Windows for [Template](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#template), [System](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#system)
-+ [x] Framework to add more providers
-+ [x] clean up documentation
-+ [x] additional actions can be added to config options, or additional json. Look in "config.actions", and "config.actions_paths"
-+ [x] running `OGPTRun` shows telescope picker
-+ [x] for `type="popup"` and `strategy="display" -- or append, prepend, replace, quick_fix`, "r" and "a" can be used to "replace the
-+ [x] model alias for each provider
-  highlighted text" or "append after the highlighted text", respectively. Otherwise, "esc" or
-"ctrl-c" would exit the popup. You can update the mapping in your config options.
-
-Change Model by Opening the Parameter panels default to (ctrl-o) and Tab your way to it
-then press Enter (<cr>) on the model field to change it. It should list all the available models on
-from your LLM provider.
-![Change Model](assets/images/change_model.png)
-
-Same with changing the model, add and delete parameters by using the keys "a" and "d" respectively
-![Additional Parameters](assets/images/addl_params.png)
 
 ## Installation
 
@@ -72,7 +47,7 @@ your endpoint.
 
 ## Configuration
 
-`OGPT.nvim` comes with the following defaults, you can override them by passing config as setup param
+`OGPT.nvim` comes with the following defaults, you can override any of the field by passing config as setup param.
 
 https://github.com/huynle/ogpt.nvim/blob/main/lua/ogpt/config.lua
 
@@ -101,8 +76,6 @@ Plugin exposes following commands:
 #### `OGPTActAs`
 `OGPTActAs` command which opens a prompt selection from [Awesome OGPT Prompts](https://github.com/f/awesome-chatgpt-prompts) to be used with the `mistral:7b` model.
 
-![preview image](https://github.com/jackmort/ChatGPT.nvim/blob/media/preview-3.png?raw=true)
-
 #### `OGPTRun edit_with_instructions` `OGPTRun edit_with_instructions` command which opens
 interactive window to edit selected text or whole window using the `deepseek-coder:6.7b` model, you
 can change in this in your config options. This model defined in `config.api_edit_params`.
@@ -121,7 +94,7 @@ specific action.
 ##### Using Actions.json
 `OGPTRun [action]` command which runs specific actions -- see [`actions.json`](./lua/ogpt/flows/actions/actions.json) file for a detailed list. Available actions are:
 
-It is possible to define custom actions with a JSON file. See [`actions.json`](./lua/ogpt/flows/actions/actions.json) for an example. The path of custom actions can be set in the config (see `actions_paths` field in the config example above).
+It is possible to define custom actions using a JSON file. Please see the example at [`actions.json`](./lua/ogpt/flows/actions/) for reference. The path to custom actions can be configured (see `actions_paths` field in the config example above).
 
 An example of custom action may look like this: (`#` marks comments)
 ```python
@@ -147,7 +120,7 @@ An example of custom action may look like this: (`#` marks comments)
 }
 ```
 
-##### Using Configuration Options
+##### Using Configuration Options (preferred)
 ```lua
 
 --- config options lua
@@ -182,6 +155,16 @@ available for further editing requests
 The `display` strategy shows the output in a float window. 
 `append` and `replace` modify the text directly in the buffer with "a" or "r"
 
+### Interactive Chat Parameters
+
+* Change Model by Opening the Parameter panels default to (ctrl-o) or <Tab> your way to it
+then press Enter (<cr>) on the model field to change it. It should list all the available models on
+from your LLM provider.
+![Change Model](assets/images/change_model.png)
+
+* In the **Parameter** panel, add and delete parameters by using the keys "a" and "d" respectively
+![Additional Parameters](assets/images/addl_params.png)
+
 ### Interactive Popup for Chat popup
 When using `OGPT`, the following
 keybindings are available under `config.chat.keymaps`
@@ -198,7 +181,7 @@ https://github.com/huynle/ogpt.nvim/blob/main/lua/ogpt/config.lua#L174-L181
 When the setting window is opened (with `<C-o>`), settings can be modified by
 pressing `Enter` on the related config. Settings are saved across sessions.
 
-### Example Lazy Configuration
+### Example Comprehensive Lazy Configuration
 
 
 ```lua
@@ -266,6 +249,9 @@ return {
 
     opts = {
       default_provider = "ollama"
+      -- default edgy flag
+      -- set this to true if you prefer to use edgy.nvim (https://github.com/folke/edgy.nvim) instead of floating windows
+      edgy = false, 
       providers = {
         ollama= {
           api_host = os.getenv("OLLAMA_API_HOST"),
@@ -273,18 +259,28 @@ return {
           model = "mistral:7b"
           -- model definitions
           models = {
+            -- alias to actual model name, helpful to define same model name across multiple providers
             coder = "deepseek-coder:6.7b",
+            -- nested alias
+            cool_coder = "coder",
+            general_model = "mistral:7b",
             custom_coder = {
               name = "deepseek-coder:6.7b",
               modify_url = function(url)
+                -- completely modify the URL of a model, if necessary. This function is called
+                -- right before making the REST request
                 return url
               end,
-              -- custom conform function
+              -- custom conform function. Each provider have a dedicated conform function where all
+              -- of OGPT chat info is passed into the conform function to be massaged to the
+              -- correct format that the provider is expecting. This function, if provided will
+              -- override the provider default conform function
               -- conform_fn = function(ogpt_params)
               --   return provider_specific_params
               -- end,
             },
           },
+          -- default model params for all 'actions'
           api_params = {
             model = "mistral:7b",
             temperature = 0.8,
@@ -333,6 +329,7 @@ return {
       },
       yank_register = "+",
       edit = {
+        edgy = nil, -- use global default, override if defined
         diff = false,
         keymaps = {
           close = "<C-c>",
@@ -344,9 +341,33 @@ return {
         },
       },
       popup = {
+        edgy = nil, -- use global default, override if defined
+        position = 1,
+        size = {
+          width = "40%",
+          height = 10,
+        },
+        padding = { 1, 1, 1, 1 },
+        enter = true,
+        focusable = true,
+        zindex = 50,
+        border = {
+          style = "rounded",
+        },
+        buf_options = {
+          modifiable = false,
+          readonly = false,
+          filetype = "ogpt-popup",
+          syntax = "markdown",
+        },
+        win_options = {
+          wrap = true,
+          linebreak = true,
+          winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+        },
         keymaps = {
           close = { "<C-c>", "q" },
-          accept = "<M-CR>",
+          accept = "<C-CR>",
           append = "a",
           prepend = "p",
           yank_code = "c",
@@ -354,6 +375,7 @@ return {
         },
       },
       chat = {
+        edgy = nil, -- use global default, override if defined
         welcome_message = WELCOME_MESSAGE,
         loading_text = "Loading, please wait ...",
         question_sign = "", -- 🙂
@@ -399,6 +421,7 @@ return {
         },
       },
 
+      -- {{input}} is always available as the selected/highlighted text
       actions = {
         grammar_correction = {
           type = "popup",
@@ -436,7 +459,7 @@ return {
           template = "Extract the main keywords from the following text to be used as document tags.\n\n```{{input}}```",
           strategy = "display",
           params = {
-            -- model = "mistral:7b",
+            model = "general_model", -- use of model alias, generally, this model alias should be available to all providers in use
             temperature = 0.5,
             frequency_penalty = 0.8,
           },
@@ -456,6 +479,7 @@ return {
         quick_question = {
           type = "popup",
           args = {
+            -- template expansion
             question = {
               type = "string",
               optional = "true",
@@ -508,8 +532,8 @@ return {
 
 ### Advanced setup
 
-`config.params.model` and `api_params.model` and `api_chat_params.model` can take a table instead
-of a string.
+
+#### Modify model REST URL
 
 ```lua
 -- advanced model, can take the following structure
@@ -537,20 +561,32 @@ local advanced_model = {
 
 ```
 
-After defining the advanced model can, you can place it directly into your previous model location
-in the configuration.
+#### Modify Conform Function
+TBD
 
-```lua
-opts = {
-  ...
-  api_params = {
-    -- so now call actions will use this model, unless explicitly overridden in the action itself
-    model = advanced_model,
-    temperature = 0.8,
-    top_p = 0.9,
-  },
-}
-```
+
+## OGPT planned work
++ [x] Use default provider, but can be overriden at anytime for specific action
++ [x] original functionality of ChatGPT.nvim to work with Ollama, TextGenUI(huggingface), OpenAI via `providers`
+  + Look at the "default_provider" in the `config.lua`, default is `ollama`
+  + look at "providers" for the provider default options
++ [x] Choose different provider and model for "edit" and "chat"
++ [x] Custom settings per session
+  + [x] Add/remove parameters in Chat and Edit
+  + [x] Choose provider, as well as model for Chat and Edit
+  + [x] Customizable actions, with specific provider and model
++ [ ] Another Windows for [Template](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#template), [System](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#system)
++ [x] Framework to add more providers
++ [x] clean up documentation
++ [x] additional actions can be added to config options, or additional json. Look in "config.actions", and "config.actions_paths"
++ [x] running `OGPTRun` shows telescope picker
++ [x] for `type="popup"` and `strategy="display" -- or append, prepend, replace, quick_fix`, "r" and "a" can be used to "replace the
++ [x] model alias for each provider
+  highlighted text" or "append after the highlighted text", respectively. Otherwise, "esc" or
+"ctrl-c" would exit the popup. You can update the mapping in your config options.
+
+
+
 
 # Credits
 Thank you to the author of `jackMort/ChatGPT.nvim` for creating a seamless framework
@@ -558,3 +594,4 @@ to interact with OGPT in neovim!
 
 Buy Me a Coffee
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/huynle)
+
