@@ -97,6 +97,16 @@ function M.process_line(content, ctx, raw_chunks, state, cb)
       cb(_json.choices[1].delta.content, state)
       raw_chunks = raw_chunks .. _json.choices[1].delta.content
       state = "CONTINUE"
+    elseif
+      not vim.tbl_isempty(_json)
+      and _json
+      and _json.choices
+      and _json.choices[1]
+      and _json.choices[1].message
+      and _json.choices[1].message.content
+    then
+      cb(_json.choices[1].message.content, state)
+      raw_chunks = raw_chunks .. _json.choices[1].message.content
     end
   end
 

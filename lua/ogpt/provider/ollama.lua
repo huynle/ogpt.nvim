@@ -106,8 +106,15 @@ function M.process_line(content, ctx, raw_chunks, state, cb)
   local raw = content.raw
   -- given a JSON response from the STREAMING api, processs it
   if _json and _json.done then
-    ctx.context = _json.context
-    cb(raw_chunks, "END", ctx)
+    if _json.message then
+      -- for stream=false case
+      cb(_json.message.content, state, ctx)
+      raw_chunks = raw_chunks .. _json.message.content
+      state = "CONTINUE"
+    else
+      ctx.context = _json.context
+      cb(raw_chunks, "END", ctx)
+    end
   else
     if not vim.tbl_isempty(_json) then
       if _json and _json.message then
