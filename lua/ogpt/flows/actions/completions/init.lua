@@ -1,25 +1,9 @@
-local classes = require("ogpt.common.classes")
 local BaseAction = require("ogpt.flows.actions.base")
 local Api = require("ogpt.api")
 local Utils = require("ogpt.utils")
 local Config = require("ogpt.config")
 
--- curl code to insert code between prompt and suffix
--- curl https://api.openai.com/v1/completions \
---   -H "Content-Type: application/json" \
---   -H "Authorization: Bearer $OLLAMA_API_KEY" \
---   -d '{
---   "model": "text-davinci-003",
---   "prompt": "Insert a roxygen skeleton to document this R function:\n\n",
---   "suffix": " code ",
---   "temperature": 0.7,
---   "max_tokens": 565,
---   "top_p": 1,
---   "frequency_penalty": 0,
---   "presence_penalty": 0
--- }'
-
-local CompletionAction = classes.class(BaseAction)
+local CompletionAction = BaseAction("CompletionAction")
 
 local STRATEGY_REPLACE = "replace"
 local STRATEGY_APPEND = "append"
@@ -27,7 +11,7 @@ local STRATEGY_PREPEND = "prepend"
 local STRATEGY_DISPLAY = "display"
 
 function CompletionAction:init(opts)
-  self.super:init(opts)
+  CompletionAction.super.init(self, opts)
   self.params = opts.params or {}
   self.template = opts.template or "{{input}}"
   self.variables = opts.variables or {}
@@ -88,7 +72,7 @@ function CompletionAction:on_result(answer, usage)
     if self.strategy ~= STRATEGY_DISPLAY then
       vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
     else
-      local Popup = require("nui.popup")
+      local Popup = require("ogpt.common.popup")
       local ui = vim.tbl_deep_extend("keep", self.ui, {
         position = 1,
         size = {

@@ -6,78 +6,37 @@
 ![Lua](https://img.shields.io/badge/Made%20with%20Lua-blueviolet.svg?style=for-the-badge&logo=lua)
 
 ## Features
-**Again Credits goes to `jackMort/ChatGPT.nvim` For these Awesome features**
-
+- **Multiple Providers**: OGPT.nvim can take multiple providers. Ollama, OpenAI, textgenui, more if there are pull requests
+- **Mix-match Provider**: default provider is used, but you can mix and match different provider AND specific model to different actions.
 - **Interactive Q&A**: Engage in interactive question-and-answer sessions with the powerful gpt model (OGPT) using an intuitive interface.
 - **Persona-based Conversations**: Explore various perspectives and have conversations with different personas by selecting prompts from Awesome ChatGPT Prompts.
-- **Code Editing Assistance**: Enhance your coding experience with an interactive editing window powered by the gpt model, offering instructions tailored for coding tasks.
-- **Code Completion**: Enjoy the convenience of code completion similar to GitHub Copilot, leveraging the capabilities of the gpt model to suggest code snippets and completions based on context and programming patterns.
-- **Customizable Actions**: Execute a range of actions utilizing the gpt model, such as grammar correction, translation, keyword generation, docstring creation, test addition, code optimization, summarization, bug fixing, code explanation, Roxygen editing, and code readability analysis. Additionally, you can define your own custom actions using a JSON file.
-
-For a comprehensive understanding of the extension's functionality, you can watch a plugin showcase [video](https://www.youtube.com/watch?v=7k0KZsheLP4)
-
-## OGPT Specific Features:
-+ [x] original functionality of ChatGPT.nvim to work with Ollama, TextGenUI(huggingface), OpenAI via `providers`
-  + Look at the "default_provider" in the `config.lua`, default is `ollama`
-+ [x] clean up documentation
-+ [x] Custom settings per session
-  + [x] Add/remove settings as Ollama [request options](https://github.com/jmorganca/ollama/blob/main/docs/api.md#request-with-options)
-  + [x] Change Settings -> [Parameters](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#parameter)
-+ [-] Another Windows for [Template](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#template), [System](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#system)
-  + [x] Support custom "conform function", read `config.lua` for more information
-+ [x] Query and Select model from Ollama
-
-Change Model by Opening the Parameter panels default to (ctrl-o) and Tab your way to it
-then press Enter (<cr>) on the model field to change it. It should list all the available models on
-the your Ollama server.
-![Change Model](assets/images/change_model.png)
-
-Same with changing the model, add and delete parameters by using the keys "a" and "d" respectively
-![Additional Ollama Parameters](assets/images/addl_params.png)
-
-
-## OGPT Enhancement from Original ChatGPT.nvim
-+ [x] additional actions can be added to config options
-+ [x] running `OGPTRun` shows telescope picker
-+ [x] for `type="chat"` and `strategy="display"`, "r" and "a" can be used to "replace the
-  highlighted text" or "append after the highlighted text", respectively. Otherwise, "esc" or
-"ctrl-c" would exit the popup
+- **Customizable Actions**: Execute a range of actions utilizing the gpt model, such as grammar
+  correction, translation, keyword generation, docstring creation, test addition, code
+optimization, summarization, bug fixing, code explanation, and code readability
+analysis. Additionally, you can define your own custom actions using a JSON file or just through
+plugin configurations.
 
 
 ## Installation
 
-`OGPT` is a Neovim plugin that allows you to effortlessly utilize the Ollama OGPT API,
-empowering you to generate natural language responses from Ollama's OGPT directly within the editor in response to your inquiries.
-
-![preview image](https://github.com/jackMort/OGPT.nvim/blob/media/preview-2.png?raw=true)
-
-- Make sure you have `curl` installed.
-- Have a local instance of Ollama running.
-
-Custom Ollama API host with the configuration option `api_host_cmd` or
-environment variable called `$OLLAMA_API_HOST`. It's useful if you run Ollama remotely 
+if you dont specify a provider, "ollama" will be the default provider. "http://localhost:11434" is
+your endpoint.
 
 ```lua
--- Packer
-use({
-  "huynle/ogpt.nvim",
-    config = function()
-      require("ogpt").setup()
-    end,
-    requires = {
-      "MunifTanjim/nui.nvim",
-      "nvim-lua/plenary.nvim",
-      "nvim-telescope/telescope.nvim"
-    }
-})
 
 -- Lazy
 {
   "huynle/ogpt.nvim",
     event = "VeryLazy",
-    config = function()
-      require("ogpt").setup()
-    end,
+    opts = {
+      default_provider = "ollama",
+      providers = {
+        ollama = {
+          api_host = os.getenv("OLLAMA_API_HOST") or "http://localhost:11434",
+          api_key = os.getenv("OLLAMA_API_KEY") or "",
+        }
+      }
+    },
     dependencies = {
       "MunifTanjim/nui.nvim",
       "nvim-lua/plenary.nvim",
@@ -88,9 +47,23 @@ use({
 
 ## Configuration
 
-`OGPT.nvim` comes with the following defaults, you can override them by passing config as setup param
+`OGPT.nvim` comes with the following defaults, you can override any of the field by passing config as setup param.
 
 https://github.com/huynle/ogpt.nvim/blob/main/lua/ogpt/config.lua
+
+
+### Ollama Setup
+
+`OGPT` is a Neovim plugin that allows you to effortlessly utilize the Ollama OGPT API,
+empowering you to generate natural language responses from Ollama's OGPT directly within the editor in response to your inquiries.
+
+- Make sure you have `curl` installed.
+- Have a local instance of Ollama running.
+
+Custom Ollama API host with the configuration option `api_host_cmd` or
+environment variable called `$OLLAMA_API_HOST`. It's useful if you run Ollama remotely 
+
+
 
 ## Usage
 
@@ -102,8 +75,6 @@ Plugin exposes following commands:
 
 #### `OGPTActAs`
 `OGPTActAs` command which opens a prompt selection from [Awesome OGPT Prompts](https://github.com/f/awesome-chatgpt-prompts) to be used with the `mistral:7b` model.
-
-![preview image](https://github.com/jackmort/ChatGPT.nvim/blob/media/preview-3.png?raw=true)
 
 #### `OGPTRun edit_with_instructions` `OGPTRun edit_with_instructions` command which opens
 interactive window to edit selected text or whole window using the `deepseek-coder:6.7b` model, you
@@ -123,23 +94,21 @@ specific action.
 ##### Using Actions.json
 `OGPTRun [action]` command which runs specific actions -- see [`actions.json`](./lua/ogpt/flows/actions/actions.json) file for a detailed list. Available actions are:
 
-It is possible to define custom actions with a JSON file. See [`actions.json`](./lua/ogpt/flows/actions/actions.json) for an example. The path of custom actions can be set in the config (see `actions_paths` field in the config example above).
+It is possible to define custom actions using a JSON file. Please see the example at [`actions.json`](./lua/ogpt/flows/actions/) for reference. The path to custom actions can be configured (see `actions_paths` field in the config example above).
 
 An example of custom action may look like this: (`#` marks comments)
 ```python
 {
   "action_name": {
-    "type": "chat", # or "completion" or "edit"
-    "opts": {
-      "template": "A template using possible variable: {{filetype}} (neovim filetype), {{input}} (the selected text) an {{argument}} (provided on the command line)",
-      "strategy": "replace", # or "display" or "append" or "edit"
-      "params": { # parameters according to the official Ollama API
-        "model": "mistral:7b", # or any other model supported by `"type"` in the Ollama API, use the playground for reference
-        "stop": [
-          "```" # a string used to stop the model
-        ]
-      }
-    },
+    "type": "popup", # "popup" or "edit"
+    "template": "A template using possible variable: {{filetype}} (neovim filetype), {{input}} (the selected text) an {{argument}} (provided on the command line)",
+    "strategy": "replace", # or "display" or "append" or "edit"
+    "params": { # parameters according to the official Ollama API
+      "model": "mistral:7b", # or any other model supported by `"type"` in the Ollama API, use the playground for reference
+      "stop": [
+        "```" # a string used to stop the model
+      ]
+    }
     "args": {
       "argument": {
           "type": "strig",
@@ -151,7 +120,7 @@ An example of custom action may look like this: (`#` marks comments)
 }
 ```
 
-##### Using Configuration Options
+##### Using Configuration Options (preferred)
 ```lua
 
 --- config options lua
@@ -159,14 +128,12 @@ opts = {
   ...
   actions = {
     grammar_correction = {
-      type = "chat",
-      opts = {
-        template = "Correct the given text to standard {{lang}}:\n\n```{{input}}```",
-        system = "You are a helpful note writing assistant, given a text input, correct the text only for grammar and spelling error. You are to keep all formatting the same, e.g. markdown bullets, should stay as a markdown bullet in the result, and indents should stay the same. Return ONLY the corrected text.",
-        strategy = "replace",
-        params = {
-          temperature = 0.3,
-        },
+      type = "popup",
+      template = "Correct the given text to standard {{lang}}:\n\n```{{input}}```",
+      system = "You are a helpful note writing assistant, given a text input, correct the text only for grammar and spelling error. You are to keep all formatting the same, e.g. markdown bullets, should stay as a markdown bullet in the result, and indents should stay the same. Return ONLY the corrected text.",
+      strategy = "replace",
+      params = {
+        temperature = 0.3,
       },
       args = {
         lang = {
@@ -182,13 +149,21 @@ opts = {
 
 ```
 
-
-The `edit` strategy consists in showing the output side by side with the input and
+The `edit` type consists in showing the output side by side with the input and
 available for further editing requests
-For now, `edit` strategy is implemented for `chat` type only.
 
 The `display` strategy shows the output in a float window. 
 `append` and `replace` modify the text directly in the buffer with "a" or "r"
+
+### Interactive Chat Parameters
+
+* Change Model by Opening the Parameter panels default to (ctrl-o) or <Tab> your way to it
+then press Enter (<cr>) on the model field to change it. It should list all the available models on
+from your LLM provider.
+![Change Model](assets/images/change_model.png)
+
+* In the **Parameter** panel, add and delete parameters by using the keys "a" and "d" respectively
+![Additional Parameters](assets/images/addl_params.png)
 
 ### Interactive Popup for Chat popup
 When using `OGPT`, the following
@@ -206,7 +181,7 @@ https://github.com/huynle/ogpt.nvim/blob/main/lua/ogpt/config.lua#L174-L181
 When the setting window is opened (with `<C-o>`), settings can be modified by
 pressing `Enter` on the related config. Settings are saved across sessions.
 
-### Example Lazy Configuration
+### Example Comprehensive Lazy Configuration
 
 
 ```lua
@@ -273,14 +248,88 @@ return {
     },
 
     opts = {
-      default_provider = {
-        name = "textgenui",
-        api_host = os.getenv("OGPT_API_HOST"),
-        api_key = os.getenv("OGPT_API_KEY"),
+      default_provider = "ollama"
+      -- default edgy flag
+      -- set this to true if you prefer to use edgy.nvim (https://github.com/folke/edgy.nvim) instead of floating windows
+      edgy = false, 
+      providers = {
+        ollama= {
+          api_host = os.getenv("OLLAMA_API_HOST"),
+          -- default model
+          model = "mistral:7b"
+          -- model definitions
+          models = {
+            -- alias to actual model name, helpful to define same model name across multiple providers
+            coder = "deepseek-coder:6.7b",
+            -- nested alias
+            cool_coder = "coder",
+            general_model = "mistral:7b",
+            custom_coder = {
+              name = "deepseek-coder:6.7b",
+              modify_url = function(url)
+                -- completely modify the URL of a model, if necessary. This function is called
+                -- right before making the REST request
+                return url
+              end,
+              -- custom conform function. Each provider have a dedicated conform function where all
+              -- of OGPT chat info is passed into the conform function to be massaged to the
+              -- correct format that the provider is expecting. This function, if provided will
+              -- override the provider default conform function
+              -- conform_fn = function(ogpt_params)
+              --   return provider_specific_params
+              -- end,
+            },
+          },
+          -- default model params for all 'actions'
+          api_params = {
+            model = "mistral:7b",
+            temperature = 0.8,
+            top_p = 0.9,
+          },
+          api_chat_params = {
+            model = "mistral:7b",
+            frequency_penalty = 0,
+            presence_penalty = 0,
+            temperature = 0.5,
+            top_p = 0.9,
+          },
+        },
+        openai= {
+          api_host = os.getenv("OPENAI_API_HOST"),
+          api_key = os.getenv("OPENAI_API_KEY"),
+          api_params = {
+            model = "gpt-4",
+            temperature = 0.8,
+            top_p = 0.9,
+          },
+          api_chat_params = {
+            model = "gpt-4",
+            frequency_penalty = 0,
+            presence_penalty = 0,
+            temperature = 0.5,
+            top_p = 0.9,
+          },
+        },
+        textgenui = {
+          api_host = os.getenv("TEXTGEN_API_HOST"),
+          api_key = os.getenv("TEXTGEN_API_KEY"),
+          api_params = {
+            model = "mixtral-8-7b",
+            temperature = 0.8,
+            top_p = 0.9,
+          },
+          api_chat_params = {
+            model = "mixtral-8-7b",
+            frequency_penalty = 0,
+            presence_penalty = 0,
+            temperature = 0.5,
+            top_p = 0.9,
+          },
+        },
       },
-      api_key_cmd = nil,
       yank_register = "+",
-      edit_with_instructions = {
+      edit = {
+        edgy = nil, -- use global default, override if defined
         diff = false,
         keymaps = {
           close = "<C-c>",
@@ -291,10 +340,34 @@ return {
           use_output_as_input = "<C-u>",
         },
       },
-      preview_window = {
+      popup = {
+        edgy = nil, -- use global default, override if defined
+        position = 1,
+        size = {
+          width = "40%",
+          height = 10,
+        },
+        padding = { 1, 1, 1, 1 },
+        enter = true,
+        focusable = true,
+        zindex = 50,
+        border = {
+          style = "rounded",
+        },
+        buf_options = {
+          modifiable = false,
+          readonly = false,
+          filetype = "ogpt-popup",
+          syntax = "markdown",
+        },
+        win_options = {
+          wrap = true,
+          linebreak = true,
+          winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+        },
         keymaps = {
           close = { "<C-c>", "q" },
-          accept = "<M-CR>",
+          accept = "<C-CR>",
           append = "a",
           prepend = "p",
           yank_code = "c",
@@ -302,6 +375,7 @@ return {
         },
       },
       chat = {
+        edgy = nil, -- use global default, override if defined
         welcome_message = WELCOME_MESSAGE,
         loading_text = "Loading, please wait ...",
         question_sign = "", -- 🙂
@@ -347,40 +421,15 @@ return {
         },
       },
 
-      popup_layout = {
-        default = "right",
-        center = {
-          width = "80%",
-          height = "80%",
-        },
-        right = {
-          width = "40%",
-          width_parameters_open = "50%",
-        },
-      },
-      api_params = {
-        model = "mistral:7b",
-        temperature = 0.8,
-        top_p = 0.9,
-      },
-      api_edit_params = {
-        model = "mistral:7b",
-        frequency_penalty = 0,
-        presence_penalty = 0,
-        temperature = 0.5,
-        top_p = 0.9,
-      },
-
+      -- {{input}} is always available as the selected/highlighted text
       actions = {
         grammar_correction = {
-          type = "chat",
-          opts = {
-            template = "Correct the given text to standard {{lang}}:\n\n```{{input}}```",
-            system = "You are a helpful note writing assistant, given a text input, correct the text only for grammar and spelling error. You are to keep all formatting the same, e.g. markdown bullets, should stay as a markdown bullet in the result, and indents should stay the same. Return ONLY the corrected text.",
-            strategy = "replace",
-            params = {
-              temperature = 0.3,
-            },
+          type = "popup",
+          template = "Correct the given text to standard {{lang}}:\n\n```{{input}}```",
+          system = "You are a helpful note writing assistant, given a text input, correct the text only for grammar and spelling error. You are to keep all formatting the same, e.g. markdown bullets, should stay as a markdown bullet in the result, and indents should stay the same. Return ONLY the corrected text.",
+          strategy = "replace",
+          params = {
+            temperature = 0.3,
           },
           args = {
             lang = {
@@ -391,13 +440,11 @@ return {
           },
         },
         translate = {
-          type = "chat",
-          opts = {
-            template = "Translate this into {{lang}}:\n\n{{input}}",
-            strategy = "display",
-            params = {
-              temperature = 0.3,
-            },
+          type = "popup",
+          template = "Translate this into {{lang}}:\n\n{{input}}",
+          strategy = "display",
+          params = {
+            temperature = 0.3,
           },
           args = {
             lang = {
@@ -408,34 +455,31 @@ return {
           },
         },
         keywords = {
-          type = "chat",
-          opts = {
-            template = "Extract the main keywords from the following text to be used as document tags.\n\n```{{input}}```",
-            strategy = "display",
-            params = {
-              -- model = "mistral:7b",
-              temperature = 0.5,
-              frequency_penalty = 0.8,
-            },
+          type = "popup",
+          template = "Extract the main keywords from the following text to be used as document tags.\n\n```{{input}}```",
+          strategy = "display",
+          params = {
+            model = "general_model", -- use of model alias, generally, this model alias should be available to all providers in use
+            temperature = 0.5,
+            frequency_penalty = 0.8,
           },
         },
         do_complete_code = {
-          type = "chat",
-          opts = {
-            template = "Code:\n```{{filetype}}\n{{input}}\n```\n\nCompleted Code:\n```{{filetype}}",
-            strategy = "display",
-            params = {
-              model = "deepseek-coder:6.7b",
-              stop = {
-                "```",
-              },
+          type = "popup",
+          template = "Code:\n```{{filetype}}\n{{input}}\n```\n\nCompleted Code:\n```{{filetype}}",
+          strategy = "display",
+          params = {
+            model = "coder",
+            stop = {
+              "```",
             },
           },
         },
 
         quick_question = {
-          type = "chat",
+          type = "popup",
           args = {
+            -- template expansion
             question = {
               type = "string",
               optional = "true",
@@ -444,15 +488,13 @@ return {
               end,
             },
           },
-          opts = {
-            system = "You are a helpful assistant",
-            template = "{{question}}",
-            strategy = "display",
-          },
+          system = "You are a helpful assistant",
+          template = "{{question}}",
+          strategy = "display",
         },
 
         custom_input = {
-          type = "chat",
+          type = "popup",
           args = {
             instruction = {
               type = "string",
@@ -462,24 +504,20 @@ return {
               end,
             },
           },
-          opts = {
-            system = "You are a helpful assistant",
-            template = "Given the follow snippet, {{instruction}}.\n\nsnippet:\n```{{filetype}}\n{{input}}\n```",
-            strategy = "display",
-          },
+          system = "You are a helpful assistant",
+          template = "Given the follow snippet, {{instruction}}.\n\nsnippet:\n```{{filetype}}\n{{input}}\n```",
+          strategy = "display",
         },
 
         optimize_code = {
-          type = "chat",
-          opts = {
-            system = "You are a helpful coding assistant. Complete the given prompt.",
-            template = "Optimize the code below, following these instructions:\n\n{{instruction}}.\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nOptimized version:\n```{{filetype}}",
-            strategy = "edit_code",
-            params = {
-              model = "deepseek-coder:6.7b",
-              stop = {
-                "```",
-              },
+          type = "popup",
+          system = "You are a helpful coding assistant. Complete the given prompt.",
+          template = "Optimize the code below, following these instructions:\n\n{{instruction}}.\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nOptimized version:\n```{{filetype}}",
+          strategy = "edit_code",
+          params = {
+            model = "coder",
+            stop = {
+              "```",
             },
           },
         },
@@ -494,8 +532,8 @@ return {
 
 ### Advanced setup
 
-`config.params.model` and `api_params.model` and `api_edit_params.model` can take a table instead
-of a string.
+
+#### Modify model REST URL
 
 ```lua
 -- advanced model, can take the following structure
@@ -523,30 +561,37 @@ local advanced_model = {
 
 ```
 
-After defining the advanced model can, you can place it directly into your previous model location
-in the configuration.
+#### Modify Conform Function
+TBD
 
-```lua
-opts = {
-  ...
-  api_params = {
-    -- so now call actions will use this model, unless explicitly overridden in the action itself
-    model = advanced_model,
-    temperature = 0.8,
-    top_p = 0.9,
-  },
-}
-```
+
+## OGPT planned work
++ [x] Use default provider, but can be overriden at anytime for specific action
++ [x] original functionality of ChatGPT.nvim to work with Ollama, TextGenUI(huggingface), OpenAI via `providers`
+  + Look at the "default_provider" in the `config.lua`, default is `ollama`
+  + look at "providers" for the provider default options
++ [x] Choose different provider and model for "edit" and "chat"
++ [x] Custom settings per session
+  + [x] Add/remove parameters in Chat and Edit
+  + [x] Choose provider, as well as model for Chat and Edit
+  + [x] Customizable actions, with specific provider and model
++ [ ] Another Windows for [Template](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#template), [System](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#system)
++ [x] Framework to add more providers
++ [x] clean up documentation
++ [x] additional actions can be added to config options, or additional json. Look in "config.actions", and "config.actions_paths"
++ [x] running `OGPTRun` shows telescope picker
++ [x] for `type="popup"` and `strategy="display" -- or append, prepend, replace, quick_fix`, "r" and "a" can be used to "replace the
++ [x] model alias for each provider
+  highlighted text" or "append after the highlighted text", respectively. Otherwise, "esc" or
+"ctrl-c" would exit the popup. You can update the mapping in your config options.
+
+
+
 
 # Credits
-First of all, thank you to the author of `jackMort/ChatGPT.nvim` for creating a seamless framework
+Thank you to the author of `jackMort/ChatGPT.nvim` for creating a seamless framework
 to interact with OGPT in neovim!
-
-**THIS IS A FORK of the original ChatGPT.nvim that supports Ollama (<https://ollama.ai/>), which
-allows you to run complete local LLMs.**
-
-Buy Jack(Original creator) a Coffee
-[!["Buy Jack A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/jackMort)
 
 Buy Me a Coffee
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/huynle)
+

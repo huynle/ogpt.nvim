@@ -1,8 +1,9 @@
-local classes = require("ogpt.common.classes")
+local Object = require("ogpt.common.object")
 local Path = require("plenary.path")
 local scan = require("plenary.scandir")
+local Config = require("ogpt.config")
 
-local Session = classes.class()
+local Session = Object("Session")
 
 local function get_current_date()
   return os.date("%Y-%m-%d_%H:%M:%S")
@@ -47,7 +48,7 @@ function Session:init(opts)
     self.updated_at = dt
     self.filename = Session.get_dir():joinpath(get_default_filename() .. ".json"):absolute()
     self.conversation = {}
-    self.parameters = {}
+    self.parameters = Config.get_chat_params()
   end
 end
 
@@ -73,7 +74,7 @@ end
 
 function Session:previous_context()
   for ith = #self.conversation, 1, -1 do
-    local context = self.conversation[ith].context
+    local context = self.conversation[ith].text
     if context then
       return context
     end
@@ -194,13 +195,13 @@ function Session.list_sessions()
   return sessions
 end
 
-function Session.latest()
+function Session.latest(opts)
   local sessions = Session.list_sessions()
   if #sessions > 0 then
     local session = sessions[1]
-    return Session.new({ filename = session.filename })
+    return Session({ filename = session.filename })
   end
-  return Session.new()
+  return Session(opts)
 end
 
 return Session
