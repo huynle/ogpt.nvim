@@ -73,7 +73,8 @@ function M.run_action(opts)
   opts = vim.tbl_extend("force", {}, action_opts, item)
   local class = classes_by_type[item.type]
   local action = class(action_name, opts)
-  action:run()
+  vim.schedule_wrap(action:run())
+  return action
 end
 
 return M

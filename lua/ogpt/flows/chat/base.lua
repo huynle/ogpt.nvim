@@ -20,6 +20,7 @@ ROLE_USER = "user"
 local Chat = Object("Chat")
 
 function Chat:init(opts)
+  opts = opts or {}
   self.input_extmark_id = nil
 
   self.active_panel = nil

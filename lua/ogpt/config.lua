@@ -14,6 +14,7 @@ function M.defaults()
   local defaults = {
     debug = false,
     edgy = false,
+    single_window = false,
     yank_register = "+",
     default_provider = "ollama",
     providers = {
@@ -154,7 +155,7 @@ function M.defaults()
       },
       keymaps = {
         close = { "<C-c>", "q" },
-        accept = "<C-CR>",
+        accept = "<C-y>",
         append = "a",
         prepend = "p",
         yank_code = "c",

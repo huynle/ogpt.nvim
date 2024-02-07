@@ -273,9 +273,15 @@ function Api:exec(cmd, args, on_stdout_chunk, on_complete, should_stop, on_stop)
         if should_stop and should_stop() then
           if handle ~= nil then
             handle:kill(2) -- send SIGINT
-            stdout:close()
-            stderr:close()
-            handle:close()
+            pcall(function()
+              stdout:close()
+            end)
+            pcall(function()
+              stderr:close()
+            end)
+            pcall(function()
+              handle:close()
+            end)
             on_stop()
           end
           return
