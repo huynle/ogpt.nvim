@@ -43,9 +43,6 @@ M.textgenui_options = { "seed", "top_k", "top_p", "stop" }
 function M.conform(params)
   params = params or {}
 
-  -- textgenui uses "inputs"
-  params.inputs = M._conform_messages(params.messages or {})
-
   local param_options = {}
 
   for key, value in pairs(params) do
@@ -65,40 +62,52 @@ function M.conform(params)
   return params
 end
 
-function M._conform_messages(messages)
+function M.conform_messages(params)
+  local messages = params.messages or {}
   -- https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1
   local tokens = {
     BOS = "<s>",
     EOS = "</s>",
+    BOSYS = "<<SYS>>",
+    EOSYS = "<</SYS>>",
     INST_START = "[INST]",
     INST_END = "[/INST]",
   }
   local _input = { tokens.BOS }
   for i, message in ipairs(messages) do
     if i < #messages then -- Stop before the last item
-      if message.role == "user" then
+      if message.role == "system" then
+        table.insert(_input, tokens.BOSYS)
+        table.insert(_input, message.content)
+        table.insert(_input, tokens.EOSYS)
+      elseif message.role == "user" then
         table.insert(_input, tokens.INST_START)
         table.insert(_input, message.content)
         table.insert(_input, tokens.INST_END)
-      elseif message.role == "system" then
+      elseif message.role == "assistant" then
         table.insert(_input, message.content)
       end
     else
       table.insert(_input, tokens.EOS)
+      table.insert(_input, tokens.BOS)
       table.insert(_input, tokens.INST_START)
       table.insert(_input, message.content)
       table.insert(_input, tokens.INST_END)
     end
   end
   local final_string = table.concat(_input, " ")
-  return final_string
+  params.inputs = final_string
+  return params
 end
 
 function M.process_line(content, ctx, raw_chunks, state, cb)
   local _json = content.json
   local raw = content.raw
   if _json.token then
-    if _json.token.text == "</s>" then
+    if _json.token.text and string.find(_json.token.text, "</s>") then
+      ctx.context = _json.context
+      cb(raw_chunks, "END", ctx)
+    elseif _json.token.generated_text then
       ctx.context = _json.context
       cb(raw_chunks, "END", ctx)
     else

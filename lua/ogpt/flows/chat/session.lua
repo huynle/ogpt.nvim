@@ -92,6 +92,9 @@ function Session:add_item(item)
     self.parameters.model = ctx.params.model
     item.context = ctx.context
   end
+
+  self.parameters = vim.tbl_extend("force", self.parameters, vim.tbl_get(ctx, "params", "parameters") or {})
+
   if self.updated_at == self.name and item.type == 1 then
     self.name = item.text
   end

@@ -101,6 +101,10 @@ function M.conform(params)
   return params
 end
 
+function M.conform_messages(messages)
+  return messages
+end
+
 function M.process_line(content, ctx, raw_chunks, state, cb)
   local _json = content.json
   local raw = content.raw
