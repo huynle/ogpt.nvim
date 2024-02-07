@@ -34,6 +34,11 @@ function PopupAction:init(name, opts)
   end)
 end
 
+function PopupAction:close()
+  self.stop = true
+  self.popup:unmount()
+end
+
 function PopupAction:run()
   -- self.stop = false
   local params = self:get_params()
@@ -52,7 +57,8 @@ function PopupAction:run()
     title = self.opts.title,
     args = self.opts.args,
     stop = function()
-      self.stop = true
+      self:close()
+      -- self.stop = true
     end,
   }
 

@@ -7,13 +7,16 @@ function M.apply_map(popup, opts)
   -- accept output and replace
   popup:map("n", Config.options.popup.keymaps.accept, function()
     -- local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
+    local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
+    table.insert(_lines, "")
+    table.insert(_lines, "")
     vim.api.nvim_buf_set_text(
       opts.main_bufnr,
       opts.selection_idx.start_row - 1,
       opts.selection_idx.start_col - 1,
       opts.selection_idx.end_row - 1,
       opts.selection_idx.end_col,
-      opts.lines
+      _lines
     )
     vim.cmd("q")
   end)
@@ -25,9 +28,9 @@ function M.apply_map(popup, opts)
     table.insert(_lines, "")
     vim.api.nvim_buf_set_text(
       opts.main_bufnr,
-      opts.selection_idx.end_row - 1,
+      opts.selection_idx.start_row - 1,
       opts.selection_idx.start_col - 1,
-      opts.selection_idx.end_row - 1,
+      opts.selection_idx.start_row - 1,
       opts.selection_idx.start_col - 1,
       _lines
     )

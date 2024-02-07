@@ -1,4 +1,5 @@
 local Popup = require("ogpt.common.popup")
+local popup_keymap = require("ogpt.flows.actions.popup.keymaps")
 local Config = require("ogpt.config")
 local event = require("nui.utils.autocmd").event
 local Utils = require("ogpt.utils")
@@ -77,99 +78,9 @@ function PopupWindow:mount(opts)
   PopupWindow.super.mount(self)
 
   self:update_popup_size(opts)
+  popup_keymap.apply_map(self, opts)
 
-  -- close
-  local keys = Config.options.popup.keymaps.close
-  if type(keys) ~= "table" then
-    keys = { keys }
-  end
-  for _, key in ipairs(keys) do
-    self:map("n", key, function()
-      if opts.stop and type(opts.stop) == "function" then
-        opts.stop()
-      end
-      self:unmount()
-    end)
-  end
-
-  -- accept output and replace
-  self:map("n", Config.options.popup.keymaps.accept, function()
-    local _lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
-    table.insert(_lines, "")
-    table.insert(_lines, "")
-    vim.api.nvim_buf_set_text(
-      opts.main_bufnr,
-      opts.selection_idx.start_row - 1,
-      opts.selection_idx.start_col - 1,
-      opts.selection_idx.end_row - 1,
-      opts.selection_idx.end_col,
-      _lines
-    )
-    vim.cmd("q")
-  end)
-
-  -- accept output and prepend
-  self:map("n", Config.options.popup.keymaps.prepend, function()
-    local _lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
-    table.insert(_lines, "")
-    table.insert(_lines, "")
-    vim.api.nvim_buf_set_text(
-      opts.main_bufnr,
-      opts.selection_idx.end_row - 1,
-      opts.selection_idx.start_col - 1,
-      opts.selection_idx.end_row - 1,
-      opts.selection_idx.start_col - 1,
-      _lines
-    )
-    vim.cmd("q")
-  end)
-
-  -- accept output and append
-  self:map("n", Config.options.popup.keymaps.append, function()
-    local _lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
-    table.insert(_lines, 1, "")
-    table.insert(_lines, "")
-    vim.api.nvim_buf_set_text(
-      opts.main_bufnr,
-      opts.selection_idx.end_row,
-      opts.selection_idx.start_col - 1,
-      opts.selection_idx.end_row,
-      opts.selection_idx.start_col - 1,
-      _lines
-    )
-    vim.cmd("q")
-  end)
-
-  -- yank code in output and close
-  self:map("n", Config.options.popup.keymaps.yank_code, function()
-    local _lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
-    local _code = Utils.getSelectedCode(_lines)
-    vim.fn.setreg(Config.options.yank_register, _code)
-
-    if vim.fn.mode() == "i" then
-      vim.api.nvim_command("stopinsert")
-    end
-    vim.cmd("q")
-  end)
-
-  -- yank output and close
-  self:map("n", Config.options.popup.keymaps.yank_to_register, function()
-    local _lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
-    vim.fn.setreg(Config.options.yank_register, _lines)
-
-    if vim.fn.mode() == "i" then
-      vim.api.nvim_command("stopinsert")
-    end
-    vim.cmd("q")
-  end)
-
-  -- -- unmount component when cursor leaves buffer
-  -- self:on(event.BufLeave, function()
-  --   action.stop = true
-  --   self:unmount()
-  -- end)
-
-  -- unmount component when cursor leaves buffer
+  -- unmount component when closing window
   self:on(event.WinClosed, function()
     if opts.stop and type(opts.stop) == "function" then
       opts.stop()
