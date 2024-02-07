@@ -42,7 +42,7 @@ function M.parse_api_model_response(json, cb)
 end
 
 function M.conform(params)
-  params = M._conform_messages(params)
+  -- params = M._conform_messages(params)
 
   for key, value in pairs(params) do
     if not vim.tbl_contains(M._api_chat_parameters, key) then
@@ -53,7 +53,7 @@ function M.conform(params)
   return params
 end
 
-function M._conform_messages(params)
+function M.conform_messages(params)
   -- ensure we only have one system message
   local _to_remove_system_idx = {}
   for idx, message in ipairs(params.messages) do

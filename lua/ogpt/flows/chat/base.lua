@@ -234,6 +234,7 @@ function Chat:addAnswerPartial(text, state, ctx)
       usage = usage,
       ctx = ctx or {},
     })
+    self.parameters_panel:reload_session_params()
 
     local lines = {}
     local nr_of_lines = 0
@@ -748,7 +749,7 @@ function Chat:open()
         }, self.parameters_panel.params)
         self.provider.api:chat_completions(params, function(answer, state, ctx)
           self:addAnswerPartial(answer, state, ctx)
-        end, self.should_stop)
+        end, self.should_stop, {})
       end
     end,
   })

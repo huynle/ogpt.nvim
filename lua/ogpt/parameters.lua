@@ -79,6 +79,7 @@ local params_order = {
   "low_vram",
   "main_gpu",
   "max_tokens",
+  "max_new_tokens",
   "mirostat",
   "mirostat_eta",
   "mirostat_tau",
@@ -111,6 +112,8 @@ local params_validators = {
   embedding_only = model_validator(),
   f16_kv = model_validator(),
   frequency_penalty = float_validator(),
+  max_tokens = float_validator(),
+  max_new_tokens = float_validator(),
   mirostat = integer_validator(),
   mirostat_eta = float_validator(),
   mirostat_tau = float_validator(),
@@ -250,17 +253,17 @@ function Parameters:init(opts)
   Parameters.super.init(self, vim.tbl_extend("force", Config.options.parameters_window, opts), opts.edgy)
   self.vts = {}
 
-  local type = opts.type
-  local default_params = opts.default_params
-  local session = opts.session
-  local parent = opts.parent
+  self.type = opts.type
+  self.default_params = opts.default_params
+  self.session = opts.session
+  self.parent = opts.parent
 
   self.parent_type = type
-  local custom_params = self:read_config(session or {})
+  local custom_params = self:read_config(self.session or {})
 
-  self.params = vim.tbl_deep_extend("force", {}, default_params, custom_params or {})
-  if session then
-    self.params = session.parameters
+  self.params = vim.tbl_deep_extend("force", {}, self.default_params, custom_params or {})
+  if self.session then
+    self.params = self.session.parameters
   end
 
   self:refresh_panel()
@@ -302,26 +305,33 @@ function Parameters:init(opts)
     local key = existing_order[row]
     if key == "model" then
       local models = require("ogpt.models")
-      models.select_model(parent.provider, {
+      models.select_model(self.parent.provider, {
         cb = function(display, value)
-          self:update_property(key, row, value, session)
+          self:update_property(key, row, value, self.session)
         end,
       })
     elseif key == "provider" then
       local provider = require("ogpt.provider")
       provider.select_provider({
         cb = function(display, value)
-          self:update_property(key, row, value, session)
-          parent.provider = Config.get_provider(value)
+          self:update_property(key, row, value, self.session)
+          self.parent.provider = Config.get_provider(value)
         end,
       })
     else
       local value = self.params[key]
       self:open_edit_property_input(key, value, row, function(new_value)
-        self:update_property(key, row, Utils.process_string(new_value), session)
+        self:update_property(key, row, Utils.process_string(new_value), self.session)
       end)
     end
   end, {})
+end
+
+function Parameters:reload_session_params()
+  if self.session then
+    self.params = self.session.parameters
+  end
+  self:refresh_panel()
 end
 
 function Parameters:update_property(key, row, new_value, session)

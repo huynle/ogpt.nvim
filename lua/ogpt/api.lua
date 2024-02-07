@@ -12,10 +12,10 @@ function Api:init(provider, action, opts)
   self.action = action
 end
 
-function Api:completions(custom_params, cb)
+function Api:completions(custom_params, cb, opts)
   local params = vim.tbl_extend("keep", custom_params, Config.options.api_params)
   params.stream = false
-  self:make_call(self.COMPLETIONS_URL, params, cb)
+  self:make_call(self.COMPLETIONS_URL, params, cb, opts)
 end
 
 function Api:chat_completions(custom_params, partial_result_fn, should_stop, opts)
@@ -63,7 +63,7 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
             return
           end
           ctx, raw_chunks, state =
-            self.provider.process_line({ json = json, raw = chunk }, ctx, raw_chunks, state, partial_result_fn)
+            self.provider.process_line({ json = json, raw = chunk }, ctx, raw_chunks, state, partial_result_fn, opts)
           return
         end
 
@@ -72,10 +72,10 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
           local _ok, _json = pcall(vim.json.decode, raw_json)
           if _ok then
             ctx, raw_chunks, state =
-              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, partial_result_fn)
+              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, partial_result_fn, opts)
           else
             ctx, raw_chunks, state =
-              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, partial_result_fn)
+              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, partial_result_fn, opts)
           end
         end
       end,
@@ -89,7 +89,7 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
     )
   else
     params.stream = false
-    self:make_call(self.provider.envs.CHAT_COMPLETIONS_URL, params, partial_result_fn)
+    self:make_call(self.provider.envs.CHAT_COMPLETIONS_URL, params, partial_result_fn, opts)
   end
 end
 
@@ -100,7 +100,7 @@ function Api:edits(custom_params, cb)
   self:chat_completions(params, cb)
 end
 
-function Api:make_call(url, params, cb, ctx, raw_chunks, state)
+function Api:make_call(url, params, cb, ctx, raw_chunks, state, opts)
   ctx = ctx or {}
   raw_chunks = raw_chunks or ""
   state = state or "START"
@@ -154,7 +154,8 @@ function Api:make_call(url, params, cb, ctx, raw_chunks, state)
             cb(table.concat(error_msg, " "), "ERROR", ctx)
             return
           end
-          ctx, raw_chunks, state = self.provider.process_line({ json = json, raw = result }, ctx, raw_chunks, state, cb)
+          ctx, raw_chunks, state =
+            self.provider.process_line({ json = json, raw = result }, ctx, raw_chunks, state, cb, opts)
           return
         end
 
@@ -163,10 +164,10 @@ function Api:make_call(url, params, cb, ctx, raw_chunks, state)
           local _ok, _json = pcall(vim.json.decode, raw_json)
           if _ok then
             ctx, raw_chunks, state =
-              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb)
+              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb, opts)
           else
             ctx, raw_chunks, state =
-              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb)
+              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb, opts)
           end
         end
       end),

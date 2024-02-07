@@ -440,7 +440,7 @@ function M.expand_model(api, params)
           end
         end
       end
-      params.model = _m.name or name
+      params.model = _m or name
     else
       for _name, model in pairs(provider_models) do
         if _name == _m then
@@ -453,9 +453,14 @@ function M.expand_model(api, params)
         end
       end
     end
+    return params
   end
 
-  _expand(nil, _model)
+  params = _expand(nil, _model)
+
+  -- final force override from the params that are set in the mode itself.
+  -- This will enforce specific model params, e.g. max_token, etc
+  params = vim.tbl_extend("force", params, vim.tbl_get(params, "model", "params") or {})
 
   params = M.expand_url(api, params)
 
@@ -465,14 +470,21 @@ end
 function M.expand_url(api, params)
   params = M.get_action_params(api.provider.name, params)
   local _model = params.model
-  local _conform_fn = _model and _model.conform_fn
+  local _conform_messages_fn = _model and _model.conform_messages_fn
 
-  if _conform_fn then
-    params = _conform_fn(params)
+  if _conform_messages_fn then
+    params = _conform_messages_fn(params)
   else
-    params = api.provider.conform(params)
+    params = api.provider.conform_messages(params)
   end
+
+  -- do final massage here
+  params = api.provider.conform(params)
   return params
+end
+
+function M.get_local_model_definition(provider)
+  return M.options.providers[provider.name].models or {}
 end
 
 return M
