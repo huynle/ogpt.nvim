@@ -11,15 +11,22 @@ M.request_params = {
 }
 
 M.model_params = {
-  "seed",
-  "top_k",
-  "top_p",
-  "top_n_tokens",
-  "typical_p",
-  "stop",
+  "best_of",
+  "decoder_input_details",
   "details",
+  "do_sample",
   "max_new_tokens",
   "repetition_penalty",
+  "return_full_text",
+  "seed",
+  "stop",
+  "temperature",
+  "top_k",
+  "top_n_tokens",
+  "top_p",
+  "truncate",
+  "typical_p",
+  "watermark",
 }
 
 M.envs = {}
@@ -40,7 +47,7 @@ end
 
 M.textgenui_options = { "seed", "top_k", "top_p", "stop" }
 
-function M.conform(params)
+function M.conform_request(params)
   params = params or {}
 
   local param_options = {}
@@ -105,6 +112,13 @@ function M.process_line(content, ctx, raw_chunks, state, cb)
   local raw = content.raw
   if _json.token then
     if _json.token.text and string.find(_json.token.text, "</s>") then
+      ctx.context = _json.context
+      cb(raw_chunks, "END", ctx)
+    elseif
+      _json.token.text
+      and vim.tbl_get(ctx, "tokens", "end_of_result")
+      and string.find(_json.token.text, vim.tbl_get(ctx, "tokens", "end_of_result"))
+    then
       ctx.context = _json.context
       cb(raw_chunks, "END", ctx)
     elseif _json.token.generated_text then

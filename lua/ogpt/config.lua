@@ -418,7 +418,8 @@ function M.get_chat_params(provider, override)
   return vim.tbl_extend("force", default_params, override or {})
 end
 
-function M.expand_model(api, params)
+function M.expand_model(api, params, ctx)
+  ctx = ctx or {}
   local provider_models = M.options.providers[api.provider.name].models or {}
   params = M.get_action_params(api.provider.name, params)
   local _model = params.model
@@ -456,21 +457,23 @@ function M.expand_model(api, params)
     return params
   end
 
-  params = _expand(nil, _model)
-
+  local _full_unfiltered_params = _expand(nil, _model)
+  ctx.tokens = _full_unfiltered_params.model.tokens or {}
   -- final force override from the params that are set in the mode itself.
   -- This will enforce specific model params, e.g. max_token, etc
-  params = vim.tbl_extend("force", params, vim.tbl_get(params, "model", "params") or {})
+  local final_overrided_applied_params =
+    vim.tbl_extend("force", params, vim.tbl_get(_full_unfiltered_params, "model", "params") or {})
 
-  params = M.expand_url(api, params)
+  params = M.conform_to_provider_request(api, final_overrided_applied_params)
 
-  return params, _completion_url
+  return params, _completion_url, ctx
 end
 
-function M.expand_url(api, params)
+function M.conform_to_provider_request(api, params)
   params = M.get_action_params(api.provider.name, params)
   local _model = params.model
   local _conform_messages_fn = _model and _model.conform_messages_fn
+  local _conform_request_fn = _model and _model.conform_request_fn
 
   if _conform_messages_fn then
     params = _conform_messages_fn(params)
@@ -478,8 +481,12 @@ function M.expand_url(api, params)
     params = api.provider.conform_messages(params)
   end
 
-  -- do final massage here
-  params = api.provider.conform(params)
+  if _conform_request_fn then
+    params = _conform_request_fn(params)
+  else
+    params = api.provider.conform_request(params)
+  end
+
   return params
 end
 

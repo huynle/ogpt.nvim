@@ -78,7 +78,7 @@ function M.parse_api_model_response(json, cb)
   end
 end
 
-function M.conform(params)
+function M.conform_request(params)
   -- https://github.com/jmorganca/ollama/blob/main/docs/api.md#show-model-information
 
   local param_options = {}
@@ -101,8 +101,8 @@ function M.conform(params)
   return params
 end
 
-function M.conform_messages(messages)
-  return messages
+function M.conform_messages(params)
+  return params
 end
 
 function M.process_line(content, ctx, raw_chunks, state, cb)
@@ -119,13 +119,13 @@ function M.process_line(content, ctx, raw_chunks, state, cb)
       ctx.context = _json.context
       cb(raw_chunks, "END", ctx)
     end
-  else
-    if not vim.tbl_isempty(_json) then
-      if _json and _json.message then
-        cb(_json.message.content, state, ctx)
-        raw_chunks = raw_chunks .. _json.message.content
-        state = "CONTINUE"
-      end
+  elseif type(_json) == "string" then
+    utils.log("got something weird. " .. _json)
+  elseif not vim.tbl_isempty(_json) then
+    if _json and _json.message then
+      cb(_json.message.content, state, ctx)
+      raw_chunks = raw_chunks .. _json.message.content
+      state = "CONTINUE"
     end
   end
 

@@ -3,6 +3,7 @@ local Signs = require("ogpt.signs")
 local Spinner = require("ogpt.spinner")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
+local template_helpers = require("ogpt.flows.actions.template_helpers")
 
 local BaseAction = Object("BaseAction")
 
@@ -122,17 +123,41 @@ end
 
 function BaseAction:update_variables()
   self.variables = vim.tbl_extend("force", self.variables, {
-    filetype = self:get_filetype(),
-    input = self:get_selected_text(),
+    filetype = function()
+      return self:get_filetype()
+    end,
+    input = function()
+      return self:get_selected_text()
+    end,
   })
+  for helper, helper_fn in pairs(template_helpers) do
+    local _v = { [helper] = helper_fn }
+    self.variables = vim.tbl_extend("force", self.variables, _v)
+  end
 end
 
 function BaseAction:render_template()
+  -- lazily render the final string.
+  -- it recursively loop on the template string until it does not find anymore
+  -- {{}} patterns
+  local stop = false
+  local depth = 2
   local result = self.template
-  for key, value in pairs(self.variables) do
-    local escaped_value = utils.escape_pattern(value)
-    result = string.gsub(result, "{{" .. key .. "}}", escaped_value)
-  end
+  local pattern = "%{%{(([%w_]+))%}%}"
+  repeat
+    for match in string.gmatch(result, pattern) do
+      local value = self.variables[match]
+      if value then
+        value = type(value) == "function" and value() or value
+        local escaped_value = utils.escape_pattern(value)
+        result = string.gsub(result, "{{" .. match .. "}}", escaped_value)
+      else
+        utils.log("Cannot find {{" .. match .. "}}", vim.log.levels.ERROR)
+        stop = true
+      end
+    end
+    depth = depth - 1
+  until not string.match(result, pattern) or stop or depth == 0
   return result
 end
 

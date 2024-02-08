@@ -41,7 +41,7 @@ function M.parse_api_model_response(json, cb)
   end
 end
 
-function M.conform(params)
+function M.conform_request(params)
   -- params = M._conform_messages(params)
 
   for key, value in pairs(params) do

@@ -20,10 +20,11 @@ end
 
 function Api:chat_completions(custom_params, partial_result_fn, should_stop, opts)
   local stream = custom_params.stream or false
-  local params, _completion_url = Config.expand_model(self, custom_params)
+  local params, _completion_url, ctx = Config.expand_model(self, custom_params)
 
-  local ctx = {}
   ctx.params = params
+  ctx.provider = self.provider.name
+  ctx.model = custom_params.model
   utils.log("Request to: " .. _completion_url)
   utils.log(params)
 

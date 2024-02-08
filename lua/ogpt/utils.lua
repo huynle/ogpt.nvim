@@ -1,4 +1,5 @@
 local Config = require("ogpt.config")
+local Path = require("plenary.path")
 local M = {}
 
 local ESC_FEEDKEY = vim.api.nvim_replace_termcodes("<ESC>", true, false, true)
@@ -386,12 +387,23 @@ function M.format_table(tbl, indent)
   return result
 end
 
+local log_filename = Path:new(vim.fn.stdpath("state")):joinpath("ogpt", "ogpt.log"):absolute() -- convert Path object to string
+
 function M.log(msg, level)
   msg = vim.inspect(msg)
-  level = level or vim.log.levels.DEBUG
-  Config.logs[#Config.logs + 1] = { msg = msg, level = level }
   if Config.options.debug then
     vim.notify(msg, level, { title = "OGPT Debug" })
+  elseif level == vim.log.levels.ERROR then
+    vim.notify(msg, level, { title = "OGPT Debug" })
+  end
+
+  local file = io.open(log_filename, "a")
+  if file then
+    file:write(os.date("[%Y-%m-%d %H:%M:%S] "))
+    file:write(msg .. "\n")
+    file:close()
+  else
+    vim.notify("Failed to open log file for writing", vim.log.levels.ERROR)
   end
 end
 
