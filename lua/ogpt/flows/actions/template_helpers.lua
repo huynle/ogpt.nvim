@@ -11,16 +11,31 @@ M.visible_window_content = function()
     return vim.api.nvim_win_get_tabpage(win) == vim.api.nvim_get_current_tabpage()
   end, wins)
 
-  -- initialize an empty string for the final output
-  local final_string = ""
-
-  -- iterate over all visible windows
+  -- for each of the win in wins, i need to get the buffer and make sure that the list of buffers are unique
+  local _buffers = {}
   for _, win in ipairs(wins) do
     -- get the buffer number of the current window
     local bufnr = vim.api.nvim_win_get_buf(win)
 
     -- check if the buffer is loaded and resolves to a file in the project
     local file = vim.fn.bufname(bufnr)
+    if file ~= "" and vim.fn.filereadable(file) == 1 then
+      -- add the buffer to the list of unique buffers
+      if not vim.tbl_contains(_buffers, bufnr) then
+        table.insert(_buffers, bufnr)
+      end
+    end
+  end
+
+  -- initialize an empty string for the final output
+  local final_string = ""
+
+  -- iterate over all unique buffers
+  for _, bufnr in ipairs(_buffers) do
+    -- get the filepath and line number for the current buffer
+    local file = vim.fn.bufname(bufnr)
+
+    -- check if the buffer is loaded and resolves to a file in the project
     if file ~= "" and vim.fn.filereadable(file) == 1 then
       -- get the lines in the buffer
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
