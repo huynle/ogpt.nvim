@@ -181,8 +181,7 @@ https://github.com/huynle/ogpt.nvim/blob/main/lua/ogpt/config.lua#L174-L181
 When the setting window is opened (with `<C-o>`), settings can be modified by
 pressing `Enter` on the related config. Settings are saved across sessions.
 
-### Example Comprehensive Lazy Configuration
-
+### Example `lazy.nvim` Configuration
 
 ```lua
 return {
@@ -533,30 +532,64 @@ return {
 ### Advanced setup
 
 
-#### Modify model REST URL
+#### Defining Custom Model
+
+This is an example of how to set up an Ollama Mixtral model server that might be sitting on a
+different server. Note in the example below you can:
+* Swap out the REST URL by directly replacing it with a URL string, or define a function that gets
+  called, to dynamically update.
+* `secret_model` is an alias to `mixtral-8-7b`, so in your `actions` you can use `secret_model`.
+  This is useful when you have multiple providers that have the same power as Mixtral, and you want
+to swap different providers to use, based on development environment, or for other reasons.
+* When defining a new model, like that of `mixtral-8-7b` in this example, this model will show up
+  in your options of models in your `chat` and `edit` actions.
+* Since custom models might have obscured parameters or settings, the "param" field under your new
+  model definition is used to force the final override for your REST parameters.
+* `conform_message_fn` is used to override the default provider `conform_message` function. This
+  function allows the massaging of the API request parameters to fit the specific model. This is
+really useful when you need to modify the messages to fit the model trained template.
+* `conform_request_fn` is used to override the default provider `conform_request` function. This
+  function (or the provider default function) is called at the very end, right before making the
+API call. Final massaging can be done here.
 
 ```lua
 -- advanced model, can take the following structure
-local advanced_model = {
-  -- create a modify url specifically for mixtral to run
-  name = "mixtral-8-7b",
-  -- name = "mistral-7b-tgi-predictor-ai-factory",
-  modify_url = function(url)
-    -- given a URL, this function modifies the URL specifically to the model
-    -- This is useful when you have different models hosted on different subdomains like
-    -- https://model1.yourdomain.com/
-    -- https://model2.yourdomain.com/
-    local new_model = "mixtral-8-7b"
-    -- local new_model = "mistral-7b-tgi-predictor-ai-factory"
-    local host = url:match("https?://([^/]+)")
-    local subdomain, domain, tld = host:match("([^.]+)%.([^.]+)%.([^.]+)")
-    local _new_url = url:gsub(host, new_model .. "." .. domain .. "." .. tld)
-    return _new_url
-  end,
-  -- conform_fn = function(params)
-  --   -- Different models might have different instruction format
-  --   -- for example, Mixtral operates on `<s> [INST] Instruction [/INST] Model answer</s> [INST] Follow-up instruction [/INST] `
-  -- end,
+providers = {
+  ollama = {
+    model = "secret_model", -- default model for ollama
+    models = {
+      ...
+      secret_model = "mixtral-8-7b",
+      ["mixtral-8-7b"]= {
+        params = {
+          -- the parameters here are FORCED into the final API REQUEST, OVERRIDDING
+          -- anything that was set before
+          max_new_token = 200,
+        },
+        modify_url = function(url)
+          -- given a URL, this function modifies the URL specifically to the model
+          -- This is useful when you have different models hosted on different subdomains like
+          -- https://model1.yourdomain.com/
+          -- https://model2.yourdomain.com/
+          local new_model = "mixtral-8-7b"
+          -- local new_model = "mistral-7b-tgi-predictor-ai-factory"
+          local host = url:match("https?://([^/]+)")
+          local subdomain, domain, tld = host:match("([^.]+)%.([^.]+)%.([^.]+)")
+          local _new_url = url:gsub(host, new_model .. "." .. domain .. "." .. tld)
+          return _new_url
+        end,
+        -- conform_messages_fn = function(params)
+        -- Different models might have different instruction format
+        -- for example, Mixtral operates on `<s> [INST] Instruction [/INST] Model answer</s> [INST] Follow-up instruction [/INST] `
+        -- look in the `providers` folder of the plugin for examples
+        -- end,
+        -- conform_request_fn = function(params)
+        -- API request might need custom format, this function allows that to happen
+        -- look in the `providers` folder of the plugin for examples
+        -- end,
+      }
+    }
+  }
 }
 
 ```
@@ -568,7 +601,8 @@ TBD
 #### Edgy.nvim Setup
 
 If you like you `edgy.nvim` setup, then use something like this for your plugin setup options for
-`edgy.nvim`
+`edgy.nvim`. After this is set, make sure you enable the `edgy = true` options in your
+configuration options for `ogpt.nvim`.
 
 ```lua
 opts = {
@@ -655,7 +689,7 @@ opts = {
   + [x] Add/remove parameters in Chat and Edit
   + [x] Choose provider, as well as model for Chat and Edit
   + [x] Customizable actions, with specific provider and model
-+ [ ] Another Windows for [Template](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#template), [System](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#system)
++ [x] Another Windows for [Template](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#template), [System](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#system)
 + [x] Framework to add more providers
 + [x] clean up documentation
 + [x] additional actions can be added to config options, or additional json. Look in "config.actions", and "config.actions_paths"
