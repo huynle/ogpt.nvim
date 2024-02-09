@@ -87,7 +87,11 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
     parent = self,
     edgy = Config.options.edit.edgy,
   })
-  self.selection_panel = Popup(Config.options.selection_window, Config.options.edit.edgy)
+  self.selection_panel = UtilWindow({
+    filetype = "ogpt-selection",
+    display = "{{selection}}",
+    virtual_text = "No selection was made..",
+  }, Config.options.chat.edgy)
   self.template_panel = UtilWindow({
     filetype = "ogpt-template",
     display = "Template",

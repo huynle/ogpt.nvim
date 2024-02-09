@@ -10,7 +10,6 @@ local utils = require("ogpt.utils")
 local Signs = require("ogpt.signs")
 local Spinner = require("ogpt.spinner")
 local Session = require("ogpt.flows.chat.session")
-local SystemWindow = require("ogpt.flows.chat.system_window")
 local UtilWindow = require("ogpt.util_window")
 
 QUESTION, ANSWER, SYSTEM = 1, 2, 3
