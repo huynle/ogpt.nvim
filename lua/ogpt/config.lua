@@ -240,13 +240,10 @@ function M.defaults()
         syntax = "markdown",
       },
     },
-    system_window = {
+    util_window = {
       border = {
         highlight = "FloatBorder",
         style = "rounded",
-        text = {
-          top = " SYSTEM ",
-        },
       },
       win_options = {
         wrap = true,
@@ -254,10 +251,61 @@ function M.defaults()
         foldcolumn = "2",
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
       },
-      buf_options = {
-        filetype = "ogpt-system-window",
-      },
     },
+    -- system_window = {
+    --   border = {
+    --     highlight = "FloatBorder",
+    --     style = "rounded",
+    --     text = {
+    --       top = " SYSTEM ",
+    --     },
+    --   },
+    --   win_options = {
+    --     wrap = true,
+    --     linebreak = true,
+    --     foldcolumn = "2",
+    --     winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+    --   },
+    --   buf_options = {
+    --     filetype = "ogpt-system-window",
+    --   },
+    -- },
+    -- template_window = {
+    --   border = {
+    --     highlight = "FloatBorder",
+    --     style = "rounded",
+    --     text = {
+    --       top_align = "center",
+    --       top = " {{selection}} ",
+    --     },
+    --   },
+    --   win_options = {
+    --     winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+    --   },
+    --   buf_options = {
+    --     filetype = "ogpt-template",
+    --   },
+    --   max_visible_lines = 20,
+    -- },
+
+    selection_window = {
+      border = {
+        highlight = "FloatBorder",
+        style = "rounded",
+        text = {
+          top_align = "center",
+          top = " {{selection}} ",
+        },
+      },
+      win_options = {
+        winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+      },
+      buf_options = {
+        filetype = "ogpt-selection",
+      },
+      max_visible_lines = 20,
+    },
+
     input_window = {
       prompt = "  ",
       border = {
@@ -285,7 +333,7 @@ function M.defaults()
         style = "rounded",
         text = {
           top_align = "center",
-          top = " Instruction ",
+          top = " {{instruction}} ",
         },
       },
       win_options = {

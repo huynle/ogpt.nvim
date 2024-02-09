@@ -129,6 +129,9 @@ function BaseAction:update_variables()
     input = function()
       return self:get_selected_text()
     end,
+    selection = function()
+      return self:get_selected_text()
+    end,
   })
   for helper, helper_fn in pairs(template_helpers) do
     local _v = { [helper] = helper_fn }
@@ -136,7 +139,8 @@ function BaseAction:update_variables()
   end
 end
 
-function BaseAction:render_template()
+function BaseAction:render_template(variables, templates)
+  variables = vim.tbl_extend("force", self.variables, variables or {})
   -- lazily render the final string.
   -- it recursively loop on the template string until it does not find anymore
   -- {{}} patterns
@@ -146,7 +150,7 @@ function BaseAction:render_template()
   local pattern = "%{%{(([%w_]+))%}%}"
   repeat
     for match in string.gmatch(result, pattern) do
-      local value = self.variables[match]
+      local value = variables[match]
       if value then
         value = type(value) == "function" and value() or value
         local escaped_value = utils.escape_pattern(value)

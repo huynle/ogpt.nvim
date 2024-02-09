@@ -11,6 +11,7 @@ local Signs = require("ogpt.signs")
 local Spinner = require("ogpt.spinner")
 local Session = require("ogpt.flows.chat.session")
 local SystemWindow = require("ogpt.flows.chat.system_window")
+local UtilWindow = require("ogpt.util_window")
 
 QUESTION, ANSWER, SYSTEM = 1, 2, 3
 ROLE_ASSISTANT = "assistant"
@@ -704,11 +705,15 @@ function Chat:open()
     end,
   })
   self.chat_window = Popup(Config.options.output_window, Config.options.chat.edgy)
-  self.system_role_panel = SystemWindow({
+  self.system_role_panel = UtilWindow({
+    filetype = "ogpt-system-window",
+    display = "System",
+    virtual_text = "Define your LLM system message here...",
     on_change = function(text)
       self:set_system_message(text)
     end,
   }, Config.options.chat.edgy)
+
   self.stop = false
   self.should_stop = function()
     if self.stop then
