@@ -53,7 +53,8 @@ function Input:init(popup_options, options, edgy)
   self.input_props = props
 
   props.on_submit = function(value)
-    local target_cursor = vim.api.nvim_win_get_cursor(self._.position.win)
+    -- local target_cursor = vim.api.nvim_win_get_cursor(self._.position.win)
+    local target_cursor = vim.api.nvim_win_get_cursor(self.winid)
 
     local prompt_normal_mode = vim.fn.mode() == "n"
 

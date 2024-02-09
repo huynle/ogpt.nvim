@@ -24,8 +24,6 @@ function M.defaults()
         api_host = os.getenv("OPENAI_API_HOST") or "https://api.openai.com",
         api_key = os.getenv("OPENAI_API_KEY") or "",
         api_params = {
-          frequency_penalty = 0,
-          presence_penalty = 0,
           temperature = 0.5,
           top_p = 0.99,
         },
@@ -64,8 +62,8 @@ function M.defaults()
           -- },
         },
         api_params = {
-          frequency_penalty = 0,
-          presence_penalty = 0,
+          -- frequency_penalty = 0,
+          -- presence_penalty = 0,
           temperature = 0.5,
           top_p = 0.99,
         },
@@ -101,8 +99,8 @@ function M.defaults()
           -- used for `edit` and `edit_code` strategy in the actions
           model = nil,
           -- model = "mistral:7b",
-          frequency_penalty = 0,
-          presence_penalty = 0,
+          -- frequency_penalty = 0,
+          -- presence_penalty = 0,
           temperature = 0.5,
           top_p = 0.99,
         },
@@ -324,8 +322,8 @@ function M.defaults()
         delay = true,
         extract_codeblock = true,
         params = {
-          frequency_penalty = 0,
-          presence_penalty = 0,
+          -- frequency_penalty = 0,
+          -- presence_penalty = 0,
           temperature = 0.5,
           top_p = 0.99,
         },

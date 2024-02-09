@@ -138,6 +138,7 @@ function Chat:new_session()
   self.system_message = nil
   self.system_role_panel:set_text({})
   self:welcome()
+  self.parameters_panel:reload_session_params(self.session)
 end
 
 function Chat:set_session(session)
@@ -151,6 +152,7 @@ function Chat:set_session(session)
   self:set_cursor({ 1, 0 })
   self:welcome()
   self:configure_parameters_panel(session)
+  self.parameters_panel:reload_session_params(self.session)
   self:set_keymaps()
 end
 
@@ -694,6 +696,7 @@ function Chat:open()
     parent = self,
     edgy = Config.options.chat.edgy,
   })
+
   self.sessions_panel = Sessions({
     edgy = Config.options.chat.edgy,
     set_session_cb = function(session)
@@ -715,6 +718,7 @@ function Chat:open()
       return false
     end
   end
+
   self.chat_input = ChatInput(Config.options.input_window, {
     edgy = Config.options.chat.edgy,
     prompt = Config.options.input_window.prompt,
@@ -761,6 +765,8 @@ function Chat:open()
   -- initialize
   self.layout:mount()
   self:welcome()
+
+  self.parameters_panel:reload_session_params()
   self:set_events()
 end
 
