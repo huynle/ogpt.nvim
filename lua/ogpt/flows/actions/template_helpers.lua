@@ -2,9 +2,6 @@ M = {}
 
 -- write a function to get the content of all the visible window
 M.visible_window_content = function()
-  -- get the current window
-  local winid = vim.api.nvim_get_current_win()
-
   -- get the list of all visible windows
   local wins = vim.api.nvim_list_wins()
   wins = vim.tbl_filter(function(win)
@@ -48,9 +45,6 @@ M.visible_window_content = function()
       final_string = final_string .. _file_string
     end
   end
-
-  -- switch back to the original window
-  vim.api.nvim_set_current_win(winid)
 
   -- return the final output
   return final_string
