@@ -565,6 +565,86 @@ local advanced_model = {
 TBD
 
 
+#### Edgy.nvim Setup
+
+If you like you `edgy.nvim` setup, then use something like this for your plugin setup options for
+`edgy.nvim`
+
+```lua
+opts = {
+  right = {
+    {
+      title = "OGPT Popup",
+      ft = "ogpt-popup",
+      size = { width = 0.2 },
+      wo = {
+        wrap = true,
+      },
+    },
+    {
+      title = "OGPT Parameters",
+      ft = "ogpt-parameters-window",
+      size = { height = 6 },
+      wo = {
+        wrap = true,
+      },
+    },
+    {
+      title = "OGPT Template",
+      ft = "ogpt-template",
+      size = { height = 6 },
+    },
+    {
+      title = "OGPT Sesssions",
+      ft = "ogpt-sessions",
+      size = { height = 6 },
+      wo = {
+        wrap = true,
+      },
+    },
+    {
+      title = "OGPT System Input",
+      ft = "ogpt-system-window",
+      size = { height = 6 },
+    },
+    {
+      title = "OGPT",
+      ft = "ogpt-window",
+      size = { height = 0.5 },
+      wo = {
+        wrap = true,
+      },
+    },
+    {
+      title = "OGPT {{selection}}",
+      ft = "ogpt-selection",
+      size = { width = 80, height = 4 },
+      wo = {
+        wrap = true,
+      },
+    },
+    {
+      title = "OGPt {{instruction}}",
+      ft = "ogpt-instruction",
+      size = { width = 80, height = 4 },
+      wo = {
+        wrap = true,
+      },
+    },
+    {
+      title = "OGPT Chat",
+      ft = "ogpt-input",
+      size = { width = 80, height = 4 },
+      wo = {
+        wrap = true,
+      },
+    },
+  },
+}
+```
+
+
+
 ## OGPT planned work
 + [x] Use default provider, but can be overriden at anytime for specific action
 + [x] original functionality of ChatGPT.nvim to work with Ollama, TextGenUI(huggingface), OpenAI via `providers`
