@@ -63,7 +63,9 @@ function UtilWindow:mount()
       if not self.working then
         local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
         local text = table.concat(lines, "\n")
-        self.on_change(text)
+        if self.on_change and type(self.on_change) == "function" then
+          self.on_change(text)
+        end
       end
     end,
   })
