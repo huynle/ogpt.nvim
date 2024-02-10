@@ -1,14 +1,12 @@
 local Config = require("ogpt.config")
 local utils = require("ogpt.utils")
-local M = {}
 
 local ProviderBase = require("ogpt.provider.base")
 local Textgenui = ProviderBase:extend("Textgenui")
 
 function Textgenui:init(opts)
-  self.name = "textgenui"
   Textgenui.super.init(self, opts)
-
+  self.name = "textgenui"
   self.api_parameters = {
     "inputs",
     "parameters",

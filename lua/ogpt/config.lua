@@ -420,7 +420,7 @@ function M.expand_model(api, params, ctx)
   params = api.provider:get_action_params(params)
   local _model = params.model or api.provider.model
 
-  local _completion_url = api.provider.envs.CHAT_COMPLETIONS_URL
+  local _completion_url = api.provider:completion_url()
 
   local function _expand(name, _m)
     if type(_m) == "table" then

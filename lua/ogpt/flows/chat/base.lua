@@ -26,6 +26,8 @@ function Chat:init(opts)
   self.active_panel = nil
   self.selected_message_nsid = vim.api.nvim_create_namespace("OGPTNSSM")
 
+  self.is_running = false
+
   -- quit indicator
   self.active = true
   self.focused = true
@@ -69,6 +71,7 @@ function Chat:welcome()
   self:set_lines(0, -1, false, {})
   self:set_cursor({ 1, 0 })
   self:set_system_message(nil, true)
+  self.provider = Config.get_provider(self.session.parameters.provider, self)
 
   local conversation = self.session.conversation or {}
   if #conversation > 0 then
@@ -147,8 +150,6 @@ function Chat:set_session(session)
     vim.api.nvim_buf_clear_namespace(self.chat_window.bufnr, Config.namespace_id, 0, -1)
   end
 
-  self.provider = Config.get_provider(self.session.parameters.provider, self)
-
   self.messages = {}
   self.selectedIndex = 0
   self:set_lines(0, -1, false, {})
@@ -160,7 +161,8 @@ function Chat:set_session(session)
 end
 
 function Chat:isBusy()
-  return self.spinner:is_running()
+  -- return self.spinner:is_running()
+  return self.is_running
 end
 
 function Chat:add(type, text, usage)
@@ -476,6 +478,7 @@ function Chat:showProgess()
 end
 
 function Chat:stopSpinner()
+  -- just for the spinner, stop it, so we can add the response
   self.spinner:stop()
   self:display_input_suffix()
 end
@@ -690,6 +693,11 @@ function Chat:get_layout_params()
   return config, box
 end
 
+--   self:stopSpinner()
+-- function Chat:stop_output()
+--   self.stop_flag = true
+-- end
+
 function Chat:open()
   self.session.parameters = vim.tbl_extend("keep", self.session.parameters, self.params)
   self.parameters_panel = Parameters({
@@ -716,16 +724,6 @@ function Chat:open()
     end,
   }, Config.options.chat.edgy)
 
-  self.stop = false
-  self.should_stop = function()
-    if self.stop then
-      self.stop = false
-      return true
-    else
-      return false
-    end
-  end
-
   self.chat_input = ChatInput(Config.options.input_window, {
     edgy = Config.options.chat.edgy,
     prompt = Config.options.input_window.prompt,
@@ -739,13 +737,15 @@ function Chat:open()
       end
     end),
     on_submit = function(value)
-      -- clear input
-      vim.api.nvim_buf_set_lines(self.chat_input.bufnr, 0, -1, false, { "" })
-
       if self:isBusy() then
         vim.notify("I'm busy, please wait a moment...", vim.log.levels.WARN)
         return
       end
+
+      self.is_running = true
+
+      -- clear input
+      vim.api.nvim_buf_set_lines(self.chat_input.bufnr, 0, -1, false, { "" })
 
       self:addQuestion(value)
 
@@ -760,7 +760,17 @@ function Chat:open()
         }, self.parameters_panel.params)
         self.provider.api:chat_completions(params, function(answer, state, ctx)
           self:addAnswerPartial(answer, state, ctx)
-        end, self.should_stop, {})
+        end, function()
+          -- check the stop flag if it should stop
+          return self.stop_flag
+        end, {
+          on_stop = function()
+            self:stopSpinner()
+            self.is_running = false
+            -- reset the stop flag
+            self.stop_flag = false
+          end,
+        })
       end
     end,
   })
@@ -835,7 +845,7 @@ function Chat:set_keymaps()
 
   -- stop generating
   self:map(Config.options.chat.keymaps.stop_generating, function()
-    self.stop = true
+    self.stop_flag = true
   end, { self.chat_input })
 
   -- close
@@ -868,6 +878,7 @@ function Chat:set_keymaps()
 
   -- new session
   self:map(Config.options.chat.keymaps.new_session, function()
+    self.stop_flag = true
     self:new_session()
     self.sessions_panel:refresh()
   end, { self.parameters_panel, self.chat_input, self.chat_window })

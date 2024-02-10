@@ -77,6 +77,11 @@ function Provider:load_envs(override)
   self.envs = vim.tbl_extend("force", _envs, override or {})
   return self.envs
 end
+
+function Provider:completion_url()
+  return self.envs.CHAT_COMPLETIONS_URL
+end
+
 function Provider:parse_api_model_response(json, cb)
   -- Given a json object from the api, parse this and get the names of the model to be displayed
   for _, model in ipairs(json.models) do
@@ -150,7 +155,7 @@ function Provider:expand_model(params, ctx)
   local provider_models = self.models
   -- params = M.get_action_params(api.provider, params)
   -- params = self:get_action_params(params)
-  local _model = self.params.model
+  local _model = params.model
 
   local _completion_url = self.envs.CHAT_COMPLETIONS_URL
 

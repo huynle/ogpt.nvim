@@ -1,13 +1,26 @@
 local Config = require("ogpt.config")
 local utils = require("ogpt.utils")
 
-local M = {}
+local ProviderBase = require("ogpt.provider.base")
+local Gemini = ProviderBase:extend("Gemini")
 
-M.name = "gemini"
+function Gemini:init(opts)
+  Gemini.super.init(self, opts)
+  self.name = "openai"
+  self.api_parameters = {
+    "model",
+    "messages",
+    "stream",
+    "temperature",
+    "presence_penalty",
+    "frequency_penalty",
+    "top_p",
+    "max_tokens",
+  }
+  self.api_chat_request_options = {}
+end
 
-M.envs = {}
-
-function M.load_envs()
+function Gemini:load_envs(override)
   local _envs = {}
   _envs.GEMINI_API_KEY = Config.options.providers.gemini.api_key or os.getenv("GEMINI_API_KEY") or ""
   _envs.AUTH = "key=" .. (_envs.GEMINI_API_KEY or " ")
@@ -18,22 +31,11 @@ function M.load_envs()
   _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.GEMINI_API_HOST .. "/models")
   _envs.CHAT_COMPLETIONS_URL =
     utils.ensureUrlProtocol(_envs.GEMINI_API_HOST .. _envs.MODEL .. ":streamGenerateContent?" .. _envs.AUTH)
-  M.envs = vim.tbl_extend("force", M.envs, _envs)
-  return M.envs
+  self.envs = vim.tbl_extend("force", _envs, override or {})
+  return self.envs
 end
 
-M._api_chat_parameters = {
-  "model",
-  "messages",
-  "stream",
-  "temperature",
-  "presence_penalty",
-  "frequency_penalty",
-  "top_p",
-  "max_tokens",
-}
-
-function M.parse_api_model_response(json, cb)
+function Gemini:parse_api_model_response(json, cb)
   local data = json.data or {}
   for _, model in ipairs(data) do
     cb({
@@ -42,7 +44,7 @@ function M.parse_api_model_response(json, cb)
   end
 end
 
-function M.conform_request(params)
+function Gemini:conform_request(params)
   -- params = M._conform_messages(params)
 
   for key, value in pairs(params) do
@@ -54,7 +56,7 @@ function M.conform_request(params)
   return params
 end
 
-function M.conform_messages(params)
+function Gemini:conform_messages(params)
   -- ensure we only have one system message
   local _to_remove_system_idx = {}
   for idx, message in ipairs(params.messages) do
@@ -77,7 +79,7 @@ function M.conform_messages(params)
   return params
 end
 
-function M.process_line(content, ctx, raw_chunks, state, cb)
+function Gemini:process_line(content, ctx, raw_chunks, state, cb)
   local _json = content.json
   local raw = content.raw
   -- given a JSON response from the STREAMING api, processs it
@@ -114,4 +116,4 @@ function M.process_line(content, ctx, raw_chunks, state, cb)
   return ctx, raw_chunks, state
 end
 
-return M
+return Gemini

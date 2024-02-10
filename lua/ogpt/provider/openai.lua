@@ -6,17 +6,6 @@ local Openai = ProviderBase:extend("Openai")
 
 function Openai:init(opts)
   Openai.super.init(self, opts)
-  -- self.api_parameters = {
-  --   "model",
-  --   "messages",
-  --   "format",
-  --   "options",
-  --   "system",
-  --   "template",
-  --   "stream",
-  --   "raw",
-  -- }
-
   self.name = "openai"
   self.api_parameters = {
     "model",

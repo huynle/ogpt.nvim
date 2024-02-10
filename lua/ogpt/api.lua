@@ -20,7 +20,7 @@ end
 
 function Api:chat_completions(custom_params, partial_result_fn, should_stop, opts)
   local stream = custom_params.stream or false
-  local params, _completion_url, ctx = Config.expand_model(self, custom_params)
+  local params, _completion_url, ctx = self.provider:expand_model(custom_params)
 
   ctx.params = params
   ctx.provider = self.provider.name
@@ -86,6 +86,9 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
       should_stop,
       function()
         partial_result_fn(raw_chunks, "END", ctx)
+        if opts.on_stop then
+          opts.on_stop()
+        end
       end
     )
   else
