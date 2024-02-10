@@ -2,36 +2,39 @@ local Config = require("ogpt.config")
 local utils = require("ogpt.utils")
 local M = {}
 
-M.name = "textgenui"
+local ProviderBase = require("ogpt.provider.base")
+local Textgenui = ProviderBase:extend("Textgenui")
 
-M.request_params = {
-  "inputs",
-  "parameters",
-  "stream",
-}
+function Textgenui:init(opts)
+  self.name = "textgenui"
+  Textgenui.super.init(self, opts)
 
-M.model_params = {
-  "best_of",
-  "decoder_input_details",
-  "details",
-  "do_sample",
-  "max_new_tokens",
-  "repetition_penalty",
-  "return_full_text",
-  "seed",
-  "stop",
-  "temperature",
-  "top_k",
-  "top_n_tokens",
-  "top_p",
-  "truncate",
-  "typical_p",
-  "watermark",
-}
+  self.api_parameters = {
+    "inputs",
+    "parameters",
+    "stream",
+  }
+  self.api_chat_request_options = {
+    "best_of",
+    "decoder_input_details",
+    "details",
+    "do_sample",
+    "max_new_tokens",
+    "repetition_penalty",
+    "return_full_text",
+    "seed",
+    "stop",
+    "temperature",
+    "top_k",
+    "top_n_tokens",
+    "top_p",
+    "truncate",
+    "typical_p",
+    "watermark",
+  }
+end
 
-M.envs = {}
-
-function M.load_envs()
+function Textgenui:load_envs(override)
   local _envs = {}
   _envs.TEXTGEN_API_HOST = Config.options.providers.textgenui.api_host
     or os.getenv("TEXTGEN_API_HOST")
@@ -41,20 +44,18 @@ function M.load_envs()
   _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.TEXTGEN_API_HOST)
   _envs.CHAT_COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.TEXTGEN_API_HOST)
   _envs.AUTHORIZATION_HEADER = "Authorization: Bearer " .. (_envs.TEXTGEN_API_KEY or " ")
-  M.envs = vim.tbl_extend("force", M.envs, _envs)
-  return M.envs
+  self.envs = vim.tbl_extend("force", _envs, override or {})
+  return self.envs
 end
 
-M.textgenui_options = { "seed", "top_k", "top_p", "stop" }
-
-function M.conform_request(params)
+function Textgenui:conform_request(params)
   params = params or {}
 
   local param_options = {}
 
   for key, value in pairs(params) do
-    if not vim.tbl_contains(M.request_params, key) then
-      if vim.tbl_contains(M.model_params, key) then
+    if not vim.tbl_contains(self.api_parameters, key) then
+      if vim.tbl_contains(self.api_chat_request_options, key) then
         param_options[key] = value
         params[key] = nil
       else
@@ -69,7 +70,7 @@ function M.conform_request(params)
   return params
 end
 
-function M.conform_messages(params)
+function Textgenui:conform_messages(params)
   local messages = params.messages or {}
   -- https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1
   local tokens = {
@@ -107,7 +108,7 @@ function M.conform_messages(params)
   return params
 end
 
-function M.process_line(content, ctx, raw_chunks, state, cb)
+function M:process_line(content, ctx, raw_chunks, state, cb)
   local _json = content.json
   local raw = content.raw
   if _json.token then
@@ -137,4 +138,4 @@ function M.process_line(content, ctx, raw_chunks, state, cb)
   return ctx, raw_chunks, state
 end
 
-return M
+return Textgenui

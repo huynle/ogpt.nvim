@@ -51,8 +51,7 @@ function Chat:init(opts)
   self.params = Config.get_chat_params(opts.provider)
 
   self.session = Session.latest()
-
-  self.provider = Config.get_provider(self.session.parameters.provider, self)
+  self.provider = nil
   self.selectedIndex = 0
   self.role = ROLE_USER
   self.messages = {}
@@ -142,16 +141,20 @@ function Chat:new_session()
 end
 
 function Chat:set_session(session)
-  vim.api.nvim_buf_clear_namespace(self.chat_window.bufnr, Config.namespace_id, 0, -1)
+  self.session = session or self.session
 
-  self.session = session
+  if vim.fn.bufexists(self.chat_window.bufnr) then
+    vim.api.nvim_buf_clear_namespace(self.chat_window.bufnr, Config.namespace_id, 0, -1)
+  end
+
+  self.provider = Config.get_provider(self.session.parameters.provider, self)
 
   self.messages = {}
   self.selectedIndex = 0
   self:set_lines(0, -1, false, {})
   self:set_cursor({ 1, 0 })
   self:welcome()
-  self:configure_parameters_panel(session)
+  self:configure_parameters_panel(self.session)
   self.parameters_panel:reload_session_params(self.session)
   self:set_keymaps()
 end

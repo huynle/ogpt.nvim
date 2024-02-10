@@ -64,7 +64,7 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
             return
           end
           ctx, raw_chunks, state =
-            self.provider.process_line({ json = json, raw = chunk }, ctx, raw_chunks, state, partial_result_fn, opts)
+            self.provider:process_line({ json = json, raw = chunk }, ctx, raw_chunks, state, partial_result_fn, opts)
           return
         end
 
@@ -73,10 +73,10 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
           local _ok, _json = pcall(vim.json.decode, raw_json)
           if _ok then
             ctx, raw_chunks, state =
-              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, partial_result_fn, opts)
+              self.provider:process_line({ json = _json, raw = line }, ctx, raw_chunks, state, partial_result_fn, opts)
           else
             ctx, raw_chunks, state =
-              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, partial_result_fn, opts)
+              self.provider:process_line({ json = _json, raw = line }, ctx, raw_chunks, state, partial_result_fn, opts)
           end
         end
       end,
@@ -156,7 +156,7 @@ function Api:make_call(url, params, cb, ctx, raw_chunks, state, opts)
             return
           end
           ctx, raw_chunks, state =
-            self.provider.process_line({ json = json, raw = result }, ctx, raw_chunks, state, cb, opts)
+            self.provider:process_line({ json = json, raw = result }, ctx, raw_chunks, state, cb, opts)
           return
         end
 
@@ -165,10 +165,10 @@ function Api:make_call(url, params, cb, ctx, raw_chunks, state, opts)
           local _ok, _json = pcall(vim.json.decode, raw_json)
           if _ok then
             ctx, raw_chunks, state =
-              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb, opts)
+              self.provider:process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb, opts)
           else
             ctx, raw_chunks, state =
-              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb, opts)
+              self.provider:process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb, opts)
           end
         end
       end),

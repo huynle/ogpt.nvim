@@ -17,7 +17,7 @@ function EditAction:init(name, opts)
   opts = opts or {}
   EditAction.super.init(self, opts)
   self.provider = Config.get_provider(opts.provider, self)
-  self.params = Config.get_action_params(self.provider.name, opts.params or {})
+  self.params = Config.get_action_params(self.provider, opts.params or {})
   self.system = type(opts.system) == "function" and opts.system() or opts.system or ""
   self.template = type(opts.template) == "function" and opts.template() or opts.template or "{{input}}"
   self.variables = opts.variables or {}
@@ -82,7 +82,10 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
 
   self.parameters_panel = Parameters({
     type = "edits",
-    default_params = api_params,
+    default_params = vim.tbl_extend("force", api_params, {
+      provider = self.provider.name,
+      model = self.provider.model,
+    }),
     session = nil,
     parent = self,
     edgy = Config.options.edit.edgy,
@@ -141,7 +144,9 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       end
       local messages = self:build_edit_messages(input, instruction, opts)
       local params = vim.tbl_extend("keep", { messages = messages }, self.parameters_panel.params)
-      self.provider.api:edits(
+
+      params.stream = true
+      self.provider.api:chat_completions(
         params,
         utils.partial(utils.add_partial_completion, {
           panel = self.output_panel,
@@ -185,14 +190,6 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
         height = Config.options.popup_layout.center.height,
       },
     },
-
-    -- Layout.Box({
-    --   Layout.Box({
-    --     Layout.Box(self.input_panel, { grow = 1 }),
-    --     Layout.Box(self.instructions_input, { size = 3 }),
-    --   }, { dir = "col", size = "50%" }),
-    --   Layout.Box(self.output_panel, { size = "50%" }),
-    -- }, { dir = "row" }),
 
     Layout.Box({
       Layout.Box({
@@ -252,6 +249,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
     self.instructions_input,
     self.system_role_panel,
     self.template_panel,
+    self.parameters_panel,
   }) do
     for _, mode in ipairs({ "n", "i" }) do
       window:map(mode, Config.options.edit.keymaps.close, function()

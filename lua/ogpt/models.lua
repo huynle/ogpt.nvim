@@ -85,9 +85,7 @@ local finder = function(provider, opts)
               _models = vim.tbl_extend("force", _models, json.models or {})
               _models = vim.tbl_extend("force", _models, Config.get_local_model_definition(provider) or {})
 
-              if provider.parse_api_model_response then
-                provider.parse_api_model_response(json, process_single_model)
-              end
+              provider:parse_api_model_response(json, process_single_model)
 
               -- default processor for a REST response from a curl for models
               for name, properties in pairs(_models) do

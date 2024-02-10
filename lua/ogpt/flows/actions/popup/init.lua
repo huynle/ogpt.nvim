@@ -16,7 +16,8 @@ function PopupAction:init(name, opts)
   self.name = name or ""
   PopupAction.super.init(self, opts)
   self.provider = Config.get_provider(opts.provider, self)
-  self.params = Config.get_action_params(self.provider.name, opts.params or {})
+  -- self.params = Config.get_action_params(self.provider, opts.params or {})
+  self.params = self.provider:get_action_params(opts.params)
   self.system = type(opts.system) == "function" and opts.system() or opts.system or ""
   self.template = type(opts.template) == "function" and opts.template() or opts.template or "{{input}}"
   self.variables = opts.variables or {}

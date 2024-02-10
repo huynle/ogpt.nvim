@@ -1,13 +1,37 @@
 local Config = require("ogpt.config")
 local utils = require("ogpt.utils")
+local ProviderBase = require("ogpt.provider.base")
 
-local M = {}
+local Openai = ProviderBase:extend("Openai")
 
-M.name = "openai"
+function Openai:init(opts)
+  Openai.super.init(self, opts)
+  -- self.api_parameters = {
+  --   "model",
+  --   "messages",
+  --   "format",
+  --   "options",
+  --   "system",
+  --   "template",
+  --   "stream",
+  --   "raw",
+  -- }
 
-M.envs = {}
+  self.name = "openai"
+  self.api_parameters = {
+    "model",
+    "messages",
+    "stream",
+    "temperature",
+    "presence_penalty",
+    "frequency_penalty",
+    "top_p",
+    "max_tokens",
+  }
+  self.api_chat_request_options = {}
+end
 
-function M.load_envs()
+function Openai:load_envs(override)
   local _envs = {}
   _envs.OPENAI_API_HOST = Config.options.providers.openai.api_host
     or os.getenv("OPENAI_API_HOST")
@@ -17,22 +41,11 @@ function M.load_envs()
   _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OPENAI_API_HOST .. "/v1/completions")
   _envs.CHAT_COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OPENAI_API_HOST .. "/v1/chat/completions")
   _envs.AUTHORIZATION_HEADER = "Authorization: Bearer " .. (_envs.OPENAI_API_KEY or " ")
-  M.envs = vim.tbl_extend("force", M.envs, _envs)
-  return M.envs
+  self.envs = vim.tbl_extend("force", _envs, override or {})
+  return self.envs
 end
 
-M._api_chat_parameters = {
-  "model",
-  "messages",
-  "stream",
-  "temperature",
-  "presence_penalty",
-  "frequency_penalty",
-  "top_p",
-  "max_tokens",
-}
-
-function M.parse_api_model_response(json, cb)
+function Openai:parse_api_model_response(json, cb)
   local data = json.data or {}
   for _, model in ipairs(data) do
     cb({
@@ -41,19 +54,19 @@ function M.parse_api_model_response(json, cb)
   end
 end
 
-function M.conform_request(params)
+function Openai:conform_request(params)
   -- params = M._conform_messages(params)
 
   for key, value in pairs(params) do
-    if not vim.tbl_contains(M._api_chat_parameters, key) then
-      utils.log("Did not process " .. key .. " for " .. M.name)
+    if not vim.tbl_contains(self.api_parameters, key) then
+      utils.log("Did not process " .. key .. " for " .. self.name)
       params[key] = nil
     end
   end
   return params
 end
 
-function M.conform_messages(params)
+function Openai:conform_messages(params)
   -- ensure we only have one system message
   local _to_remove_system_idx = {}
   for idx, message in ipairs(params.messages) do
@@ -76,7 +89,7 @@ function M.conform_messages(params)
   return params
 end
 
-function M.process_line(content, ctx, raw_chunks, state, cb)
+function Openai:process_line(content, ctx, raw_chunks, state, cb)
   local _json = content.json
   local raw = content.raw
   -- given a JSON response from the STREAMING api, processs it
@@ -113,4 +126,4 @@ function M.process_line(content, ctx, raw_chunks, state, cb)
   return ctx, raw_chunks, state
 end
 
-return M
+return Openai
