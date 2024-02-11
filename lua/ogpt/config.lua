@@ -34,6 +34,12 @@ function M.defaults()
           top_p = 0.99,
         },
       },
+      gemini = {
+        enabled = true,
+        api_host = os.getenv("GEMINI_API_HOST"),
+        api_key = os.getenv("GEMINI_API_KEY"),
+        model = "gemini-pro",
+      },
       textgenui = {
         enabled = true,
         api_host = os.getenv("OGPT_API_HOST"),

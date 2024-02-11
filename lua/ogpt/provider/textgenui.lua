@@ -81,23 +81,24 @@ function Textgenui:conform_messages(params)
   }
   local _input = { tokens.BOS }
   for i, message in ipairs(messages) do
+    local text = utils.gather_text_from_parts(message.content)
     if i < #messages then -- Stop before the last item
       if message.role == "system" then
         table.insert(_input, tokens.BOSYS)
-        table.insert(_input, message.content)
+        table.insert(_input, text)
         table.insert(_input, tokens.EOSYS)
       elseif message.role == "user" then
         table.insert(_input, tokens.INST_START)
-        table.insert(_input, message.content)
+        table.insert(_input, text)
         table.insert(_input, tokens.INST_END)
       elseif message.role == "assistant" then
-        table.insert(_input, message.content)
+        table.insert(_input, text)
       end
     else
       table.insert(_input, tokens.EOS)
       table.insert(_input, tokens.BOS)
       table.insert(_input, tokens.INST_START)
-      table.insert(_input, message.content)
+      table.insert(_input, text)
       table.insert(_input, tokens.INST_END)
     end
   end

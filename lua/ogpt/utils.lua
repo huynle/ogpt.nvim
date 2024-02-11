@@ -415,4 +415,16 @@ function M.shallow_copy(t)
   return t2
 end
 
+function M.gather_text_from_parts(parts)
+  if type(parts) == "string" then
+    return parts
+  else
+    local _text = {}
+    for _, part in ipairs(parts) do
+      table.insert(_text, part.text)
+    end
+    return table.concat(_text, " ")
+  end
+end
+
 return M

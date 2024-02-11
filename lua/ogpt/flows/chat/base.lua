@@ -224,6 +224,7 @@ end
 function Chat:addAnswerPartial(text, state, ctx)
   if state == "ERROR" then
     self:stopSpinner()
+    self.is_running = false
     return self:addAnswer(text, {})
   end
 
@@ -265,6 +266,7 @@ function Chat:addAnswerPartial(text, state, ctx)
     self.selectedIndex = self.selectedIndex + 1
     vim.api.nvim_buf_set_lines(self.chat_window.bufnr, -1, -1, false, { "", "" })
     Signs.set_for_lines(self.chat_window.bufnr, start_line, end_line, "chat")
+    self.is_running = false
   end
 
   if state == "START" then
@@ -504,7 +506,15 @@ function Chat:toMessages()
     elseif msg.type == ANSWER then
       role = "assistant"
     end
-    table.insert(messages, { role = role, content = msg.text })
+    table.insert(
+      messages,
+      { role = role, content = {
+        {
+          text = msg.text,
+          token = nil,
+        },
+      } }
+    )
   end
   -- return messages[#messages].content
   return messages
@@ -846,6 +856,7 @@ function Chat:set_keymaps()
   -- stop generating
   self:map(Config.options.chat.keymaps.stop_generating, function()
     self.stop_flag = true
+    self.is_running = false
   end, { self.chat_input })
 
   -- close

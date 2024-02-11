@@ -75,7 +75,7 @@ function PopupAction:run()
           self:run_spinner(flag)
         end,
         on_complete = function(total_text)
-          print("completed: " .. total_text)
+          -- print("completed: " .. total_text)
         end,
       }),
       function()

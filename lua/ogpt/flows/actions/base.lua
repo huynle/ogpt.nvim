@@ -169,7 +169,11 @@ function BaseAction:get_params()
   local messages = self.params.messages or {}
   local message = {
     role = "user",
-    content = self:render_template(),
+    content = {
+      {
+        text = self:render_template(),
+      },
+    },
   }
   table.insert(messages, message)
   return vim.tbl_extend("force", self.params, {

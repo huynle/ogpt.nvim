@@ -53,9 +53,8 @@ local finder = function(provider, opts)
           :new({
             command = "curl",
             args = {
-              provider.envs.MODELS_URL,
-              "-H",
-              provider.envs.AUTHORIZATION_HEADER,
+              provider:models_url(),
+              table.unpack(provider:request_headers()),
             },
             on_exit = vim.schedule_wrap(function(j, exit_code)
               if exit_code ~= 0 then

@@ -2,7 +2,7 @@ local Config = require("ogpt.config")
 local utils = require("ogpt.utils")
 local ProviderBase = require("ogpt.provider.base")
 
-local Openai = ProviderBase:extend("Openai")
+local Openai = ProviderBase:extend("openai")
 
 function Openai:init(opts)
   Openai.super.init(self, opts)
@@ -51,29 +51,6 @@ function Openai:conform_request(params)
       utils.log("Did not process " .. key .. " for " .. self.name)
       params[key] = nil
     end
-  end
-  return params
-end
-
-function Openai:conform_messages(params)
-  -- ensure we only have one system message
-  local _to_remove_system_idx = {}
-  for idx, message in ipairs(params.messages) do
-    if message.role == "system" then
-      table.insert(_to_remove_system_idx, idx)
-    end
-  end
-  -- Remove elements from the list based on indices
-  for i = #_to_remove_system_idx, 1, -1 do
-    table.remove(params.messages, _to_remove_system_idx[i])
-  end
-
-  -- https://platform.openai.com/docs/api-reference/chat
-  if params.system then
-    table.insert(params.messages, 1, {
-      role = "system",
-      content = params.system,
-    })
   end
   return params
 end

@@ -86,9 +86,9 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
       should_stop,
       function()
         partial_result_fn(raw_chunks, "END", ctx)
-        if opts.on_stop then
-          opts.on_stop()
-        end
+        -- if opts.on_stop then
+        --   opts.on_stop()
+        -- end
       end
     )
   else
@@ -120,10 +120,9 @@ function Api:make_call(url, params, cb, ctx, raw_chunks, state, opts)
 
   local curl_args = {
     url,
+    table.unpack(self.provider:request_headers()),
     "-H",
     "Content-Type: application/json",
-    "-H",
-    self.provider.envs.AUTHORIZATION_HEADER,
     "-d",
     "@" .. TMP_MSG_FILENAME,
   }

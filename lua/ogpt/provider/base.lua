@@ -5,7 +5,7 @@ local utils = require("ogpt.utils")
 local Provider = Object("Provider")
 
 function Provider:init(opts)
-  self.name = "ollama"
+  self.name = self.class.name
   opts = vim.tbl_extend("force", Config.options.providers[self.name], opts)
   self.enabled = opts.enabled
   self.model = opts.model
@@ -82,6 +82,19 @@ function Provider:completion_url()
   return self.envs.CHAT_COMPLETIONS_URL
 end
 
+function Provider:models_url()
+  return self.envs.MODELS_URL
+end
+
+function Provider:request_headers()
+  return {
+    "-H",
+    "Content-Type: application/json",
+    "-H",
+    self.envs.AUTHORIZATION_HEADER,
+  }
+end
+
 function Provider:parse_api_model_response(json, cb)
   -- Given a json object from the api, parse this and get the names of the model to be displayed
   for _, model in ipairs(json.models) do
@@ -115,6 +128,50 @@ function Provider:conform_request(params)
 end
 
 function Provider:conform_messages(params)
+  -- ensure we only have one system message
+  local _to_remove_system_idx = {}
+  for idx, message in ipairs(params.messages) do
+    if message.role == "system" then
+      table.insert(_to_remove_system_idx, idx)
+    end
+  end
+
+  -- Remove elements from the list based on indices
+  for i = #_to_remove_system_idx, 1, -1 do
+    table.remove(params.messages, _to_remove_system_idx[i])
+  end
+
+  -- https://platform.openai.com/docs/api-reference/chat
+  if params.system then
+    table.insert(params.messages, 1, {
+      role = "system",
+      content = params.system,
+    })
+  end
+
+  local function gather_text_from_parts(parts)
+    if type(parts) == "string" then
+      return parts
+    else
+      local _text = {}
+      for _, part in ipairs(parts) do
+        table.insert(_text, part.text)
+      end
+      return table.concat(_text, " ")
+    end
+  end
+
+  -- conform to support text only model
+  local messages = params.messages
+  local conformed_messages = {}
+  for _, message in ipairs(messages) do
+    table.insert(conformed_messages, {
+      role = message.role,
+      content = utils.gather_text_from_parts(message.content),
+    })
+  end
+  params.messages = conformed_messages
+
   return params
 end
 
@@ -146,7 +203,12 @@ function Provider:process_line(content, ctx, raw_chunks, state, cb)
 end
 
 function Provider:get_action_params(opts)
-  return vim.tbl_extend("force", self.api_params, opts or {})
+  return vim.tbl_extend(
+    "force",
+    { model = self.model }, -- add in model from provider default
+    self.api_params, -- override with provider api_params
+    opts or {}
+  ) -- override with final options
 end
 
 function Provider:expand_model(params, ctx)
@@ -157,7 +219,7 @@ function Provider:expand_model(params, ctx)
   -- params = self:get_action_params(params)
   local _model = params.model
 
-  local _completion_url = self.envs.CHAT_COMPLETIONS_URL
+  local _completion_url = self:completion_url()
 
   local function _expand(name, _m)
     if type(_m) == "table" then

@@ -8,16 +8,14 @@ function Gemini:init(opts)
   Gemini.super.init(self, opts)
   self.name = "openai"
   self.api_parameters = {
-    "model",
-    "messages",
-    "stream",
-    "temperature",
-    "presence_penalty",
-    "frequency_penalty",
-    "top_p",
-    "max_tokens",
+    "contents",
   }
-  self.api_chat_request_options = {}
+  self.api_chat_request_options = {
+    "stopSequences",
+    "temperature",
+    "topP",
+    "topK",
+  }
 end
 
 function Gemini:load_envs(override)
@@ -27,31 +25,57 @@ function Gemini:load_envs(override)
   _envs.MODEL = "gemini-pro"
   _envs.GEMINI_API_HOST = Config.options.providers.gemini.api_host
     or os.getenv("GEMINI_API_HOST")
-    or "https://generativelanguage.googleapis.com/v1beta/models/"
+    or "https://generativelanguage.googleapis.com/v1beta"
   _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.GEMINI_API_HOST .. "/models")
-  _envs.CHAT_COMPLETIONS_URL =
-    utils.ensureUrlProtocol(_envs.GEMINI_API_HOST .. _envs.MODEL .. ":streamGenerateContent?" .. _envs.AUTH)
   self.envs = vim.tbl_extend("force", _envs, override or {})
   return self.envs
 end
 
 function Gemini:parse_api_model_response(json, cb)
-  local data = json.data or {}
-  for _, model in ipairs(data) do
+  -- Given a json object from the api, parse this and get the names of the model to be displayed
+  for _, model in ipairs(json.models) do
     cb({
-      name = model.id,
+      name = model.name,
     })
   end
 end
 
+function Gemini:completion_url()
+  return utils.ensureUrlProtocol(
+    self.envs.GEMINI_API_HOST .. "/" .. self.model .. ":streamGenerateContent?" .. self.envs.AUTH
+  )
+end
+
+function Gemini:models_url()
+  return utils.ensureUrlProtocol(self.envs.GEMINI_API_HOST .. "/models?" .. self.envs.AUTH)
+end
+
+function Gemini:request_headers()
+  return {
+    -- "-H",
+    -- "Content-Type: application/json",
+  }
+end
+
 function Gemini:conform_request(params)
-  -- params = M._conform_messages(params)
+  --https://ai.google.dev/tutorials/rest_quickstart#multi-turn_conversations_chat
+
+  local param_options = {}
 
   for key, value in pairs(params) do
-    if not vim.tbl_contains(M._api_chat_parameters, key) then
-      utils.log("Did not process " .. key .. " for " .. M.name)
-      params[key] = nil
+    if not vim.tbl_contains(self.api_parameters, key) then
+      if vim.tbl_contains(self.api_chat_request_options, key) then
+        -- move it to the options
+        param_options[key] = value
+        params[key] = nil
+      else
+        params[key] = nil
+      end
     end
+  end
+  local _options = vim.tbl_extend("keep", param_options, params.options or {})
+  if next(_options) ~= nil then
+    params.generationConfig = _options
   end
   return params
 end
@@ -69,7 +93,7 @@ function Gemini:conform_messages(params)
     table.remove(params.messages, _to_remove_system_idx[i])
   end
 
-  -- https://platform.gemini.com/docs/api-reference/chat
+  -- https://ai.google.dev/tutorials/rest_quickstart#text-only_input
   if params.system then
     table.insert(params.messages, 1, {
       role = "system",
@@ -82,6 +106,8 @@ end
 function Gemini:process_line(content, ctx, raw_chunks, state, cb)
   local _json = content.json
   local raw = content.raw
+
+  local text = _json.candidates[0].content.parts[0].text
   -- given a JSON response from the STREAMING api, processs it
   if _json and _json.done then
     ctx.context = _json.context
