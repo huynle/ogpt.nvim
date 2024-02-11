@@ -55,6 +55,25 @@ function Openai:conform_request(params)
   return params
 end
 
+function Openai:process_raw(content, cb, opts)
+  local chunk = content.raw
+  local state = content.state
+  local ctx = content.ctx
+  local raw_chunks = content.content
+
+  -- openai
+  for line in chunk:gmatch("[^\n]+") do
+    local raw_json = string.gsub(line, "^data:", "")
+    local _ok, _json = pcall(vim.json.decode, raw_json)
+    if _ok then
+      return self:process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb)
+      -- else
+      --   ctx, raw_chunks, state =
+      --     self:process_line({ json = nil, raw = chunk_og }, ctx, raw_chunks, state, partial_result_fn, opts)
+    end
+  end
+end
+
 function Openai:process_line(content, ctx, raw_chunks, state, cb)
   local _json = content.json
   local raw = content.raw
@@ -65,25 +84,13 @@ function Openai:process_line(content, ctx, raw_chunks, state, cb)
   elseif type(_json) == "string" and string.find(_json, "[DONE]") then
     cb(raw_chunks, "END", ctx)
   else
-    if
-      not vim.tbl_isempty(_json)
-      and _json
-      and _json.choices
-      and _json.choices[1]
-      and _json.choices[1].delta
-      and _json.choices[1].delta.content
-    then
+    local text_delta = vim.tbl_get(_json, "choices", 1, "delta", "content")
+    local text = vim.tbl_get(_json, "choices", 1, "message", "content")
+    if text_delta then
       cb(_json.choices[1].delta.content, state)
       raw_chunks = raw_chunks .. _json.choices[1].delta.content
       state = "CONTINUE"
-    elseif
-      not vim.tbl_isempty(_json)
-      and _json
-      and _json.choices
-      and _json.choices[1]
-      and _json.choices[1].message
-      and _json.choices[1].message.content
-    then
+    elseif text then
       cb(_json.choices[1].message.content, state)
       raw_chunks = raw_chunks .. _json.choices[1].message.content
     end

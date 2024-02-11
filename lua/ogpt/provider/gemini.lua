@@ -6,7 +6,6 @@ local Gemini = ProviderBase:extend("Gemini")
 
 function Gemini:init(opts)
   Gemini.super.init(self, opts)
-  self.name = "openai"
   self.api_parameters = {
     "contents",
   }
@@ -42,7 +41,7 @@ end
 
 function Gemini:completion_url()
   return utils.ensureUrlProtocol(
-    self.envs.GEMINI_API_HOST .. "/" .. self.model .. ":streamGenerateContent?" .. self.envs.AUTH
+    self.envs.GEMINI_API_HOST .. "/models/" .. self.model .. ":streamGenerateContent?" .. self.envs.AUTH
   )
 end
 
@@ -52,8 +51,8 @@ end
 
 function Gemini:request_headers()
   return {
-    -- "-H",
-    -- "Content-Type: application/json",
+    "-H",
+    "Content-Type: application/json",
   }
 end
 
@@ -93,49 +92,85 @@ function Gemini:conform_messages(params)
     table.remove(params.messages, _to_remove_system_idx[i])
   end
 
-  -- https://ai.google.dev/tutorials/rest_quickstart#text-only_input
-  if params.system then
-    table.insert(params.messages, 1, {
-      role = "system",
-      content = params.system,
+  local messages = params.messages
+  local _contents = {}
+  for _, content in ipairs(messages) do
+    table.insert(_contents, {
+      role = content.role == "assistant" and "model" or "user",
+      parts = {
+        text = utils.gather_text_from_parts(content.content),
+      },
     })
   end
+
+  -- -- https://ai.google.dev/tutorials/rest_quickstart#text-only_input
+  -- if params.system then
+  --   table.insert(params.messages, 1, {
+  --     role = "system",
+  --     content = params.system,
+  --   })
+  -- end
+
+  params.messages = nil
+  params.contents = _contents
   return params
 end
 
+function Gemini:process_raw(content, cb)
+  local chunk = content.raw
+  local state = content.state
+  local raw_chunks = content.content
+  local accumulate = content.accumulate
+
+  local ok, json = pcall(vim.json.decode, chunk)
+  if not ok then
+    -- gemini is missing bracket on returns
+    chunk = string.gsub(chunk, "^%[", "")
+    chunk = string.gsub(chunk, "^%,", "")
+    chunk = string.gsub(chunk, "%]$", "")
+    chunk = vim.trim(chunk, "\n")
+    chunk = vim.trim(chunk, "\r")
+    ok, json = pcall(vim.json.decode, chunk)
+  end
+
+  if ok then
+    return self:process_line({ json = json, raw = accumulate }, ctx, raw_chunks, state, cb)
+  else
+    -- if not ok, try to keep process the accumulated stdout
+    ok, json = pcall(vim.json.decode, table.concat(accumulate, ""))
+    if ok then
+      return self:process_line({ json = json, raw = accumulate }, ctx, raw_chunks, state, cb)
+    end
+  end
+end
+
 function Gemini:process_line(content, ctx, raw_chunks, state, cb)
-  local _json = content.json
+  local _json = content.json or {}
   local raw = content.raw
 
-  local text = _json.candidates[0].content.parts[0].text
-  -- given a JSON response from the STREAMING api, processs it
-  if _json and _json.done then
-    ctx.context = _json.context
-    cb(raw_chunks, "END", ctx)
-  elseif type(_json) == "string" and string.find(_json, "[DONE]") then
-    cb(raw_chunks, "END", ctx)
-  else
-    if
-      not vim.tbl_isempty(_json)
-      and _json
-      and _json.choices
-      and _json.choices[1]
-      and _json.choices[1].delta
-      and _json.choices[1].delta.content
-    then
-      cb(_json.choices[1].delta.content, state)
-      raw_chunks = raw_chunks .. _json.choices[1].delta.content
+  if type(_json) == "string" then
+    utils.log("Something is going on, _json is a string, expecing a table..", vim.log.levels.ERROR)
+  elseif vim.tbl_isempty(_json) then
+    if raw == "]" then
+      cb(raw_chunks, "END", ctx)
+    else
+      cb("Could not process the following raw chunk:\n" .. raw, "ERROR", ctx)
+    end
+  elseif _json then
+    local text = vim.tbl_get(_json, "candidates", 1, "content", "parts", 1, "text")
+    if text then
+      cb(text, state)
+      raw_chunks = raw_chunks .. text
       state = "CONTINUE"
-    elseif
-      not vim.tbl_isempty(_json)
-      and _json
-      and _json.choices
-      and _json.choices[1]
-      and _json.choices[1].message
-      and _json.choices[1].message.content
-    then
-      cb(_json.choices[1].message.content, state)
-      raw_chunks = raw_chunks .. _json.choices[1].message.content
+    else
+      local total_text = {}
+      for _, part in ipairs(_json) do
+        text = vim.tbl_get(part, "candidates", 1, "content", "parts", 1, "text")
+        if text then
+          table.insert(total_text, text)
+        end
+      end
+      cb(table.concat(total_text, ""), "END")
     end
   end
 

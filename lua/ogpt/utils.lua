@@ -257,6 +257,7 @@ end
 function M.add_partial_completion(opts, text, state)
   local panel = opts.panel
   local progress = opts.progress
+  local on_complete = opts.on_complete
 
   if state == "ERROR" then
     if progress then

@@ -39,6 +39,14 @@ function M.defaults()
         api_host = os.getenv("GEMINI_API_HOST"),
         api_key = os.getenv("GEMINI_API_KEY"),
         model = "gemini-pro",
+        api_params = {
+          temperature = 0.5,
+          topP = 0.99,
+        },
+        api_chat_params = {
+          temperature = 0.5,
+          topP = 0.99,
+        },
       },
       textgenui = {
         enabled = true,

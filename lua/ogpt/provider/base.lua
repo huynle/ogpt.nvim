@@ -5,7 +5,7 @@ local utils = require("ogpt.utils")
 local Provider = Object("Provider")
 
 function Provider:init(opts)
-  self.name = self.class.name
+  self.name = string.lower(self.class.name)
   opts = vim.tbl_extend("force", Config.options.providers[self.name], opts)
   self.enabled = opts.enabled
   self.model = opts.model
@@ -173,6 +173,42 @@ function Provider:conform_messages(params)
   params.messages = conformed_messages
 
   return params
+end
+
+function Provider:process_raw(content, cb, opts)
+  local chunk = content.raw
+  local state = content.state
+  local raw_chunks = content.content
+  local accumulate = content.accumulate
+  local ctx = content.ctx
+  local ok, json = pcall(vim.json.decode, chunk)
+
+  -- if not ok then
+  --   -- gemini is missing bracket on returns
+  --   chunk = string.gsub(chunk, "^%[", "")
+  --   chunk = string.gsub(chunk, "^%,", "")
+  --   chunk = string.gsub(chunk, "%]$", "")
+  --   chunk = vim.trim(chunk, "\n")
+  --   chunk = vim.trim(chunk, "\r")
+  --   ok, json = pcall(vim.json.decode, chunk)
+  -- end
+
+  if ok then
+    if json.error ~= nil then
+      local error_msg = {
+        "OGPT ERROR:",
+        self.provider.name,
+        vim.inspect(json.error) or "",
+        "Something went wrong.",
+      }
+      table.insert(error_msg, vim.inspect(params))
+      -- local error_msg = "OGPT ERROR: " .. (json.error.message or "Something went wrong")
+      cb(table.concat(error_msg, " "), "ERROR", ctx)
+      -- return
+      return { ctx, raw_chunks, state }
+    end
+    return self:process_line({ json = json, raw = chunk }, ctx, raw_chunks, state, cb)
+  end
 end
 
 function Provider:process_line(content, ctx, raw_chunks, state, cb)
