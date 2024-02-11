@@ -80,8 +80,11 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
           end
         end
       end,
-      function(err, _)
-        partial_result_fn(err, "ERROR", ctx)
+      function(_text, _state, _ctx)
+        partial_result_fn(_text, _state, _ctx)
+        -- if opts.on_stop then
+        --   opts.on_stop()
+        -- end
       end,
       should_stop,
       function()
@@ -286,7 +289,8 @@ function Api:exec(cmd, args, on_stdout_chunk, on_complete, should_stop, on_stop)
             pcall(function()
               handle:close()
             end)
-            on_stop()
+            -- on_stop()
+            on_complete("", "END")
           end
           return
         end
@@ -313,13 +317,13 @@ function Api:exec(cmd, args, on_stdout_chunk, on_complete, should_stop, on_stop)
 
     vim.schedule(function()
       if code ~= 0 then
-        on_complete(vim.trim(table.concat(stderr_chunks, "")))
+        on_complete(vim.trim(table.concat(stderr_chunks, "")), "ERROR")
       end
     end)
   end)
 
   if not handle then
-    on_complete(cmd .. " could not be started: " .. err)
+    on_complete(cmd .. " could not be started: " .. err, "ERROR")
   else
     stdout:read_start(on_stdout_read)
     stderr:read_start(on_stderr_read)

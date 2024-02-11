@@ -224,7 +224,6 @@ end
 function Chat:addAnswerPartial(text, state, ctx)
   if state == "ERROR" then
     self:stopSpinner()
-    self.is_running = false
     return self:addAnswer(text, {})
   end
 
@@ -234,7 +233,10 @@ function Chat:addAnswerPartial(text, state, ctx)
     start_line = prev.end_line + (prev.type == ANSWER and 2 or 1)
   end
 
-  if state == "END" and text ~= "" then
+  if state == "END" and text == "" then
+  --   -- most likely, ended by the using raising the stop flag
+  --   self:stopSpinner()
+  elseif state == "END" and text ~= "" then
     local usage = {}
     local idx = self.session:add_item({
       type = ANSWER,
@@ -266,16 +268,17 @@ function Chat:addAnswerPartial(text, state, ctx)
     self.selectedIndex = self.selectedIndex + 1
     vim.api.nvim_buf_set_lines(self.chat_window.bufnr, -1, -1, false, { "", "" })
     Signs.set_for_lines(self.chat_window.bufnr, start_line, end_line, "chat")
-    self.is_running = false
   end
 
   if state == "START" then
+    self.is_running = true
     self:stopSpinner()
     self:set_lines(-2, -1, false, { "" })
     vim.api.nvim_buf_set_option(self.chat_window.bufnr, "modifiable", true)
   end
 
   if state == "START" or state == "CONTINUE" then
+    self.is_running = true
     vim.api.nvim_buf_set_option(self.chat_window.bufnr, "modifiable", true)
     local lines = vim.split(text, "\n", {})
     local length = #lines
@@ -296,6 +299,9 @@ function Chat:addAnswerPartial(text, state, ctx)
       end
     end
   end
+  -- assume after each partial answer, the API stopped streaming
+  -- gemini has no stop flag in its response
+  self.is_running = false
 end
 
 function Chat:get_total_tokens()
@@ -476,6 +482,7 @@ function Chat:renderLastMessage()
 end
 
 function Chat:showProgess()
+  self.is_running = true
   self.spinner:start()
 end
 
@@ -752,8 +759,6 @@ function Chat:open()
         return
       end
 
-      self.is_running = true
-
       -- clear input
       vim.api.nvim_buf_set_lines(self.chat_input.bufnr, 0, -1, false, { "" })
 
@@ -772,14 +777,14 @@ function Chat:open()
           self:addAnswerPartial(answer, state, ctx)
         end, function()
           -- check the stop flag if it should stop
+          -- return not self.is_running
           return self.stop_flag
         end, {
-          on_stop = function()
-            self:stopSpinner()
-            self.is_running = false
-            -- reset the stop flag
-            self.stop_flag = false
-          end,
+          -- on_stop = function()
+          --   self:stopSpinner()
+          --   -- reset the stop flag
+          --   self.is_running = false
+          -- end,
         })
       end
     end,
@@ -856,7 +861,7 @@ function Chat:set_keymaps()
   -- stop generating
   self:map(Config.options.chat.keymaps.stop_generating, function()
     self.stop_flag = true
-    self.is_running = false
+    -- self.is_running = false
   end, { self.chat_input })
 
   -- close
@@ -889,7 +894,8 @@ function Chat:set_keymaps()
 
   -- new session
   self:map(Config.options.chat.keymaps.new_session, function()
-    self.stop_flag = true
+    -- self.stop_flag = true
+    self.is_running = false
     self:new_session()
     self.sessions_panel:refresh()
   end, { self.parameters_panel, self.chat_input, self.chat_window })
