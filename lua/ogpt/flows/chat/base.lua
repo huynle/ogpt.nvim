@@ -59,10 +59,13 @@ function Chat:init(opts)
   self.messages = {}
   self.spinner = Spinner:new(function(state)
     vim.schedule(function()
-      self:set_lines(-2, -1, false, { state .. " " .. Config.options.chat.loading_text })
+      -- self:set_lines(-2, -1, false, { state .. " " .. Config.options.chat.loading_text })
+      -- self:set_lines(-2, -1, false, { state })
       self:display_input_suffix(state)
     end)
-  end)
+  end, {
+    -- text = Config.options.chat.loading_text,
+  })
 end
 
 function Chat:welcome()
@@ -221,11 +224,21 @@ function Chat:addAnswer(text, usage)
   self:add(ANSWER, text, usage)
 end
 
-function Chat:addAnswerPartial(response, state)
+function Chat:addAnswerPartial(response)
+  local state = response.state
   local text = response.current_text
   local ctx = response.ctx
+  self:stopSpinner()
+
+  if state == "START" then
+    self.is_running = true
+    self:set_lines(-2, -1, false, { "" })
+    vim.api.nvim_buf_set_option(self.chat_window.bufnr, "modifiable", true)
+  end
+
   if state == "ERROR" then
-    self:stopSpinner()
+    -- self:stopSpinner()
+    utils.log(response.error, vim.log.levels.ERROR)
     -- return self:addAnswer(text, {})
   end
 
@@ -235,15 +248,15 @@ function Chat:addAnswerPartial(response, state)
     start_line = prev.end_line + (prev.type == ANSWER and 2 or 1)
   end
 
-  if state == "END" and text == "" then
+  -- if state == "END" and text == "" then
   --   -- most likely, ended by the using raising the stop flag
   --   self:stopSpinner()
-  elseif state == "END" and text ~= "" then
-    self:stopSpinner()
+  if state == "END" then
+    -- self:stopSpinner()
     local usage = {}
     local idx = self.session:add_item({
       type = ANSWER,
-      text = text,
+      text = table.concat(response.processed_text, ""),
       usage = usage,
       ctx = ctx or {},
     })
@@ -271,13 +284,6 @@ function Chat:addAnswerPartial(response, state)
     self.selectedIndex = self.selectedIndex + 1
     vim.api.nvim_buf_set_lines(self.chat_window.bufnr, -1, -1, false, { "", "" })
     Signs.set_for_lines(self.chat_window.bufnr, start_line, end_line, "chat")
-  end
-
-  if state == "START" then
-    self.is_running = true
-    self:stopSpinner()
-    self:set_lines(-2, -1, false, { "" })
-    vim.api.nvim_buf_set_option(self.chat_window.bufnr, "modifiable", true)
   end
 
   if state == "START" or state == "CONTINUE" then
@@ -776,8 +782,8 @@ function Chat:open()
           messages = self:toMessages(),
           system = self.system_message,
         }, self.parameters_panel.params)
-        self.provider.api:chat_completions(params, function(answer, state, ctx)
-          self:addAnswerPartial(answer, state, ctx)
+        self.provider.api:chat_completions(params, function(...)
+          self:addAnswerPartial(...)
         end, function()
           -- check the stop flag if it should stop
           -- return not self.is_running

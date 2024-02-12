@@ -175,13 +175,14 @@ function Provider:conform_messages(params)
   return params
 end
 
-function Provider:process_raw(content, cb, opts)
-  local chunk = content.raw
-  local state = content.state
-  local raw_chunks = content.content
-  local accumulate = content.accumulate
-  local ctx = content.ctx
-  local ok, json = pcall(vim.json.decode, chunk)
+function Provider:process_raw(response)
+  local chunk = response.current_raw_chunk
+  local cb = response.partial_result_cb
+  -- local state = response.state
+  -- local raw_chunks = response.content
+  -- local accumulate = response.accumulate
+  local ctx = response.ctx
+  local ok, json = pcall(vim.json.decode, response.current_raw_chunk)
 
   -- if not ok then
   --   -- gemini is missing bracket on returns
@@ -201,37 +202,39 @@ function Provider:process_raw(content, cb, opts)
         vim.inspect(json.error) or "",
         "Something went wrong.",
       }
-      table.insert(error_msg, vim.inspect(params))
+      table.insert(error_msg, vim.inspect(response.rest_params))
       -- local error_msg = "OGPT ERROR: " .. (json.error.message or "Something went wrong")
       cb(table.concat(error_msg, " "), "ERROR", ctx)
       -- return
-      return { ctx, raw_chunks, state }
+      -- return { ctx, raw_chunks, state }
     end
-    return self:process_line({ json = json, raw = chunk }, ctx, raw_chunks, state, cb)
+    self:process_line({ json = json, raw = chunk }, response)
   end
 end
 
-function Provider:process_line(content, ctx, raw_chunks, state, cb)
+function Provider:process_line(content, response)
+  local cb = response.partial_result_cb
   local _json = content.json
   local raw = content.raw
   -- given a JSON response from the STREAMING api, processs it
   if _json and _json.done then
     if _json.message then
       -- for stream=false case
-      cb(_json.message.content, state, ctx)
-      raw_chunks = raw_chunks .. _json.message.content
-      state = "CONTINUE"
+      cb(response)
+      response:add_processed_text(_json.message.content)
+      response:set_state("CONTINUE")
     else
-      ctx.context = _json.context
-      cb(raw_chunks, "END", ctx)
+      response.ctx = _json.context
+      response:set_state("END")
+      cb(response)
     end
   elseif type(_json) == "string" then
     utils.log("got something weird. " .. _json)
   elseif not vim.tbl_isempty(_json) then
     if _json and _json.message then
-      cb(_json.message.content, state, ctx)
-      raw_chunks = raw_chunks .. _json.message.content
-      state = "CONTINUE"
+      response:add_processed_text(_json.message.content)
+      cb(response)
+      response:set_state("CONTINUE")
     end
   end
 

@@ -37,22 +37,25 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
   response.partial_result_cb = partial_result_fn
 
   if stream then
-    local accumulate = {}
+    -- local accumulate = {}
+    local curl_args = {
+      "--silent",
+      "--show-error",
+      "--no-buffer",
+      _completion_url,
+      "-d",
+      vim.json.encode(params),
+    }
+    for _, header_item in ipairs(self.provider:request_headers()) do
+      table.insert(curl_args, header_item)
+    end
 
     self:exec(
       "curl",
-      {
-        "--silent",
-        "--show-error",
-        "--no-buffer",
-        _completion_url,
-        "-d",
-        vim.json.encode(params),
-        table.unpack(self.provider:request_headers()), -- has to be the last item in the list
-      },
+      curl_args,
       function(chunk)
-        local chunk_og = chunk
-        table.insert(accumulate, chunk_og)
+        -- local chunk_og = chunk
+        -- table.insert(accumulate, chunk_og)
         response:add_raw_chunk(chunk)
         -- local content = {
         --   raw = chunk,
@@ -257,27 +260,27 @@ function Api:exec(cmd, args, on_stdout_chunk, on_complete, should_stop, on_stop)
 
   local handle, err
   local function on_stdout_read(_, chunk)
-    if chunk then
-      -- vim.schedule(function()
-      if should_stop and should_stop() then
-        if handle ~= nil then
-          handle:kill(2) -- send SIGINT
-          pcall(function()
-            stdout:close()
-          end)
-          pcall(function()
-            stderr:close()
-          end)
-          pcall(function()
-            handle:close()
-          end)
-          -- on_stop()
-          on_complete("", "END")
+    vim.schedule(function()
+      if chunk then
+        if should_stop and should_stop() then
+          if handle ~= nil then
+            handle:kill(2) -- send SIGINT
+            pcall(function()
+              stdout:close()
+            end)
+            pcall(function()
+              stderr:close()
+            end)
+            pcall(function()
+              handle:close()
+            end)
+            -- on_stop()
+            on_complete("", "END")
+          end
         end
+        on_stdout_chunk(chunk)
       end
-      -- end)
-      on_stdout_chunk(chunk)
-    end
+    end)
   end
 
   local function on_stderr_read(_, chunk)

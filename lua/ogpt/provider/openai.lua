@@ -104,13 +104,15 @@ function Openai:process_line(content, response)
     local text = vim.tbl_get(_json, "choices", 1, "message", "content")
     if text_delta then
       response:add_processed_text(text_delta)
-      state = "CONTINUE"
       cb(response, state)
+      response:set_state("CONTINUE")
     elseif text then
       response:add_processed_text(text_delta)
-      cb(response, "END")
+      response:set_state("END")
+      cb(response)
     end
   elseif not _json and string.find(_raw, "[DONE]") then
+    response:set_state("END")
     cb(response, "END")
   else
     utils.log("Something NOT hanndled openai: _json\n" .. vim.inspect(_json))

@@ -12,6 +12,7 @@ function Response:init(opts)
   self.ctx = {}
   self.partial_result_cb = nil
   self.error = nil
+  self.in_progress = false
 end
 
 function Response:add_raw_chunk(chunk)
@@ -30,6 +31,17 @@ end
 
 function Response:get_context()
   return self.ctx
+end
+
+function Response:set_state(state)
+  self.state = state
+end
+
+function Response:is_in_progress()
+  if self.state ~= "END" then
+    return true
+  end
+  return false
 end
 
 return Response

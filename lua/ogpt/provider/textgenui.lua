@@ -107,34 +107,58 @@ function Textgenui:conform_messages(params)
   return params
 end
 
-function M:process_line(content, ctx, raw_chunks, state, cb)
-  local _json = content.json
-  local raw = content.raw
-  if _json.token then
-    if _json.token.text and string.find(_json.token.text, "</s>") then
-      ctx.context = _json.context
-      cb(raw_chunks, "END", ctx)
-    elseif
-      _json.token.text
-      and vim.tbl_get(ctx, "tokens", "end_of_result")
-      and string.find(_json.token.text, vim.tbl_get(ctx, "tokens", "end_of_result"))
-    then
-      ctx.context = _json.context
-      cb(raw_chunks, "END", ctx)
-    elseif _json.token.generated_text then
-      ctx.context = _json.context
-      cb(raw_chunks, "END", ctx)
-    else
-      cb(_json.token.text, state, ctx)
-      raw_chunks = raw_chunks .. _json.token.text
-      state = "CONTINUE"
-    end
-  elseif _json.error then
-    cb(_json.error, "ERROR", ctx)
-  else
-    print(_json)
+function Textgenui:process_raw(response)
+  local cb = response.partial_result_cb
+  local ctx = response.ctx
+
+  -- if response.state == "START" then
+  --   cb(response, "START")
+  -- end
+
+  local raw_json = string.gsub(response.current_raw_chunk, "^data:", "")
+
+  local ok, _json = pcall(vim.json.decode, raw_json)
+
+  if not ok then
+    utils.log("Something went wrong with parsing Textgetui json: " .. vim.inspect(response.current_raw_chunk))
+    _json = {}
   end
-  return ctx, raw_chunks, state
+  _json = _json or {}
+
+  if _json.error ~= nil then
+    local error_msg = {
+      "OGPT ERROR:",
+      self.provider.name,
+      vim.inspect(_json.error) or "",
+      "Something went wrong.",
+    }
+    table.insert(error_msg, vim.inspect(response.rest_params))
+    response.error = error_msg
+    response:set_state("ERROR")
+    cb(response)
+    return
+  end
+
+  if not _json.token then
+    return
+  end
+
+  if _json.token.text and string.find(_json.token.text, "</s>") then
+    response:set_state("END")
+  elseif
+    _json.token.text
+    and vim.tbl_get(ctx, "tokens", "end_of_result")
+    and string.find(_json.token.text, vim.tbl_get(ctx, "tokens", "end_of_result"))
+  then
+    ctx.context = _json.context
+    response:set_state("END")
+  elseif _json.token.generated_text then
+    response:set_state("END")
+  else
+    response:add_processed_text(_json.token.text)
+    response:set_state("CONTINUE")
+  end
+  cb(response)
 end
 
 return Textgenui
