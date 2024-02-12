@@ -55,48 +55,69 @@ function Openai:conform_request(params)
   return params
 end
 
-function Openai:process_raw(content, cb, opts)
-  local chunk = content.raw
-  local state = content.state
-  local ctx = content.ctx
-  local raw_chunks = content.content
+function Openai:process_raw(response)
+  local chunk = response.current_raw_chunk
+  -- local state = response.state
+  -- local ctx = response.ctx
+  -- local raw_chunks = response.processed_text
+  -- local params = response.params
+  -- local accumulate = response.accumulate_chunks
 
-  -- openai
+  local ok, json = pcall(vim.json.decode, chunk)
+  -- if ok then
+  --   if json.error ~= nil then
+  --     local error_msg = {
+  --       "OGPT ERROR:",
+  --       self.provider.name,
+  --       vim.inspect(json.error) or "",
+  --       "Something went wrong.",
+  --     }
+  --     table.insert(error_msg, vim.inspect(params))
+  --     -- local error_msg = "OGPT ERROR: " .. (json.error.message or "Something went wrong")
+  --     cb(table.concat(error_msg, " "), "ERROR", ctx)
+  --     return
+  --   end
+  --   ctx, raw_chunks, state = self:process_line({ json = json, raw = chunk }, ctx, raw_chunks, state, cb, opts)
+  --   return
+  -- end
+
   for line in chunk:gmatch("[^\n]+") do
     local raw_json = string.gsub(line, "^data:", "")
     local _ok, _json = pcall(vim.json.decode, raw_json)
     if _ok then
-      return self:process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb)
-      -- else
-      --   ctx, raw_chunks, state =
-      --     self:process_line({ json = nil, raw = chunk_og }, ctx, raw_chunks, state, partial_result_fn, opts)
+      self:process_line({ json = _json, raw = line }, response)
+    else
+      self:process_line({ json = nil, raw = line }, response)
     end
   end
 end
 
-function Openai:process_line(content, ctx, raw_chunks, state, cb)
+function Openai:process_line(content, response)
+  local ctx = response.ctx
+  -- local total_text = response.processed_text
+  local state = response.state
+  local cb = response.partial_result_cb
   local _json = content.json
-  local raw = content.raw
-  -- given a JSON response from the STREAMING api, processs it
-  if _json and _json.done then
-    ctx.context = _json.context
-    cb(raw_chunks, "END", ctx)
-  elseif type(_json) == "string" and string.find(_json, "[DONE]") then
-    cb(raw_chunks, "END", ctx)
-  else
+  local _raw = content.raw
+  if _json then
     local text_delta = vim.tbl_get(_json, "choices", 1, "delta", "content")
     local text = vim.tbl_get(_json, "choices", 1, "message", "content")
     if text_delta then
-      cb(_json.choices[1].delta.content, state)
-      raw_chunks = raw_chunks .. _json.choices[1].delta.content
+      response:add_processed_text(text_delta)
       state = "CONTINUE"
+      cb(response, state)
     elseif text then
-      cb(_json.choices[1].message.content, state)
-      raw_chunks = raw_chunks .. _json.choices[1].message.content
+      response:add_processed_text(text_delta)
+      cb(response, "END")
     end
+  elseif not _json and string.find(_raw, "[DONE]") then
+    cb(response, "END")
+  else
+    utils.log("Something NOT hanndled openai: _json\n" .. vim.inspect(_json))
+    utils.log("Something NOT hanndled openai: _raw\n" .. vim.inspect(_raw))
   end
 
-  return ctx, raw_chunks, state
+  -- return ctx, total_text, state
 end
 
 return Openai

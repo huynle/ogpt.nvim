@@ -269,7 +269,11 @@ function M.add_partial_completion(opts, text, state)
   end
 
   local start_line = 0
-  if state == "END" and text ~= "" then
+
+  if state == "END" and text == "" then
+  --   -- most likely, ended by the using raising the stop flag
+  --   self:stopSpinner()
+  elseif state == "END" and text ~= "" then
     if not opts.on_complete then
       return
     end

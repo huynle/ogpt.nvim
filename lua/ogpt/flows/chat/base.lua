@@ -221,10 +221,12 @@ function Chat:addAnswer(text, usage)
   self:add(ANSWER, text, usage)
 end
 
-function Chat:addAnswerPartial(text, state, ctx)
+function Chat:addAnswerPartial(response, state)
+  local text = response.current_text
+  local ctx = response.ctx
   if state == "ERROR" then
     self:stopSpinner()
-    return self:addAnswer(text, {})
+    -- return self:addAnswer(text, {})
   end
 
   local start_line = 0
@@ -237,6 +239,7 @@ function Chat:addAnswerPartial(text, state, ctx)
   --   -- most likely, ended by the using raising the stop flag
   --   self:stopSpinner()
   elseif state == "END" and text ~= "" then
+    self:stopSpinner()
     local usage = {}
     local idx = self.session:add_item({
       type = ANSWER,
@@ -258,12 +261,12 @@ function Chat:addAnswerPartial(text, state, ctx)
       idx = idx,
       usage = usage or {},
       type = ANSWER,
-      text = text,
+      text = response:get_total_processed_text(),
       lines = lines,
       nr_of_lines = nr_of_lines,
       start_line = start_line,
       end_line = end_line,
-      context = ctx.context,
+      context = response:get_context(),
     })
     self.selectedIndex = self.selectedIndex + 1
     vim.api.nvim_buf_set_lines(self.chat_window.bufnr, -1, -1, false, { "", "" })
