@@ -254,10 +254,12 @@ function M.trim(s)
   return (s:gsub("^%s*(.-)%s*$", "%1"))
 end
 
-function M.add_partial_completion(opts, text, state)
+function M.add_partial_completion(opts, response)
   local panel = opts.panel
   local progress = opts.progress
   local on_complete = opts.on_complete
+  local state = response.state
+  local text = response.current_text
 
   if state == "ERROR" then
     if progress then
@@ -291,6 +293,7 @@ function M.add_partial_completion(opts, text, state)
   end
 
   if state == "START" or state == "CONTINUE" then
+    vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
     local lines = vim.split(text, "\n", {})
     local length = #lines
     local buffer = panel.bufnr
