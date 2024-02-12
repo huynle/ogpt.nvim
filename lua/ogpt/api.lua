@@ -54,18 +54,10 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
       "curl",
       curl_args,
       function(chunk)
-        -- local chunk_og = chunk
-        -- table.insert(accumulate, chunk_og)
-        response:add_raw_chunk(chunk)
-        -- local content = {
-        --   raw = chunk,
-        --   accumulate = accumulate,
-        --   content = raw_chunks or "",
-        --   state = state or "START",
-        --   ctx = ctx,
-        --   params = params,
-        -- }
-        self.provider:process_raw(response)
+        vim.schedule(function()
+          response:add_raw_chunk(chunk)
+          self.provider:process_raw(response)
+        end)
       end,
       function(_text, _state, _ctx)
         -- partial_result_fn(_text, _state, _ctx)

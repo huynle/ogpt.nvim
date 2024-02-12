@@ -20,13 +20,26 @@ function Response:add_raw_chunk(chunk)
   self.current_raw_chunk = chunk
 end
 
+function Response:set_processed_text(text)
+  self.processed_text = text
+end
+
 function Response:add_processed_text(text)
+  text = text
+  if vim.tbl_isempty(self.processed_text) then
+    -- remove the first space found in most llm responses
+    text = string.gsub(text, "^ ", "")
+  end
   table.insert(self.processed_text, text)
   self.current_text = text
 end
 
-function Response:get_total_processed_text()
-  return table.concat(self.processed_text, "")
+function Response:get_processed_text()
+  return vim.trim(table.concat(self.processed_text, ""), " ")
+end
+
+function Response:get_processed_text_by_lines()
+  return vim.split(self:get_processed_text(), "\n")
 end
 
 function Response:get_context()

@@ -176,69 +176,53 @@ function Provider:conform_messages(params)
 end
 
 function Provider:process_raw(response)
-  local chunk = response.current_raw_chunk
+  -- local chunk = response.current_raw_chunk
   local cb = response.partial_result_cb
-  -- local state = response.state
-  -- local raw_chunks = response.content
-  -- local accumulate = response.accumulate
-  local ctx = response.ctx
+  -- local lines = vim.split(chunk, "\n")
+
+  -- for line in chunk:gmatch("[\n]+") do
+  -- for _, line in ipairs(lines) do
   local ok, json = pcall(vim.json.decode, response.current_raw_chunk)
 
-  -- if not ok then
-  --   -- gemini is missing bracket on returns
-  --   chunk = string.gsub(chunk, "^%[", "")
-  --   chunk = string.gsub(chunk, "^%,", "")
-  --   chunk = string.gsub(chunk, "%]$", "")
-  --   chunk = vim.trim(chunk, "\n")
-  --   chunk = vim.trim(chunk, "\r")
-  --   ok, json = pcall(vim.json.decode, chunk)
-  -- end
-
-  if ok then
-    if json.error ~= nil then
-      local error_msg = {
-        "OGPT ERROR:",
-        self.provider.name,
-        vim.inspect(json.error) or "",
-        "Something went wrong.",
-      }
-      table.insert(error_msg, vim.inspect(response.rest_params))
-      -- local error_msg = "OGPT ERROR: " .. (json.error.message or "Something went wrong")
-      cb(table.concat(error_msg, " "), "ERROR", ctx)
-      -- return
-      -- return { ctx, raw_chunks, state }
-    end
-    self:process_line({ json = json, raw = chunk }, response)
+  if not ok then
+    utils.log("Cannot process ollama response: \n" .. vim.inspect(response.current_raw_chunk))
+    json = {}
   end
-end
 
-function Provider:process_line(content, response)
-  local cb = response.partial_result_cb
-  local _json = content.json
-  local raw = content.raw
+  if json.error ~= nil then
+    local error_msg = {
+      "OGPT ERROR:",
+      self.provider.name,
+      vim.inspect(json.error) or "",
+      "Something went wrong.",
+    }
+    table.insert(error_msg, vim.inspect(response.rest_params))
+    response.error = table.concat(error_msg, "")
+    response:set_state("ERROR")
+  end
+
   -- given a JSON response from the STREAMING api, processs it
-  if _json and _json.done then
-    if _json.message then
+  if type(json) == "string" then
+    utils.log("got something weird. " .. json, vim.log.levels.ERROR)
+  elseif vim.tbl_isempty(json) then
+    -- pass
+  elseif json.done then
+    if json.message then
       -- for stream=false case
-      cb(response)
-      response:add_processed_text(_json.message.content)
+      response:add_processed_text(json.message.content)
       response:set_state("CONTINUE")
     else
-      response.ctx = _json.context
+      response.ctx = json.context
       response:set_state("END")
-      cb(response)
     end
-  elseif type(_json) == "string" then
-    utils.log("got something weird. " .. _json)
-  elseif not vim.tbl_isempty(_json) then
-    if _json and _json.message then
-      response:add_processed_text(_json.message.content)
-      cb(response)
-      response:set_state("CONTINUE")
-    end
+  elseif json.message then
+    response:add_processed_text(json.message.content)
+    response:set_state("CONTINUE")
+  else
+    utils.log("unexpected case in ollama", vim.log.levels.ERROR)
   end
-
-  return ctx, raw_chunks, state
+  cb(response)
+  -- end
 end
 
 function Provider:get_action_params(opts)

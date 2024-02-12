@@ -74,11 +74,10 @@ function PopupAction:run()
         progress = function(flag)
           self:run_spinner(flag)
         end,
-        on_complete = function(total_text)
+        on_complete = function(response)
           -- utils.log("request completed - processed text is:\n" .. total_text, vim.log.levels.DEBUG)
           if vim.fn.bufexists(self.popup.bufnr) then
             vim.api.nvim_buf_set_option(self.popup.bufnr, "modifiable", true)
-            vim.api.nvim_buf_set_lines(self.popup.bufnr, -2, -1, false, vim.split(total_text, "\n", {}))
           end
         end,
       }),

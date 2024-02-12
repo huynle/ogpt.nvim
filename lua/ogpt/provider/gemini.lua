@@ -116,13 +116,17 @@ function Gemini:conform_messages(params)
   return params
 end
 
-function Gemini:process_raw(content, cb)
-  local chunk = content.raw
-  local state = content.state
-  local raw_chunks = content.content
-  local accumulate = content.accumulate
+function Gemini:process_raw(response)
+  local is_accumulated = false
+  local chunk = response.current_text
+  -- local state = response.state
+  -- local raw_chunks = response.content
+  -- local accumulate = response.accumulated_chunks
+  local cb = response.partial_result_cb
+  -- local ctx = response.ctx
 
   local ok, json = pcall(vim.json.decode, chunk)
+
   if not ok then
     -- gemini is missing bracket on returns
     chunk = string.gsub(chunk, "^%[", "")
@@ -133,48 +137,43 @@ function Gemini:process_raw(content, cb)
     ok, json = pcall(vim.json.decode, chunk)
   end
 
-  if ok then
-    return self:process_line({ json = json, raw = accumulate }, ctx, raw_chunks, state, cb)
-  else
+  if not ok then
     -- if not ok, try to keep process the accumulated stdout
-    ok, json = pcall(vim.json.decode, table.concat(accumulate, ""))
-    if ok then
-      return self:process_line({ json = json, raw = accumulate }, ctx, raw_chunks, state, cb)
-    end
+    ok, json = pcall(vim.json.decode, table.concat(response.accumulated_chunks, ""))
+    is_accumulated = true
   end
-end
 
-function Gemini:process_line(content, ctx, raw_chunks, state, cb)
-  local _json = content.json or {}
-  local raw = content.raw
+  if not ok then
+    json = {}
+  end
 
-  if type(_json) == "string" then
+  if type(json) == "string" then
     utils.log("Something is going on, _json is a string, expecing a table..", vim.log.levels.ERROR)
-  elseif vim.tbl_isempty(_json) then
-    if raw == "]" then
-      cb(raw_chunks, "END", ctx)
+  elseif vim.tbl_isempty(json) then
+    if response.current_text == "]" then
+      response:set_state("END")
     else
-      cb("Could not process the following raw chunk:\n" .. raw, "ERROR", ctx)
+      response:set_state("ERROR")
+      response.error = "Could not process the following raw chunk:\n" .. raw
     end
-  elseif _json then
-    local text = vim.tbl_get(_json, "candidates", 1, "content", "parts", 1, "text")
-    if text then
-      cb(text, state)
-      raw_chunks = raw_chunks .. text
-      state = "CONTINUE"
-    else
+  else
+    local text = vim.tbl_get(json, "candidates", 1, "content", "parts", 1, "text")
+    if not text and is_accumulated then
       local total_text = {}
-      for _, part in ipairs(_json) do
+      for _, part in ipairs(json) do
         text = vim.tbl_get(part, "candidates", 1, "content", "parts", 1, "text")
         if text then
           table.insert(total_text, text)
         end
       end
-      cb(table.concat(total_text, ""), "END")
+      response:set_processed_text(total_text)
+      response:set_state("END")
+    else
+      response:add_processed_text(text)
+      response:set_state("CONTINUE")
     end
   end
-
-  return ctx, raw_chunks, state
+  cb(response)
 end
 
 return Gemini

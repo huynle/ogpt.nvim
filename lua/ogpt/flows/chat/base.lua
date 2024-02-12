@@ -253,10 +253,11 @@ function Chat:addAnswerPartial(response)
   --   self:stopSpinner()
   if state == "END" then
     -- self:stopSpinner()
+    vim.api.nvim_buf_set_option(self.chat_window.bufnr, "modifiable", true)
     local usage = {}
     local idx = self.session:add_item({
       type = ANSWER,
-      text = table.concat(response.processed_text, ""),
+      text = response:get_processed_text(),
       usage = usage,
       ctx = ctx or {},
     })
@@ -274,7 +275,7 @@ function Chat:addAnswerPartial(response)
       idx = idx,
       usage = usage or {},
       type = ANSWER,
-      text = response:get_total_processed_text(),
+      text = response:get_processed_text(),
       lines = lines,
       nr_of_lines = nr_of_lines,
       start_line = start_line,
@@ -282,6 +283,7 @@ function Chat:addAnswerPartial(response)
       context = response:get_context(),
     })
     self.selectedIndex = self.selectedIndex + 1
+    vim.api.nvim_buf_set_lines(self.chat_window.bufnr, -1, -1, false, response:get_processed_text_by_lines())
     vim.api.nvim_buf_set_lines(self.chat_window.bufnr, -1, -1, false, { "", "" })
     Signs.set_for_lines(self.chat_window.bufnr, start_line, end_line, "chat")
   end

@@ -257,7 +257,6 @@ end
 function M.add_partial_completion(opts, response)
   local panel = opts.panel
   local progress = opts.progress
-  local on_complete = opts.on_complete
   local state = response.state
   local text = response.current_text
 
@@ -270,29 +269,33 @@ function M.add_partial_completion(opts, response)
     return
   end
 
-  local start_line = 0
-
-  if state == "END" and text == "" then
-  --   -- most likely, ended by the using raising the stop flag
-  --   self:stopSpinner()
-  elseif state == "END" and text ~= "" then
+  if state == "END" then
+    if not M.is_buf_exists(panel.bufnr) then
+      return
+    end
+    vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
+    vim.api.nvim_buf_set_lines(panel.bufnr, -1, -1, false, response:get_processed_text_by_lines())
     if not opts.on_complete then
       return
     end
-    return opts.on_complete(text)
+    return opts.on_complete(response)
   end
 
   if state == "START" then
     if progress then
       progress(false)
     end
-    if M.is_buf_exists(panel.bufnr) then
-      vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
+    if not M.is_buf_exists(panel.bufnr) then
+      return
     end
+    vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
     text = M.trim(text)
   end
 
   if state == "START" or state == "CONTINUE" then
+    if not M.is_buf_exists(panel.bufnr) then
+      return
+    end
     vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
     local lines = vim.split(text, "\n", {})
     local length = #lines

@@ -111,10 +111,6 @@ function Textgenui:process_raw(response)
   local cb = response.partial_result_cb
   local ctx = response.ctx
 
-  -- if response.state == "START" then
-  --   cb(response, "START")
-  -- end
-
   local raw_json = string.gsub(response.current_raw_chunk, "^data:", "")
 
   local ok, _json = pcall(vim.json.decode, raw_json)
