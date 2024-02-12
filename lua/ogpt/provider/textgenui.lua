@@ -1,11 +1,13 @@
 local Config = require("ogpt.config")
 local utils = require("ogpt.utils")
+local Response = require("ogpt.response")
 
 local ProviderBase = require("ogpt.provider.base")
 local Textgenui = ProviderBase:extend("Textgenui")
 
 function Textgenui:init(opts)
   Textgenui.super.init(self, opts)
+  self.rest_strategy = Response.STRATEGY_LINE_BY_LINE
   self.name = "textgenui"
   self.api_parameters = {
     "inputs",
@@ -111,7 +113,7 @@ function Textgenui:process_raw(response)
   local cb = response.partial_result_cb
   local ctx = response.ctx
 
-  local raw_json = string.gsub(response.current_raw_chunk, "^data:", "")
+  local raw_json = string.gsub(response:get_chunk(), "^data:", "")
 
   local ok, _json = pcall(vim.json.decode, raw_json)
 

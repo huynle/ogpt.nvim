@@ -1,11 +1,12 @@
 local Config = require("ogpt.config")
 local utils = require("ogpt.utils")
 local ProviderBase = require("ogpt.provider.base")
-
+local Response = require("ogpt.response")
 local Openai = ProviderBase:extend("openai")
 
 function Openai:init(opts)
   Openai.super.init(self, opts)
+  self.rest_strategy = Response.STRATEGY_LINE_BY_LINE
   self.name = "openai"
   self.api_parameters = {
     "model",
@@ -63,7 +64,7 @@ function Openai:process_raw(response)
   -- local params = response.params
   -- local accumulate = response.accumulate_chunks
 
-  local ok, json = pcall(vim.json.decode, chunk)
+  -- local ok, json = pcall(vim.json.decode, chunk)
   -- if ok then
   --   if json.error ~= nil then
   --     local error_msg = {
@@ -81,15 +82,15 @@ function Openai:process_raw(response)
   --   return
   -- end
 
-  for line in chunk:gmatch("[^\n]+") do
-    local raw_json = string.gsub(line, "^data:", "")
-    local _ok, _json = pcall(vim.json.decode, raw_json)
-    if _ok then
-      self:process_line({ json = _json, raw = line }, response)
-    else
-      self:process_line({ json = nil, raw = line }, response)
-    end
+  -- for line in chunk:gmatch("[^\n]+") do
+  local raw_json = string.gsub(chunk, "^data:", "")
+  local _ok, _json = pcall(vim.json.decode, raw_json)
+  if _ok then
+    self:process_line({ json = _json, raw = chunk }, response)
+  else
+    self:process_line({ json = nil, raw = chunk }, response)
   end
+  -- end
 end
 
 function Openai:process_line(content, response)

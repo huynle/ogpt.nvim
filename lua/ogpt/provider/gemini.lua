@@ -1,11 +1,12 @@
 local Config = require("ogpt.config")
 local utils = require("ogpt.utils")
-
+local Response = require("ogpt.response")
 local ProviderBase = require("ogpt.provider.base")
 local Gemini = ProviderBase:extend("Gemini")
 
 function Gemini:init(opts)
   Gemini.super.init(self, opts)
+  self.rest_strategy = Response.STRATEGY_CHUNK
   self.api_parameters = {
     "contents",
   }
@@ -118,7 +119,7 @@ end
 
 function Gemini:process_raw(response)
   local is_accumulated = false
-  local chunk = response.current_text
+  local chunk = response.current_raw_chunk
   -- local state = response.state
   -- local raw_chunks = response.content
   -- local accumulate = response.accumulated_chunks
@@ -154,7 +155,7 @@ function Gemini:process_raw(response)
       response:set_state("END")
     else
       response:set_state("ERROR")
-      response.error = "Could not process the following raw chunk:\n" .. raw
+      response.error = "Could not process the following raw chunk:\n" .. chunk
     end
   else
     local text = vim.tbl_get(json, "candidates", 1, "content", "parts", 1, "text")

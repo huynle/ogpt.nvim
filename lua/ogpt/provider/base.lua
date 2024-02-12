@@ -1,6 +1,7 @@
 local Object = require("ogpt.common.object")
 local Config = require("ogpt.config")
 local utils = require("ogpt.utils")
+local Response = require("ogpt.response")
 
 local Provider = Object("Provider")
 
@@ -14,6 +15,7 @@ function Provider:init(opts)
   self.api_key = opts.api_key
   self.api_params = opts.api_params
   self.api_chat_params = opts.api_chat_params
+  self.rest_strategy = Response.STRATEGY_LINE_BY_LINE
   self.envs = {}
   self.api_parameters = {
     "model",
@@ -141,13 +143,13 @@ function Provider:conform_messages(params)
     table.remove(params.messages, _to_remove_system_idx[i])
   end
 
-  -- https://platform.openai.com/docs/api-reference/chat
-  if params.system then
-    table.insert(params.messages, 1, {
-      role = "system",
-      content = params.system,
-    })
-  end
+  -- -- https://platform.openai.com/docs/api-reference/chat
+  -- if params.system then
+  --   table.insert(params.messages, 1, {
+  --     role = "system",
+  --     content = params.system,
+  --   })
+  -- end
 
   local function gather_text_from_parts(parts)
     if type(parts) == "string" then
@@ -176,31 +178,78 @@ function Provider:conform_messages(params)
 end
 
 function Provider:process_raw(response)
-  -- local chunk = response.current_raw_chunk
-  local cb = response.partial_result_cb
-  -- local lines = vim.split(chunk, "\n")
+  self:_process_raw_by_line(response)
+end
 
-  -- for line in chunk:gmatch("[\n]+") do
-  -- for _, line in ipairs(lines) do
-  local ok, json = pcall(vim.json.decode, response.current_raw_chunk)
+function Provider:_process_raw_by_line(response)
+  local cb = response.partial_result_cb
+  -- local lines = response.accumulated_chunks
+  local line = response:get_chunk()
+  response.accumulated_chunks = {}
+  -- for ith, line in ipairs(lines) do
+  line = response.not_processed .. line
+  local ok, json = pcall(vim.json.decode, line)
 
   if not ok then
-    utils.log("Cannot process ollama response: \n" .. vim.inspect(response.current_raw_chunk))
+    utils.log("Cannot process ollama response: \n" .. vim.inspect(line))
     json = {}
+    response.not_processed = line -- prepend it to the next raw line for processing
+  else
+    response.not_processed = ""
   end
 
-  if json.error ~= nil then
+  if json.error then
     local error_msg = {
       "OGPT ERROR:",
-      self.provider.name,
-      vim.inspect(json.error) or "",
       "Something went wrong.",
+      self.provider.name,
+      ":",
+      vim.inspect(json.error) or "",
     }
     table.insert(error_msg, vim.inspect(response.rest_params))
     response.error = table.concat(error_msg, "")
     response:set_state("ERROR")
+    cb(response)
   end
 
+  if ok then
+    self:_process_line(json, response)
+  else
+    response.not_processed = line
+  end
+  -- end
+end
+
+-- function Provider:process_raw_by_chunk(response)
+--   -- local chunk = response.current_raw_chunk
+--   local cb = response.partial_result_cb
+--   -- local lines = vim.split(chunk, "\n")
+--
+--   -- for line in chunk:gmatch("[\n]+") do
+--   -- for _, line in ipairs(lines) do
+--   local ok, json = pcall(vim.json.decode, response.current_raw_chunk)
+--
+--   if not ok then
+--     utils.log("Cannot process ollama response: \n" .. vim.inspect(response.current_raw_chunk))
+--     json = {}
+--   end
+--
+--   if json.error then
+--     local error_msg = {
+--       "OGPT ERROR:",
+--       "Something went wrong.",
+--       self.provider.name,
+--       ":",
+--       vim.inspect(json.error) or "",
+--     }
+--     table.insert(error_msg, vim.inspect(response.rest_params))
+--     response.error = table.concat(error_msg, "")
+--     response:set_state("ERROR")
+--   end
+-- end
+
+function Provider:_process_line(json, response)
+  local cb = response.partial_result_cb
   -- given a JSON response from the STREAMING api, processs it
   if type(json) == "string" then
     utils.log("got something weird. " .. json, vim.log.levels.ERROR)
@@ -212,7 +261,7 @@ function Provider:process_raw(response)
       response:add_processed_text(json.message.content)
       response:set_state("CONTINUE")
     else
-      response.ctx = json.context
+      -- response.ctx = json.context
       response:set_state("END")
     end
   elseif json.message then

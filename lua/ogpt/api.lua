@@ -31,7 +31,7 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
   -- local raw_chunks = ""
   -- local state = "START"
   partial_result_fn = vim.schedule_wrap(partial_result_fn)
-  local response = Response()
+  local response = Response(self.provider.rest_strategy)
   response.ctx = ctx
   response.rest_params = params
   response.partial_result_cb = partial_result_fn
@@ -54,10 +54,8 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
       "curl",
       curl_args,
       function(chunk)
-        vim.schedule(function()
-          response:add_raw_chunk(chunk)
-          self.provider:process_raw(response)
-        end)
+        response:add_chunk(chunk)
+        self.provider:process_raw(response)
       end,
       function(_text, _state, _ctx)
         -- partial_result_fn(_text, _state, _ctx)
@@ -252,8 +250,8 @@ function Api:exec(cmd, args, on_stdout_chunk, on_complete, should_stop, on_stop)
 
   local handle, err
   local function on_stdout_read(_, chunk)
-    vim.schedule(function()
-      if chunk then
+    if chunk then
+      vim.schedule(function()
         if should_stop and should_stop() then
           if handle ~= nil then
             handle:kill(2) -- send SIGINT
@@ -267,12 +265,12 @@ function Api:exec(cmd, args, on_stdout_chunk, on_complete, should_stop, on_stop)
               handle:close()
             end)
             -- on_stop()
-            on_complete("", "END")
+            -- on_complete("", "END")
           end
         end
         on_stdout_chunk(chunk)
-      end
-    end)
+      end)
+    end
   end
 
   local function on_stderr_read(_, chunk)

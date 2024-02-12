@@ -283,7 +283,7 @@ function Chat:addAnswerPartial(response)
       context = response:get_context(),
     })
     self.selectedIndex = self.selectedIndex + 1
-    vim.api.nvim_buf_set_lines(self.chat_window.bufnr, -1, -1, false, response:get_processed_text_by_lines())
+    -- vim.api.nvim_buf_set_lines(self.chat_window.bufnr, -1, -1, false, response:get_processed_text_by_lines())
     vim.api.nvim_buf_set_lines(self.chat_window.bufnr, -1, -1, false, { "", "" })
     Signs.set_for_lines(self.chat_window.bufnr, start_line, end_line, "chat")
   end

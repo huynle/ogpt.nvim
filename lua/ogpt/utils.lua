@@ -258,13 +258,13 @@ function M.add_partial_completion(opts, response)
   local panel = opts.panel
   local progress = opts.progress
   local state = response.state
-  local text = response.current_text
+  -- local text = response.current_text
 
   if state == "ERROR" then
     if progress then
       progress(false)
     end
-    M.log("An Error Occurred: " .. text, vim.log.levels.ERROR)
+    M.log("An Error Occurred", vim.log.levels.ERROR)
     panel:unmount()
     return
   end
@@ -274,7 +274,8 @@ function M.add_partial_completion(opts, response)
       return
     end
     vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
-    vim.api.nvim_buf_set_lines(panel.bufnr, -1, -1, false, response:get_processed_text_by_lines())
+    vim.api.nvim_buf_set_lines(panel.bufnr, 0, -1, false, {}) -- clear the window, an put the final answer in
+    vim.api.nvim_buf_set_lines(panel.bufnr, 0, -1, false, response:get_processed_text_by_lines())
     if not opts.on_complete then
       return
     end
@@ -289,7 +290,7 @@ function M.add_partial_completion(opts, response)
       return
     end
     vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
-    text = M.trim(text)
+    -- text = M.trim(text)
   end
 
   if state == "START" or state == "CONTINUE" then
@@ -297,7 +298,7 @@ function M.add_partial_completion(opts, response)
       return
     end
     vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
-    local lines = vim.split(text, "\n", {})
+    local lines = vim.split(response.current_text, "\n", {})
     local length = #lines
     local buffer = panel.bufnr
 
