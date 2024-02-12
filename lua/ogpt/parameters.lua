@@ -180,7 +180,7 @@ end
 function Parameters:read_config(session)
   if not session then
     local home = os.getenv("HOME") or os.getenv("USERPROFILE")
-    local file = io.open(home .. "/" .. ".ogpt-" .. self.parent_type .. "-params.json", "rb")
+    local file = io.open(home .. "/" .. ".ogpt-" .. self.type .. "-params.json", "rb")
     if not file then
       return nil
     end
@@ -194,9 +194,10 @@ function Parameters:read_config(session)
 end
 
 function Parameters:write_config(config, session)
+  session = session or self.session
   if not session then
     local home = os.getenv("HOME") or os.getenv("USERPROFILE")
-    local file, err = io.open(home .. "/" .. ".ogpt-" .. self.parent_type .. "-params.json", "w")
+    local file, err = io.open(home .. "/" .. ".ogpt-" .. self.type .. "-params.json", "w")
     if file ~= nil then
       local json_string = vim.json.encode(config)
       file:write(json_string)
@@ -327,10 +328,12 @@ function Parameters:init(opts)
   end, {})
 end
 
-function Parameters:reload_session_params()
-  if self.session then
-    self.params = self.session.parameters
+function Parameters:reload_session_params(session)
+  if session then
+    self.session = session
   end
+
+  self.params = self.session.parameters
   self:refresh_panel()
 end
 

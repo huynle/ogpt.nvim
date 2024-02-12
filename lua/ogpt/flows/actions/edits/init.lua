@@ -5,6 +5,7 @@ local Layout = require("ogpt.common.layout")
 local Popup = require("ogpt.common.popup")
 local ChatInput = require("ogpt.input")
 local Parameters = require("ogpt.parameters")
+local UtilWindow = require("ogpt.util_window")
 
 local EditAction = BaseAction:extend("EditAction")
 
@@ -16,7 +17,7 @@ function EditAction:init(name, opts)
   opts = opts or {}
   EditAction.super.init(self, opts)
   self.provider = Config.get_provider(opts.provider, self)
-  self.params = Config.get_action_params(self.provider.name, opts.params or {})
+  self.params = Config.get_action_params(self.provider, opts.params or {})
   self.system = type(opts.system) == "function" and opts.system() or opts.system or ""
   self.template = type(opts.template) == "function" and opts.template() or opts.template or "{{input}}"
   self.variables = opts.variables or {}
@@ -25,7 +26,7 @@ function EditAction:init(name, opts)
 
   self.instructions_input = nil
   self.layout = nil
-  self.input_panel = nil
+  self.selection_panel = nil
   self.output_panel = nil
   self.parameters_panel = nil
   self.timer = nil
@@ -81,16 +82,43 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
 
   self.parameters_panel = Parameters({
     type = "edits",
-    default_params = api_params,
+    default_params = vim.tbl_extend("force", api_params, {
+      provider = self.provider.name,
+      model = self.provider.model,
+    }),
     session = nil,
     parent = self,
     edgy = Config.options.edit.edgy,
   })
-  self.input_panel = Popup(Config.options.input_window, Config.options.edit.edgy)
+  self.selection_panel = UtilWindow({
+    filetype = "ogpt-selection",
+    display = "{{selection}}",
+    virtual_text = "No selection was made..",
+  }, Config.options.chat.edgy)
+  self.template_panel = UtilWindow({
+    filetype = "ogpt-template",
+    display = "Template",
+    virtual_text = "Template is not defined.. will use the {{selection}}",
+    default_text = self.template,
+    on_change = function(text)
+      self.template = text
+    end,
+  }, Config.options.chat.edgy)
+
+  self.system_role_panel = UtilWindow({
+    filetype = "ogpt-system-window",
+    display = "System",
+    virtual_text = "Define your LLM system message here...",
+    default_text = opts.params.system,
+    on_change = function(text)
+      self.template = text
+    end,
+  }, Config.options.chat.edgy)
+
   self.output_panel = Popup(Config.options.output_window, Config.options.edit.edgy)
   self.instructions_input = ChatInput(Config.options.instruction_window, {
     edgy = Config.options.edit.edgy,
-    prompt = Config.options.input_window.prompt,
+    prompt = Config.options.instruction_window.prompt,
     default_value = opts.instruction or "",
     on_close = function()
       -- if self.spinner:is_running() then
@@ -108,7 +136,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       -- show_progress()
       self:run_spinner(self.instructions_input, true)
 
-      local input = table.concat(vim.api.nvim_buf_get_lines(self.input_panel.bufnr, 0, -1, false), "\n")
+      local input = table.concat(vim.api.nvim_buf_get_lines(self.selection_panel.bufnr, 0, -1, false), "\n")
 
       -- if instruction is empty, try to get the original instruction from opts
       if instruction == "" then
@@ -116,7 +144,9 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       end
       local messages = self:build_edit_messages(input, instruction, opts)
       local params = vim.tbl_extend("keep", { messages = messages }, self.parameters_panel.params)
-      self.provider.api:edits(
+
+      params.stream = true
+      self.provider.api:chat_completions(
         params,
         utils.partial(utils.add_partial_completion, {
           panel = self.output_panel,
@@ -161,28 +191,30 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       },
     },
 
-    -- Layout.Box({
-    --   Layout.Box({
-    --     Layout.Box(self.input_panel, { grow = 1 }),
-    --     Layout.Box(self.instructions_input, { size = 3 }),
-    --   }, { dir = "col", size = "50%" }),
-    --   Layout.Box(self.output_panel, { size = "50%" }),
-    -- }, { dir = "row" }),
-
     Layout.Box({
       Layout.Box({
-        Layout.Box(self.input_panel, { grow = 1 }),
+        Layout.Box(self.selection_panel, { grow = 1 }),
         Layout.Box(self.instructions_input, { size = 3 }),
       }, { dir = "col", grow = 1 }),
       Layout.Box(self.output_panel, { grow = 1 }),
-      Layout.Box(self.parameters_panel, { size = 40 }),
+      Layout.Box({
+        Layout.Box(self.parameters_panel, { grow = 1 }),
+        Layout.Box(self.system_role_panel, { size = 10 }),
+        Layout.Box(self.template_panel, { size = 8 }),
+      }, { dir = "col", grow = 1 }),
     }, { dir = "row" }),
 
     Config.options.edit.edgy
   )
 
   -- accept output window
-  for _, window in ipairs({ self.input_panel, self.output_panel, self.instructions_input }) do
+  for _, window in ipairs({
+    self.selection_panel,
+    self.output_panel,
+    self.instructions_input,
+    self.system_role_panel,
+    self.template_panel,
+  }) do
     for _, mode in ipairs({ "n", "i" }) do
       window:map(mode, Config.options.edit.keymaps.accept, function()
         self.instructions_input.input_props.on_close()
@@ -194,18 +226,31 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   end
 
   -- use output as input
-  for _, window in ipairs({ self.input_panel, self.output_panel, self.instructions_input }) do
+  for _, window in ipairs({
+    self.selection_panel,
+    self.output_panel,
+    self.instructions_input,
+    self.system_role_panel,
+    self.template_panel,
+  }) do
     for _, mode in ipairs({ "n", "i" }) do
       window:map(mode, Config.options.edit.keymaps.use_output_as_input, function()
         local lines = vim.api.nvim_buf_get_lines(self.output_panel.bufnr, 0, -1, false)
-        vim.api.nvim_buf_set_lines(self.input_panel.bufnr, 0, -1, false, lines)
+        vim.api.nvim_buf_set_lines(self.selection_panel.bufnr, 0, -1, false, lines)
         vim.api.nvim_buf_set_lines(self.output_panel.bufnr, 0, -1, false, {})
       end, { noremap = true })
     end
   end
 
   -- close
-  for _, window in ipairs({ self.input_panel, self.output_panel, self.instructions_input }) do
+  for _, window in ipairs({
+    self.selection_panel,
+    self.output_panel,
+    self.instructions_input,
+    self.system_role_panel,
+    self.template_panel,
+    self.parameters_panel,
+  }) do
     for _, mode in ipairs({ "n", "i" }) do
       window:map(mode, Config.options.edit.keymaps.close, function()
         self.spinner:stop()
@@ -219,13 +264,20 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
 
   -- toggle parameters
   local parameters_open = true
-  for _, popup in ipairs({ self.parameters_panel, self.instructions_input, self.input_panel, self.output_panel }) do
+  for _, popup in ipairs({
+    self.parameters_panel,
+    self.instructions_input,
+    self.system_role_panel,
+    self.template_panel,
+    self.selection_panel,
+    self.output_panel,
+  }) do
     for _, mode in ipairs({ "n", "i" }) do
       popup:map(mode, Config.options.edit.keymaps.toggle_parameters, function()
         if parameters_open then
           self.layout:update(Layout.Box({
             Layout.Box({
-              Layout.Box(self.input_panel, { grow = 1 }),
+              Layout.Box(self.selection_panel, { grow = 1 }),
               Layout.Box(self.instructions_input, { size = 3 }),
             }, { dir = "col", size = "50%" }),
             Layout.Box(self.output_panel, { size = "50%" }),
@@ -235,14 +287,22 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
         else
           self.layout:update(Layout.Box({
             Layout.Box({
-              Layout.Box(self.input_panel, { grow = 1 }),
+              Layout.Box(self.selection_panel, { grow = 1 }),
               Layout.Box(self.instructions_input, { size = 3 }),
             }, { dir = "col", grow = 1 }),
             Layout.Box(self.output_panel, { grow = 1 }),
-            Layout.Box(self.parameters_panel, { size = 40 }),
+            Layout.Box({
+              Layout.Box(self.parameters_panel, { grow = 1 }),
+              Layout.Box(self.system_role_panel, { size = 10 }),
+              Layout.Box(self.template_panel, { size = 8 }),
+            }, { dir = "col", grow = 1 }),
           }, { dir = "row" }))
           self.parameters_panel:show()
           self.parameters_panel:mount()
+          self.template_panel:show()
+          self.template_panel:mount()
+          self.system_role_panel:show()
+          self.system_role_panel:mount()
 
           vim.api.nvim_set_current_win(self.parameters_panel.winid)
           vim.api.nvim_buf_set_option(self.parameters_panel.bufnr, "modifiable", false)
@@ -251,7 +311,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
         parameters_open = not parameters_open
         -- set input and output settings
         --  TODO
-        for _, window in ipairs({ self.input_panel, self.output_panel }) do
+        for _, window in ipairs({ self.selection_panel, self.output_panel }) do
           vim.api.nvim_buf_set_option(window.bufnr, "syntax", self.filetype)
           vim.api.nvim_win_set_option(window.winid, "number", true)
         end
@@ -261,17 +321,24 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
 
   -- cycle windows
   local active_panel = self.instructions_input
-  for _, popup in ipairs({ self.input_panel, self.output_panel, self.parameters_panel, self.instructions_input }) do
+  for _, popup in ipairs({
+    self.selection_panel,
+    self.output_panel,
+    self.parameters_panel,
+    self.instructions_input,
+    self.system_role_panel,
+    self.template_panel,
+  }) do
     for _, mode in ipairs({ "n", "i" }) do
-      if mode == "i" and (popup == self.input_panel or popup == self.output_panel) then
+      if mode == "i" and (popup == self.selection_panel or popup == self.output_panel) then
         goto continue
       end
       popup:map(mode, Config.options.edit.keymaps.cycle_windows, function()
         if active_panel == self.instructions_input then
-          vim.api.nvim_set_current_win(self.input_panel.winid)
-          active_panel = self.input_panel
+          vim.api.nvim_set_current_win(self.selection_panel.winid)
+          active_panel = self.selection_panel
           vim.api.nvim_command("stopinsert")
-        elseif active_panel == self.input_panel and mode ~= "i" then
+        elseif active_panel == self.selection_panel and mode ~= "i" then
           vim.api.nvim_set_current_win(self.output_panel.winid)
           active_panel = self.output_panel
           vim.api.nvim_command("stopinsert")
@@ -284,6 +351,12 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
             active_panel = self.instructions_input
           end
         elseif active_panel == self.parameters_panel then
+          vim.api.nvim_set_current_win(self.system_role_panel.winid)
+          active_panel = self.system_role_panel
+        elseif active_panel == self.system_role_panel then
+          vim.api.nvim_set_current_win(self.template_panel.winid)
+          active_panel = self.template_panel
+        elseif active_panel == self.template_panel then
           vim.api.nvim_set_current_win(self.instructions_input.winid)
           active_panel = self.instructions_input
         end
@@ -294,11 +367,18 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
 
   -- toggle diff mode
   local diff_mode = Config.options.edit.diff
-  for _, popup in ipairs({ self.parameters_panel, self.instructions_input, self.output_panel, self.input_panel }) do
+  for _, popup in ipairs({
+    self.parameters_panel,
+    self.instructions_input,
+    self.system_role_panel,
+    self.template_panel,
+    self.output_panel,
+    self.selection_panel,
+  }) do
     for _, mode in ipairs({ "n", "i" }) do
       popup:map(mode, Config.options.edit.keymaps.toggle_diff, function()
         diff_mode = not diff_mode
-        for _, winid in ipairs({ self.input_panel.winid, self.output_panel.winid }) do
+        for _, winid in ipairs({ self.selection_panel.winid, self.output_panel.winid }) do
           vim.api.nvim_set_current_win(winid)
           if diff_mode then
             vim.api.nvim_command("diffthis")
@@ -312,7 +392,14 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   end
 
   -- set events
-  for _, popup in ipairs({ self.parameters_panel, self.instructions_input, self.output_panel, self.input_panel }) do
+  for _, popup in ipairs({
+    self.parameters_panel,
+    self.instructions_input,
+    self.system_role_panel,
+    self.template_panel,
+    self.output_panel,
+    self.selection_panel,
+  }) do
     popup:on({ "BufUnload" }, function()
       self:set_loading(false)
     end)
@@ -321,7 +408,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   self.layout:mount()
   -- set input
   if visual_lines then
-    vim.api.nvim_buf_set_lines(self.input_panel.bufnr, 0, -1, false, visual_lines)
+    vim.api.nvim_buf_set_lines(self.selection_panel.bufnr, 0, -1, false, visual_lines)
   end
 
   -- set output
@@ -330,7 +417,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   end
 
   -- set input and output settings
-  for _, window in ipairs({ self.input_panel, self.output_panel }) do
+  for _, window in ipairs({ self.selection_panel, self.output_panel }) do
     vim.api.nvim_buf_set_option(window.bufnr, "syntax", "markdown")
     vim.api.nvim_win_set_option(window.winid, "number", true)
   end
@@ -344,12 +431,12 @@ function EditAction:build_edit_messages(input, instructions, opts)
   else
     _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
   end
-  local variables = vim.tbl_extend("force", {}, {
+  local variables = vim.tbl_extend("force", opts.variables, {
     instruction = instructions,
     input = _input,
     filetype = opts.filetype,
-  }, opts.variables)
-  local system_msg = opts.params.system or ""
+  })
+  local system_msg = self.system
   local messages = {
     {
       role = "system",

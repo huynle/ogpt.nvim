@@ -257,6 +257,7 @@ end
 function M.add_partial_completion(opts, text, state)
   local panel = opts.panel
   local progress = opts.progress
+  local on_complete = opts.on_complete
 
   if state == "ERROR" then
     if progress then
@@ -268,7 +269,11 @@ function M.add_partial_completion(opts, text, state)
   end
 
   local start_line = 0
-  if state == "END" and text ~= "" then
+
+  if state == "END" and text == "" then
+  --   -- most likely, ended by the using raising the stop flag
+  --   self:stopSpinner()
+  elseif state == "END" and text ~= "" then
     if not opts.on_complete then
       return
     end
@@ -413,6 +418,18 @@ function M.shallow_copy(t)
     t2[k] = v
   end
   return t2
+end
+
+function M.gather_text_from_parts(parts)
+  if type(parts) == "string" then
+    return parts
+  else
+    local _text = {}
+    for _, part in ipairs(parts) do
+      table.insert(_text, part.text)
+    end
+    return table.concat(_text, " ")
+  end
 end
 
 return M

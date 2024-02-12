@@ -10,7 +10,7 @@ local utils = require("ogpt.utils")
 local Signs = require("ogpt.signs")
 local Spinner = require("ogpt.spinner")
 local Session = require("ogpt.flows.chat.session")
-local SystemWindow = require("ogpt.flows.chat.system_window")
+local UtilWindow = require("ogpt.util_window")
 
 QUESTION, ANSWER, SYSTEM = 1, 2, 3
 ROLE_ASSISTANT = "assistant"
@@ -25,6 +25,8 @@ function Chat:init(opts)
 
   self.active_panel = nil
   self.selected_message_nsid = vim.api.nvim_create_namespace("OGPTNSSM")
+
+  self.is_running = false
 
   -- quit indicator
   self.active = true
@@ -51,8 +53,7 @@ function Chat:init(opts)
   self.params = Config.get_chat_params(opts.provider)
 
   self.session = Session.latest()
-
-  self.provider = Config.get_provider(self.session.parameters.provider, self)
+  self.provider = nil
   self.selectedIndex = 0
   self.role = ROLE_USER
   self.messages = {}
@@ -70,6 +71,7 @@ function Chat:welcome()
   self:set_lines(0, -1, false, {})
   self:set_cursor({ 1, 0 })
   self:set_system_message(nil, true)
+  self.provider = Config.get_provider(self.session.parameters.provider, self)
 
   local conversation = self.session.conversation or {}
   if #conversation > 0 then
@@ -138,24 +140,29 @@ function Chat:new_session()
   self.system_message = nil
   self.system_role_panel:set_text({})
   self:welcome()
+  self.parameters_panel:reload_session_params(self.session)
 end
 
 function Chat:set_session(session)
-  vim.api.nvim_buf_clear_namespace(self.chat_window.bufnr, Config.namespace_id, 0, -1)
+  self.session = session or self.session
 
-  self.session = session
+  if vim.fn.bufexists(self.chat_window.bufnr) then
+    vim.api.nvim_buf_clear_namespace(self.chat_window.bufnr, Config.namespace_id, 0, -1)
+  end
 
   self.messages = {}
   self.selectedIndex = 0
   self:set_lines(0, -1, false, {})
   self:set_cursor({ 1, 0 })
   self:welcome()
-  self:configure_parameters_panel(session)
+  self:configure_parameters_panel(self.session)
+  self.parameters_panel:reload_session_params(self.session)
   self:set_keymaps()
 end
 
 function Chat:isBusy()
-  return self.spinner:is_running()
+  -- return self.spinner:is_running()
+  return self.is_running
 end
 
 function Chat:add(type, text, usage)
@@ -214,10 +221,12 @@ function Chat:addAnswer(text, usage)
   self:add(ANSWER, text, usage)
 end
 
-function Chat:addAnswerPartial(text, state, ctx)
+function Chat:addAnswerPartial(response, state)
+  local text = response.current_text
+  local ctx = response.ctx
   if state == "ERROR" then
     self:stopSpinner()
-    return self:addAnswer(text, {})
+    -- return self:addAnswer(text, {})
   end
 
   local start_line = 0
@@ -226,7 +235,11 @@ function Chat:addAnswerPartial(text, state, ctx)
     start_line = prev.end_line + (prev.type == ANSWER and 2 or 1)
   end
 
-  if state == "END" and text ~= "" then
+  if state == "END" and text == "" then
+  --   -- most likely, ended by the using raising the stop flag
+  --   self:stopSpinner()
+  elseif state == "END" and text ~= "" then
+    self:stopSpinner()
     local usage = {}
     local idx = self.session:add_item({
       type = ANSWER,
@@ -248,12 +261,12 @@ function Chat:addAnswerPartial(text, state, ctx)
       idx = idx,
       usage = usage or {},
       type = ANSWER,
-      text = text,
+      text = response:get_total_processed_text(),
       lines = lines,
       nr_of_lines = nr_of_lines,
       start_line = start_line,
       end_line = end_line,
-      context = ctx.context,
+      context = response:get_context(),
     })
     self.selectedIndex = self.selectedIndex + 1
     vim.api.nvim_buf_set_lines(self.chat_window.bufnr, -1, -1, false, { "", "" })
@@ -261,12 +274,14 @@ function Chat:addAnswerPartial(text, state, ctx)
   end
 
   if state == "START" then
+    self.is_running = true
     self:stopSpinner()
     self:set_lines(-2, -1, false, { "" })
     vim.api.nvim_buf_set_option(self.chat_window.bufnr, "modifiable", true)
   end
 
   if state == "START" or state == "CONTINUE" then
+    self.is_running = true
     vim.api.nvim_buf_set_option(self.chat_window.bufnr, "modifiable", true)
     local lines = vim.split(text, "\n", {})
     local length = #lines
@@ -287,6 +302,9 @@ function Chat:addAnswerPartial(text, state, ctx)
       end
     end
   end
+  -- assume after each partial answer, the API stopped streaming
+  -- gemini has no stop flag in its response
+  self.is_running = false
 end
 
 function Chat:get_total_tokens()
@@ -467,10 +485,12 @@ function Chat:renderLastMessage()
 end
 
 function Chat:showProgess()
+  self.is_running = true
   self.spinner:start()
 end
 
 function Chat:stopSpinner()
+  -- just for the spinner, stop it, so we can add the response
   self.spinner:stop()
   self:display_input_suffix()
 end
@@ -496,7 +516,15 @@ function Chat:toMessages()
     elseif msg.type == ANSWER then
       role = "assistant"
     end
-    table.insert(messages, { role = role, content = msg.text })
+    table.insert(
+      messages,
+      { role = role, content = {
+        {
+          text = msg.text,
+          token = nil,
+        },
+      } }
+    )
   end
   -- return messages[#messages].content
   return messages
@@ -685,6 +713,11 @@ function Chat:get_layout_params()
   return config, box
 end
 
+--   self:stopSpinner()
+-- function Chat:stop_output()
+--   self.stop_flag = true
+-- end
+
 function Chat:open()
   self.session.parameters = vim.tbl_extend("keep", self.session.parameters, self.params)
   self.parameters_panel = Parameters({
@@ -694,6 +727,7 @@ function Chat:open()
     parent = self,
     edgy = Config.options.chat.edgy,
   })
+
   self.sessions_panel = Sessions({
     edgy = Config.options.chat.edgy,
     set_session_cb = function(session)
@@ -701,20 +735,15 @@ function Chat:open()
     end,
   })
   self.chat_window = Popup(Config.options.output_window, Config.options.chat.edgy)
-  self.system_role_panel = SystemWindow({
+  self.system_role_panel = UtilWindow({
+    filetype = "ogpt-system-window",
+    display = "System",
+    virtual_text = "Define your LLM system message here...",
     on_change = function(text)
       self:set_system_message(text)
     end,
   }, Config.options.chat.edgy)
-  self.stop = false
-  self.should_stop = function()
-    if self.stop then
-      self.stop = false
-      return true
-    else
-      return false
-    end
-  end
+
   self.chat_input = ChatInput(Config.options.input_window, {
     edgy = Config.options.chat.edgy,
     prompt = Config.options.input_window.prompt,
@@ -728,13 +757,13 @@ function Chat:open()
       end
     end),
     on_submit = function(value)
-      -- clear input
-      vim.api.nvim_buf_set_lines(self.chat_input.bufnr, 0, -1, false, { "" })
-
       if self:isBusy() then
         vim.notify("I'm busy, please wait a moment...", vim.log.levels.WARN)
         return
       end
+
+      -- clear input
+      vim.api.nvim_buf_set_lines(self.chat_input.bufnr, 0, -1, false, { "" })
 
       self:addQuestion(value)
 
@@ -749,7 +778,17 @@ function Chat:open()
         }, self.parameters_panel.params)
         self.provider.api:chat_completions(params, function(answer, state, ctx)
           self:addAnswerPartial(answer, state, ctx)
-        end, self.should_stop, {})
+        end, function()
+          -- check the stop flag if it should stop
+          -- return not self.is_running
+          return self.stop_flag
+        end, {
+          -- on_stop = function()
+          --   self:stopSpinner()
+          --   -- reset the stop flag
+          --   self.is_running = false
+          -- end,
+        })
       end
     end,
   })
@@ -761,6 +800,8 @@ function Chat:open()
   -- initialize
   self.layout:mount()
   self:welcome()
+
+  self.parameters_panel:reload_session_params()
   self:set_events()
 end
 
@@ -822,7 +863,8 @@ function Chat:set_keymaps()
 
   -- stop generating
   self:map(Config.options.chat.keymaps.stop_generating, function()
-    self.stop = true
+    self.stop_flag = true
+    -- self.is_running = false
   end, { self.chat_input })
 
   -- close
@@ -855,6 +897,8 @@ function Chat:set_keymaps()
 
   -- new session
   self:map(Config.options.chat.keymaps.new_session, function()
+    -- self.stop_flag = true
+    self.is_running = false
     self:new_session()
     self.sessions_panel:refresh()
   end, { self.parameters_panel, self.chat_input, self.chat_window })

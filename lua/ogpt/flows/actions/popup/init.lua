@@ -16,7 +16,8 @@ function PopupAction:init(name, opts)
   self.name = name or ""
   PopupAction.super.init(self, opts)
   self.provider = Config.get_provider(opts.provider, self)
-  self.params = Config.get_action_params(self.provider.name, opts.params or {})
+  -- self.params = Config.get_action_params(self.provider, opts.params or {})
+  self.params = self.provider:get_action_params(opts.params)
   self.system = type(opts.system) == "function" and opts.system() or opts.system or ""
   self.template = type(opts.template) == "function" and opts.template() or opts.template or "{{input}}"
   self.variables = opts.variables or {}
@@ -74,7 +75,11 @@ function PopupAction:run()
           self:run_spinner(flag)
         end,
         on_complete = function(total_text)
-          print("completed: " .. total_text)
+          -- utils.log("request completed - processed text is:\n" .. total_text, vim.log.levels.DEBUG)
+          if vim.fn.bufexists(self.popup.bufnr) then
+            vim.api.nvim_buf_set_option(self.popup.bufnr, "modifiable", true)
+            vim.api.nvim_buf_set_lines(self.popup.bufnr, -2, -1, false, vim.split(total_text, "\n", {}))
+          end
         end,
       }),
       function()
@@ -98,46 +103,44 @@ function PopupAction:run()
 end
 
 function PopupAction:on_result(answer, usage)
-  vim.schedule(function()
-    self:set_loading(false)
-    local lines = utils.split_string_by_line(answer)
-    local _, start_row, start_col, end_row, end_col = self:get_visual_selection()
-    local bufnr = self:get_bufnr()
-    if self.strategy == STRATEGY_PREPEND then
-      answer = answer .. "\n" .. self:get_selected_text()
-      vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
-    elseif self.strategy == STRATEGY_APPEND then
-      answer = self:get_selected_text() .. "\n\n" .. answer .. "\n"
-      vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
-    elseif self.strategy == STRATEGY_REPLACE then
-      answer = answer
-      vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
-    elseif self.strategy == STRATEGY_QUICK_FIX then
-      if #lines == 1 and lines[1] == "<OK>" then
-        vim.notify("Your Code looks fine, no issues.", vim.log.levels.INFO)
-        return
-      end
-
-      local entries = {}
-      for _, line in ipairs(lines) do
-        local lnum, text = line:match("(%d+):(.*)")
-        if lnum then
-          local entry = { filename = vim.fn.expand("%:p"), lnum = tonumber(lnum), text = text }
-          table.insert(entries, entry)
-        end
-      end
-      if entries then
-        vim.fn.setqflist(entries)
-        vim.cmd(Config.options.show_quickfixes_cmd)
-      end
+  self:set_loading(false)
+  local lines = utils.split_string_by_line(answer)
+  local _, start_row, start_col, end_row, end_col = self:get_visual_selection()
+  local bufnr = self:get_bufnr()
+  if self.strategy == STRATEGY_PREPEND then
+    answer = answer .. "\n" .. self:get_selected_text()
+    vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
+  elseif self.strategy == STRATEGY_APPEND then
+    answer = self:get_selected_text() .. "\n\n" .. answer .. "\n"
+    vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
+  elseif self.strategy == STRATEGY_REPLACE then
+    answer = answer
+    vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
+  elseif self.strategy == STRATEGY_QUICK_FIX then
+    if #lines == 1 and lines[1] == "<OK>" then
+      vim.notify("Your Code looks fine, no issues.", vim.log.levels.INFO)
+      return
     end
 
-    -- set the cursor onto the answer
-    if self.strategy == STRATEGY_APPEND then
-      local target_line = end_row + 3
-      vim.api.nvim_win_set_cursor(0, { target_line, 0 })
+    local entries = {}
+    for _, line in ipairs(lines) do
+      local lnum, text = line:match("(%d+):(.*)")
+      if lnum then
+        local entry = { filename = vim.fn.expand("%:p"), lnum = tonumber(lnum), text = text }
+        table.insert(entries, entry)
+      end
     end
-  end)
+    if entries then
+      vim.fn.setqflist(entries)
+      vim.cmd(Config.options.show_quickfixes_cmd)
+    end
+  end
+
+  -- set the cursor onto the answer
+  if self.strategy == STRATEGY_APPEND then
+    local target_line = end_row + 3
+    vim.api.nvim_win_set_cursor(0, { target_line, 0 })
+  end
 end
 
 return PopupAction
