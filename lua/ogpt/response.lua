@@ -51,7 +51,7 @@ function Response:add_chunk(chunk)
   end
 end
 
-function Response:get_chunk()
+function Response:pop_chunk()
   if self.strategy == self.STRATEGY_LINE_BY_LINE then
     return table.remove(self.accumulated_chunks, 1)
   elseif self.strategy == self.STRATEGY_CHUNK then

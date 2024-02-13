@@ -178,15 +178,9 @@ function Provider:conform_messages(params)
 end
 
 function Provider:process_raw(response)
-  self:_process_raw_by_line(response)
-end
-
-function Provider:_process_raw_by_line(response)
   local cb = response.partial_result_cb
-  -- local lines = response.accumulated_chunks
-  local line = response:get_chunk()
+  local line = response:pop_chunk()
   response.accumulated_chunks = {}
-  -- for ith, line in ipairs(lines) do
   line = response.not_processed .. line
   local ok, json = pcall(vim.json.decode, line)
 
@@ -217,36 +211,7 @@ function Provider:_process_raw_by_line(response)
   else
     response.not_processed = line
   end
-  -- end
 end
-
--- function Provider:process_raw_by_chunk(response)
---   -- local chunk = response.current_raw_chunk
---   local cb = response.partial_result_cb
---   -- local lines = vim.split(chunk, "\n")
---
---   -- for line in chunk:gmatch("[\n]+") do
---   -- for _, line in ipairs(lines) do
---   local ok, json = pcall(vim.json.decode, response.current_raw_chunk)
---
---   if not ok then
---     utils.log("Cannot process ollama response: \n" .. vim.inspect(response.current_raw_chunk))
---     json = {}
---   end
---
---   if json.error then
---     local error_msg = {
---       "OGPT ERROR:",
---       "Something went wrong.",
---       self.provider.name,
---       ":",
---       vim.inspect(json.error) or "",
---     }
---     table.insert(error_msg, vim.inspect(response.rest_params))
---     response.error = table.concat(error_msg, "")
---     response:set_state("ERROR")
---   end
--- end
 
 function Provider:_process_line(json, response)
   local cb = response.partial_result_cb

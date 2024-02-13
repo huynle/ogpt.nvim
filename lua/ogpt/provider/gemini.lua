@@ -104,14 +104,6 @@ function Gemini:conform_messages(params)
     })
   end
 
-  -- -- https://ai.google.dev/tutorials/rest_quickstart#text-only_input
-  -- if params.system then
-  --   table.insert(params.messages, 1, {
-  --     role = "system",
-  --     content = params.system,
-  --   })
-  -- end
-
   params.messages = nil
   params.contents = _contents
   return params
@@ -119,7 +111,7 @@ end
 
 function Gemini:process_raw(response)
   local valid_accumulation = false
-  local chunk = response:get_chunk()
+  local chunk = response:pop_chunk()
   local cb = response.partial_result_cb
 
   local ok, json = pcall(vim.json.decode, chunk)

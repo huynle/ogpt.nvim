@@ -112,13 +112,15 @@ end
 function Textgenui:process_raw(response)
   local cb = response.partial_result_cb
   local ctx = response.ctx
+  local chunk = response:pop_chunk()
 
-  local raw_json = string.gsub(response:get_chunk(), "^data:", "")
+  local raw_json = string.gsub(chunk, "^data:", "")
 
   local ok, _json = pcall(vim.json.decode, raw_json)
 
   if not ok then
     utils.log("Something went wrong with parsing Textgetui json: " .. vim.inspect(response.current_raw_chunk))
+    response.not_processed = chunk
     _json = {}
   end
   _json = _json or {}
