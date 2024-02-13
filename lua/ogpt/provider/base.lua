@@ -68,8 +68,8 @@ end
 function Provider:load_envs(override)
   local _envs = {}
   _envs.OLLAMA_API_HOST = Config.options.providers.ollama.api_host
-    or os.getenv("OLLAMA_API_HOST")
-    or "http://localhost:11434"
+      or os.getenv("OLLAMA_API_HOST")
+      or "http://localhost:11434"
   _envs.OLLAMA_API_KEY = Config.options.providers.ollama.api_key or os.getenv("OLLAMA_API_KEY") or ""
   _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.OLLAMA_API_HOST .. "/api/tags")
   _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OLLAMA_API_HOST .. "/api/generate")
@@ -181,15 +181,11 @@ function Provider:process_raw(response)
   local cb = response.partial_result_cb
   local line = response:pop_chunk()
   response.accumulated_chunks = {}
-  line = response.not_processed .. line
   local ok, json = pcall(vim.json.decode, line)
 
   if not ok then
     utils.log("Cannot process ollama response: \n" .. vim.inspect(line))
     json = {}
-    response.not_processed = line -- prepend it to the next raw line for processing
-  else
-    response.not_processed = ""
   end
 
   if json.error then
@@ -201,15 +197,16 @@ function Provider:process_raw(response)
       vim.inspect(json.error) or "",
     }
     table.insert(error_msg, vim.inspect(response.rest_params))
-    response.error = table.concat(error_msg, "")
-    response:set_state("ERROR")
+    -- response.error = table.concat(error_msg, "")
+    response:add_processed_text(table.concat(error_msg, ""), "ERROR")
+    -- response:set_state("ERROR")
     cb(response)
   end
 
   if ok then
     self:_process_line(json, response)
   else
-    response.not_processed = line
+    response:could_not_process(line)
   end
 end
 
@@ -222,16 +219,12 @@ function Provider:_process_line(json, response)
     -- pass
   elseif json.done then
     if json.message then
-      -- for stream=false case
-      response:add_processed_text(json.message.content)
-      response:set_state("CONTINUE")
+      response:add_processed_text(json.message.content, "CONTINUE")
     else
-      -- response.ctx = json.context
-      response:set_state("END")
+      response:add_processed_text("", "END")
     end
   elseif json.message then
-    response:add_processed_text(json.message.content)
-    response:set_state("CONTINUE")
+    response:add_processed_text(json.message.content, "CONTINUE")
   else
     utils.log("unexpected case in ollama", vim.log.levels.ERROR)
   end
@@ -243,9 +236,9 @@ function Provider:get_action_params(opts)
   return vim.tbl_extend(
     "force",
     { model = self.model }, -- add in model from provider default
-    self.api_params, -- override with provider api_params
+    self.api_params,        -- override with provider api_params
     opts or {}
-  ) -- override with final options
+  )                         -- override with final options
 end
 
 function Provider:expand_model(params, ctx)
@@ -294,7 +287,7 @@ function Provider:expand_model(params, ctx)
   -- final force override from the params that are set in the mode itself.
   -- This will enforce specific model params, e.g. max_token, etc
   local final_overrided_applied_params =
-    vim.tbl_extend("force", params, vim.tbl_get(_full_unfiltered_params, "model", "params") or {})
+      vim.tbl_extend("force", params, vim.tbl_get(_full_unfiltered_params, "model", "params") or {})
 
   params = self:conform_to_provider_request(final_overrided_applied_params)
 

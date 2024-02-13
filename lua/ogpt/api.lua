@@ -31,10 +31,11 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
   -- local raw_chunks = ""
   -- local state = "START"
   partial_result_fn = vim.schedule_wrap(partial_result_fn)
-  local response = Response(self.provider.rest_strategy)
+  local response = Response(self.provider)
   response.ctx = ctx
   response.rest_params = params
   response.partial_result_cb = partial_result_fn
+  response:run_async()
 
   if stream then
     -- local accumulate = {}
@@ -55,7 +56,8 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
       curl_args,
       function(chunk)
         response:add_chunk(chunk)
-        self.provider:process_raw(response)
+        -- response.raw_tx.send(chunk)
+        -- self.provider:process_raw(response)
       end,
       function(_text, _state, _ctx)
         -- partial_result_fn(_text, _state, _ctx)

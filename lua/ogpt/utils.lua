@@ -240,7 +240,7 @@ function M.partial(func, ...)
   return function(...)
     local args = { unpack(capturedArgs) } -- Captured arguments
     for _, v in ipairs({ ... }) do
-      table.insert(args, v) -- Appending new arguments
+      table.insert(args, v)               -- Appending new arguments
     end
     return func(unpack(args))
   end
@@ -257,14 +257,17 @@ end
 function M.add_partial_completion(opts, response)
   local panel = opts.panel
   local progress = opts.progress
-  local state = response.state
+  -- local state = response.state
+  local content = response:pop_content()
+  local text = content[1]
+  local state = content[2]
   -- local text = response.current_text
 
   if state == "ERROR" then
     if progress then
       progress(false)
     end
-    M.log("An Error Occurred", vim.log.levels.ERROR)
+    M.log("An Error Occurred: " .. text, vim.log.levels.ERROR)
     panel:unmount()
     return
   end
@@ -290,7 +293,6 @@ function M.add_partial_completion(opts, response)
       return
     end
     vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
-    -- text = M.trim(text)
   end
 
   if state == "START" or state == "CONTINUE" then
@@ -298,7 +300,7 @@ function M.add_partial_completion(opts, response)
       return
     end
     vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
-    local lines = vim.split(response.current_text, "\n", {})
+    local lines = vim.split(text, "\n", {})
     local length = #lines
     local buffer = panel.bufnr
 
@@ -324,9 +326,9 @@ function M.process_string(inputString)
     for word in inputString:gmatch("[^,]+") do
       table.insert(resultTable, word) -- Insert each part into the resultTable
     end
-    return resultTable -- Return the resulting table
+    return resultTable                -- Return the resulting table
   else
-    return inputString -- If no commas found, return the inputString as it is
+    return inputString                -- If no commas found, return the inputString as it is
   end
 end
 

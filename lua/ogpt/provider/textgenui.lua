@@ -37,8 +37,8 @@ end
 function Textgenui:load_envs(override)
   local _envs = {}
   _envs.TEXTGEN_API_HOST = Config.options.providers.textgenui.api_host
-    or os.getenv("TEXTGEN_API_HOST")
-    or "https://api.textgen.com"
+      or os.getenv("TEXTGEN_API_HOST")
+      or "https://api.textgen.com"
   _envs.TEXTGEN_API_KEY = Config.options.providers.textgenui.api_key or os.getenv("TEXTGEN_API_KEY") or ""
   _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.TEXTGEN_API_HOST .. "/api/tags")
   _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.TEXTGEN_API_HOST)
@@ -120,7 +120,7 @@ function Textgenui:process_raw(response)
 
   if not ok then
     utils.log("Something went wrong with parsing Textgetui json: " .. vim.inspect(response.current_raw_chunk))
-    response.not_processed = chunk
+    response:could_not_process(chunk)
     _json = {}
   end
   _json = _json or {}
@@ -134,7 +134,7 @@ function Textgenui:process_raw(response)
     }
     table.insert(error_msg, vim.inspect(response.rest_params))
     response.error = error_msg
-    response:set_state("ERROR")
+    response:add_processed_text(error_msg, "ERROR")
     cb(response)
     return
   end
@@ -144,19 +144,18 @@ function Textgenui:process_raw(response)
   end
 
   if _json.token.text and string.find(_json.token.text, "</s>") then
-    response:set_state("END")
+    response:add_processed_text("", "END")
   elseif
-    _json.token.text
-    and vim.tbl_get(ctx, "tokens", "end_of_result")
-    and string.find(_json.token.text, vim.tbl_get(ctx, "tokens", "end_of_result"))
+      _json.token.text
+      and vim.tbl_get(ctx, "tokens", "end_of_result")
+      and string.find(_json.token.text, vim.tbl_get(ctx, "tokens", "end_of_result"))
   then
     ctx.context = _json.context
-    response:set_state("END")
+    response:add_processed_text("", "END")
   elseif _json.token.generated_text then
-    response:set_state("END")
+    response:add_processed_text("", "END")
   else
-    response:add_processed_text(_json.token.text)
-    response:set_state("CONTINUE")
+    response:add_processed_text(_json.token.text, "CONTINUE")
   end
   cb(response)
 end

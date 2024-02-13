@@ -1,38 +1,26 @@
 local Object = require("ogpt.common.object")
 local utils = require("ogpt.utils")
+local async = require("plenary.async.async")
+local channel = require("plenary.async.control").channel
 
 local Response = Object("Response")
 
 Response.STRATEGY_LINE_BY_LINE = "line"
 Response.STRATEGY_CHUNK = "chunk"
 
-function Response:init(strategy)
+function Response:init(provider)
   self.accumulated_chunks = {}
-  self.accumulated_chunks_by_lines = {}
-  self.current_raw_chunk = ""
-  self.current_raw_chunk_new_line = ""
   self.processed_text = {}
-  self.current_text = ""
-  self.state = "START"
   self.rest_params = {}
   self.ctx = {}
   self.partial_result_cb = nil
-  self.error = nil
   self.in_progress = false
-  self.strategy = strategy
+  self.strategy = provider.rest_strategy
+  self.provider = provider
   self.not_processed = ""
-end
-
-function Response:add_raw_chunk(chunk)
-  table.insert(self.accumulated_chunks, chunk)
-  self.current_raw_chunk = chunk
-  utils.log("adding raw chunk: " .. chunk)
-end
-
-function Response:add_raw_chunk_by_line(chunk)
-  table.insert(self.accumulated_chunks_by_lines, chunk)
-  self.current_raw_chunk_new_line = chunk
-  utils.log("adding raw chunk by line: " .. chunk)
+  self.raw_chunk_tx, self.raw_chunk_rx = channel.mpsc()
+  self.processed_raw_tx, self.processsed_raw_rx = channel.mpsc()
+  self.processed_content_tx, self.processsed_content_rx = channel.mpsc()
 end
 
 function Response:set_processed_text(text)
@@ -40,40 +28,66 @@ function Response:set_processed_text(text)
 end
 
 function Response:add_chunk(chunk)
+  self.raw_chunk_tx.send(chunk)
+end
+
+function Response:could_not_process(chunk)
+  self.not_processed = chunk
+end
+
+function Response:run_async()
+  async.run(function()
+    while true do
+      self:_process_added_chunk(self.raw_chunk_rx.recv())
+    end
+  end)
+
+  async.run(function()
+    while true do
+      self.provider:process_raw(self)
+    end
+  end)
+end
+
+function Response:_process_added_chunk(chunk)
   if self.strategy == self.STRATEGY_LINE_BY_LINE then
     for line in chunk:gmatch("[^\n]+") do
-      table.insert(self.accumulated_chunks, line)
-      self.current_raw_chunk = line
+      self.processed_raw_tx.send(line)
     end
   elseif self.strategy == self.STRATEGY_CHUNK then
-    table.insert(self.accumulated_chunks, chunk)
-    self.current_raw_chunk = self.current_raw_chunk .. chunk
+    utils.log("Adding raw chunk: " .. chunk)
+    self.processed_raw_tx.send(chunk)
+  else
+    utils.log("did not add chunk: " .. chunk)
   end
 end
 
-function Response:pop_chunk()
-  if self.strategy == self.STRATEGY_LINE_BY_LINE then
-    return table.remove(self.accumulated_chunks, 1)
-  elseif self.strategy == self.STRATEGY_CHUNK then
-    -- return self.accumulated_chunks[#self.accumulated_chunks]
-    local _value = self.not_processed .. self.current_raw_chunk
-    self.current_raw_chunk = ""
-    return _value
+function Response:pop_content()
+  local content = self.processsed_content_rx.recv()
+  if content[2] == "END" then
+    content[1] = self:get_processed_text()
   end
+  return content
+end
+
+function Response:pop_chunk()
+  local _value = self.not_processed
+  self.not_processed = ""
+  return _value .. self.processsed_raw_rx.recv()
 end
 
 function Response:get_accumulated_chunks()
   return table.concat(self.accumulated_chunks, "")
 end
 
-function Response:add_processed_text(text)
+function Response:add_processed_text(text, state)
   text = text or ""
   if vim.tbl_isempty(self.processed_text) then
     -- remove the first space found in most llm responses
     text = string.gsub(text, "^ ", "")
   end
   table.insert(self.processed_text, text)
-  self.current_text = text
+  self.processed_content_tx.send({ text, state })
 end
 
 function Response:get_processed_text()

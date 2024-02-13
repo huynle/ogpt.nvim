@@ -24,8 +24,8 @@ end
 function Openai:load_envs(override)
   local _envs = {}
   _envs.OPENAI_API_HOST = Config.options.providers.openai.api_host
-    or os.getenv("OPENAI_API_HOST")
-    or "https://api.openai.com"
+      or os.getenv("OPENAI_API_HOST")
+      or "https://api.openai.com"
   _envs.OPENAI_API_KEY = Config.options.providers.openai.api_key or os.getenv("OPENAI_API_KEY") or ""
   _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.OPENAI_API_HOST .. "/v1/models")
   _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OPENAI_API_HOST .. "/v1/completions")
@@ -57,7 +57,7 @@ function Openai:conform_request(params)
 end
 
 function Openai:process_raw(response)
-  local chunk = response.current_raw_chunk
+  local chunk = response:pop_chunk()
   -- local state = response.state
   -- local ctx = response.ctx
   -- local raw_chunks = response.processed_text
@@ -104,22 +104,18 @@ function Openai:process_line(content, response)
     local text_delta = vim.tbl_get(_json, "choices", 1, "delta", "content")
     local text = vim.tbl_get(_json, "choices", 1, "message", "content")
     if text_delta then
-      response:add_processed_text(text_delta)
-      cb(response, state)
-      response:set_state("CONTINUE")
+      response:add_processed_text(text_delta, "CONTINUE")
     elseif text then
-      response:add_processed_text(text_delta)
-      response:set_state("END")
-      cb(response)
+      response:add_processed_text(text, "END")
     end
   elseif not _json and string.find(_raw, "[DONE]") then
-    response:set_state("END")
-    cb(response, "END")
+    response:add_processed_text("", "END")
   else
-    utils.log("Something NOT hanndled openai: _json\n" .. vim.inspect(_json))
-    utils.log("Something NOT hanndled openai: _raw\n" .. vim.inspect(_raw))
+    response:could_not_process(_raw)
+    utils.log("Could not process chunk for openai: " .. _raw, vim.log.levels.DEBUG)
   end
 
+  cb(response)
   -- return ctx, total_text, state
 end
 

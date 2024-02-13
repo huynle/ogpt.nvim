@@ -24,8 +24,8 @@ function Gemini:load_envs(override)
   _envs.AUTH = "key=" .. (_envs.GEMINI_API_KEY or " ")
   _envs.MODEL = "gemini-pro"
   _envs.GEMINI_API_HOST = Config.options.providers.gemini.api_host
-    or os.getenv("GEMINI_API_HOST")
-    or "https://generativelanguage.googleapis.com/v1beta"
+      or os.getenv("GEMINI_API_HOST")
+      or "https://generativelanguage.googleapis.com/v1beta"
   _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.GEMINI_API_HOST .. "/models")
   self.envs = vim.tbl_extend("force", _envs, override or {})
   return self.envs
@@ -118,12 +118,21 @@ function Gemini:process_raw(response)
 
   if not ok then
     local _chunk = chunk
+    local has_changed = true
+    -- while has_changed do
+    -- local cleaned_front = string.gsub(_chunk, "^[%,\r\n%[%]", "")
+    -- local cleaned_back = string.gsub(cleaned_front, "[%]$", "")
+    -- if cleaned_back == chunk then
+    --   has_changed = false
+    -- end
+    -- end
+    -- _chunk = cleaned_back
     -- try to get partial answers from Gemini
-    _chunk = string.gsub(_chunk, "^%[", "")
-    _chunk = string.gsub(_chunk, "^%,", "")
-    _chunk = string.gsub(_chunk, "%]$", "")
-    _chunk = vim.trim(_chunk, "\n")
-    _chunk = vim.trim(_chunk, "\r")
+    -- _chunk = string.gsub(_chunk, "^%,", "")
+    -- _chunk = vim.trim(_chunk, "\r")
+    -- _chunk = vim.trim(_chunk, "\n")
+    -- _chunk = string.gsub(_chunk, "^%[", "")
+    -- _chunk = string.gsub(_chunk, "%]$", "")
     ok, json = pcall(vim.json.decode, _chunk)
   end
 
@@ -137,7 +146,7 @@ function Gemini:process_raw(response)
 
   if not ok then
     -- but it back if its not processed
-    response.not_processed = chunk
+    response:could_not_process(chunk)
     json = {}
   end
 
@@ -145,10 +154,12 @@ function Gemini:process_raw(response)
     utils.log("Something is going on, _json is a string, expecing a table..", vim.log.levels.ERROR)
   elseif vim.tbl_isempty(json) then
     if response.current_text == "]" then
+      response:set_processed_text("", "END")
       response:set_state("END")
     else
-      response:set_state("ERROR")
-      response.error = "Could not process the following raw chunk:\n" .. chunk
+      -- response:set_state("ERROR")
+      local err = "Could not process the following raw chunk:\n" .. chunk
+      response:set_processed_text(err, "ERROR")
     end
   elseif valid_accumulation then
     local total_text = {}
@@ -158,12 +169,12 @@ function Gemini:process_raw(response)
         table.insert(total_text, text)
       end
     end
-    response:set_processed_text(total_text)
+    response:set_processed_text(total_text, "END")
     response:set_state("END")
   else
     local text = vim.tbl_get(json, "candidates", 1, "content", "parts", 1, "text")
     if text then
-      response:add_processed_text(text)
+      response:add_processed_text(text, "CONTINUE")
       response:set_state("CONTINUE")
     else
       local total_text = {}
@@ -173,7 +184,7 @@ function Gemini:process_raw(response)
           table.insert(total_text, text)
         end
       end
-      response:set_processed_text(total_text)
+      response:set_processed_text(total_text, "END")
       response:set_state("END")
     end
   end
