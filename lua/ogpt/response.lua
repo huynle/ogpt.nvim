@@ -47,7 +47,7 @@ function Response:add_chunk(chunk)
     end
   elseif self.strategy == self.STRATEGY_CHUNK then
     table.insert(self.accumulated_chunks, chunk)
-    self.current_raw_chunk = chunk
+    self.current_raw_chunk = self.current_raw_chunk .. chunk
   end
 end
 
@@ -55,12 +55,19 @@ function Response:get_chunk()
   if self.strategy == self.STRATEGY_LINE_BY_LINE then
     return table.remove(self.accumulated_chunks, 1)
   elseif self.strategy == self.STRATEGY_CHUNK then
-    return self.accumulated_chunks
+    -- return self.accumulated_chunks[#self.accumulated_chunks]
+    local _value = self.not_processed .. self.current_raw_chunk
+    self.current_raw_chunk = ""
+    return _value
   end
 end
 
+function Response:get_accumulated_chunks()
+  return table.concat(self.accumulated_chunks, "")
+end
+
 function Response:add_processed_text(text)
-  text = text
+  text = text or ""
   if vim.tbl_isempty(self.processed_text) then
     -- remove the first space found in most llm responses
     text = string.gsub(text, "^ ", "")

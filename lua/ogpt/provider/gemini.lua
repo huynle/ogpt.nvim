@@ -118,33 +118,34 @@ function Gemini:conform_messages(params)
 end
 
 function Gemini:process_raw(response)
-  local is_accumulated = false
-  local chunk = response.current_raw_chunk
-  -- local state = response.state
-  -- local raw_chunks = response.content
-  -- local accumulate = response.accumulated_chunks
+  local valid_accumulation = false
+  local chunk = response:get_chunk()
   local cb = response.partial_result_cb
-  -- local ctx = response.ctx
 
   local ok, json = pcall(vim.json.decode, chunk)
 
   if not ok then
-    -- gemini is missing bracket on returns
-    chunk = string.gsub(chunk, "^%[", "")
-    chunk = string.gsub(chunk, "^%,", "")
-    chunk = string.gsub(chunk, "%]$", "")
-    chunk = vim.trim(chunk, "\n")
-    chunk = vim.trim(chunk, "\r")
-    ok, json = pcall(vim.json.decode, chunk)
+    local _chunk = chunk
+    -- try to get partial answers from Gemini
+    _chunk = string.gsub(_chunk, "^%[", "")
+    _chunk = string.gsub(_chunk, "^%,", "")
+    _chunk = string.gsub(_chunk, "%]$", "")
+    _chunk = vim.trim(_chunk, "\n")
+    _chunk = vim.trim(_chunk, "\r")
+    ok, json = pcall(vim.json.decode, _chunk)
   end
 
   if not ok then
     -- if not ok, try to keep process the accumulated stdout
-    ok, json = pcall(vim.json.decode, table.concat(response.accumulated_chunks, ""))
-    is_accumulated = true
+    ok, json = pcall(vim.json.decode, response:get_accumulated_chunks(), "")
+    if ok then
+      valid_accumulation = true
+    end
   end
 
   if not ok then
+    -- but it back if its not processed
+    response.not_processed = chunk
     json = {}
   end
 
@@ -157,9 +158,22 @@ function Gemini:process_raw(response)
       response:set_state("ERROR")
       response.error = "Could not process the following raw chunk:\n" .. chunk
     end
+  elseif valid_accumulation then
+    local total_text = {}
+    for _, part in ipairs(json) do
+      local text = vim.tbl_get(part, "candidates", 1, "content", "parts", 1, "text")
+      if text then
+        table.insert(total_text, text)
+      end
+    end
+    response:set_processed_text(total_text)
+    response:set_state("END")
   else
     local text = vim.tbl_get(json, "candidates", 1, "content", "parts", 1, "text")
-    if not text and is_accumulated then
+    if text then
+      response:add_processed_text(text)
+      response:set_state("CONTINUE")
+    else
       local total_text = {}
       for _, part in ipairs(json) do
         text = vim.tbl_get(part, "candidates", 1, "content", "parts", 1, "text")
@@ -169,9 +183,6 @@ function Gemini:process_raw(response)
       end
       response:set_processed_text(total_text)
       response:set_state("END")
-    else
-      response:add_processed_text(text)
-      response:set_state("CONTINUE")
     end
   end
   cb(response)
