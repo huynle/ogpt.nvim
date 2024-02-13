@@ -110,7 +110,6 @@ function Textgenui:conform_messages(params)
 end
 
 function Textgenui:process_raw(response)
-  local cb = response.partial_result_cb
   local ctx = response.ctx
   local chunk = response:pop_chunk()
 
@@ -135,7 +134,6 @@ function Textgenui:process_raw(response)
     table.insert(error_msg, vim.inspect(response.rest_params))
     response.error = error_msg
     response:add_processed_text(error_msg, "ERROR")
-    cb(response)
     return
   end
 
@@ -157,7 +155,6 @@ function Textgenui:process_raw(response)
   else
     response:add_processed_text(_json.token.text, "CONTINUE")
   end
-  cb(response)
 end
 
 return Textgenui

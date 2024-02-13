@@ -143,26 +143,6 @@ function Provider:conform_messages(params)
     table.remove(params.messages, _to_remove_system_idx[i])
   end
 
-  -- -- https://platform.openai.com/docs/api-reference/chat
-  -- if params.system then
-  --   table.insert(params.messages, 1, {
-  --     role = "system",
-  --     content = params.system,
-  --   })
-  -- end
-
-  local function gather_text_from_parts(parts)
-    if type(parts) == "string" then
-      return parts
-    else
-      local _text = {}
-      for _, part in ipairs(parts) do
-        table.insert(_text, part.text)
-      end
-      return table.concat(_text, " ")
-    end
-  end
-
   -- conform to support text only model
   local messages = params.messages
   local conformed_messages = {}
@@ -178,45 +158,21 @@ function Provider:conform_messages(params)
 end
 
 function Provider:process_raw(response)
-  local cb = response.partial_result_cb
-  local line = response:pop_chunk()
-  response.accumulated_chunks = {}
-  local ok, json = pcall(vim.json.decode, line)
+  local chunk = response:pop_chunk()
+  local ok, json = pcall(vim.json.decode, chunk)
 
   if not ok then
-    utils.log("Cannot process ollama response: \n" .. vim.inspect(line))
+    utils.log("Cannot process ollama response: \n" .. vim.inspect(chunk))
     json = {}
+    response:could_not_process(chunk)
+    return
   end
 
-  if json.error then
-    local error_msg = {
-      "OGPT ERROR:",
-      "Something went wrong.",
-      self.provider.name,
-      ":",
-      vim.inspect(json.error) or "",
-    }
-    table.insert(error_msg, vim.inspect(response.rest_params))
-    -- response.error = table.concat(error_msg, "")
-    response:add_processed_text(table.concat(error_msg, ""), "ERROR")
-    -- response:set_state("ERROR")
-    cb(response)
-  end
-
-  if ok then
-    self:_process_line(json, response)
-  else
-    response:could_not_process(line)
-  end
-end
-
-function Provider:_process_line(json, response)
-  local cb = response.partial_result_cb
   -- given a JSON response from the STREAMING api, processs it
   if type(json) == "string" then
     utils.log("got something weird. " .. json, vim.log.levels.ERROR)
   elseif vim.tbl_isempty(json) then
-    -- pass
+    utils.log("got nothing in json.")
   elseif json.done then
     if json.message then
       response:add_processed_text(json.message.content, "CONTINUE")
@@ -228,8 +184,6 @@ function Provider:_process_line(json, response)
   else
     utils.log("unexpected case in ollama", vim.log.levels.ERROR)
   end
-  cb(response)
-  -- end
 end
 
 function Provider:get_action_params(opts)
@@ -245,8 +199,6 @@ function Provider:expand_model(params, ctx)
   params = self:get_action_params(params)
   ctx = ctx or {}
   local provider_models = self.models
-  -- params = M.get_action_params(api.provider, params)
-  -- params = self:get_action_params(params)
   local _model = params.model
 
   local _completion_url = self:completion_url()

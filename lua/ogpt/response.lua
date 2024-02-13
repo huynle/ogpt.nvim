@@ -47,6 +47,13 @@ function Response:run_async()
       self.provider:process_raw(self)
     end
   end)
+
+  async.run(function()
+    while true do
+      self:render()
+      -- self.partial_result_cb(self)
+    end
+  end)
 end
 
 function Response:_process_added_chunk(chunk)
@@ -55,7 +62,6 @@ function Response:_process_added_chunk(chunk)
       self.processed_raw_tx.send(line)
     end
   elseif self.strategy == self.STRATEGY_CHUNK then
-    utils.log("Adding raw chunk: " .. chunk)
     self.processed_raw_tx.send(chunk)
   else
     utils.log("did not add chunk: " .. chunk)
@@ -64,10 +70,14 @@ end
 
 function Response:pop_content()
   local content = self.processsed_content_rx.recv()
-  if content[2] == "END" then
+  if content[2] == "END" and (content[1] and content[1] == "") then
     content[1] = self:get_processed_text()
   end
   return content
+end
+
+function Response:render()
+  self.partial_result_cb(self)
 end
 
 function Response:pop_chunk()

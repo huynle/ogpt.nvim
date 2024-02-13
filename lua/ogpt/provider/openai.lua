@@ -45,8 +45,6 @@ function Openai:parse_api_model_response(json, cb)
 end
 
 function Openai:conform_request(params)
-  -- params = M._conform_messages(params)
-
   for key, value in pairs(params) do
     if not vim.tbl_contains(self.api_parameters, key) then
       utils.log("Did not process " .. key .. " for " .. self.name)
@@ -58,46 +56,16 @@ end
 
 function Openai:process_raw(response)
   local chunk = response:pop_chunk()
-  -- local state = response.state
-  -- local ctx = response.ctx
-  -- local raw_chunks = response.processed_text
-  -- local params = response.params
-  -- local accumulate = response.accumulate_chunks
-
-  -- local ok, json = pcall(vim.json.decode, chunk)
-  -- if ok then
-  --   if json.error ~= nil then
-  --     local error_msg = {
-  --       "OGPT ERROR:",
-  --       self.provider.name,
-  --       vim.inspect(json.error) or "",
-  --       "Something went wrong.",
-  --     }
-  --     table.insert(error_msg, vim.inspect(params))
-  --     -- local error_msg = "OGPT ERROR: " .. (json.error.message or "Something went wrong")
-  --     cb(table.concat(error_msg, " "), "ERROR", ctx)
-  --     return
-  --   end
-  --   ctx, raw_chunks, state = self:process_line({ json = json, raw = chunk }, ctx, raw_chunks, state, cb, opts)
-  --   return
-  -- end
-
-  -- for line in chunk:gmatch("[^\n]+") do
   local raw_json = string.gsub(chunk, "^data:", "")
   local _ok, _json = pcall(vim.json.decode, raw_json)
   if _ok then
-    self:process_line({ json = _json, raw = chunk }, response)
+    self:_process_line({ json = _json, raw = chunk }, response)
   else
-    self:process_line({ json = nil, raw = chunk }, response)
+    self:_process_line({ json = nil, raw = chunk }, response)
   end
-  -- end
 end
 
-function Openai:process_line(content, response)
-  local ctx = response.ctx
-  -- local total_text = response.processed_text
-  local state = response.state
-  local cb = response.partial_result_cb
+function Openai:_process_line(content, response)
   local _json = content.json
   local _raw = content.raw
   if _json then
@@ -114,9 +82,6 @@ function Openai:process_line(content, response)
     response:could_not_process(_raw)
     utils.log("Could not process chunk for openai: " .. _raw, vim.log.levels.DEBUG)
   end
-
-  cb(response)
-  -- return ctx, total_text, state
 end
 
 return Openai
