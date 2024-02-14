@@ -24,8 +24,8 @@ end
 function Openai:load_envs(override)
   local _envs = {}
   _envs.OPENAI_API_HOST = Config.options.providers.openai.api_host
-      or os.getenv("OPENAI_API_HOST")
-      or "https://api.openai.com"
+    or os.getenv("OPENAI_API_HOST")
+    or "https://api.openai.com"
   _envs.OPENAI_API_KEY = Config.options.providers.openai.api_key or os.getenv("OPENAI_API_KEY") or ""
   _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.OPENAI_API_HOST .. "/v1/models")
   _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OPENAI_API_HOST .. "/v1/completions")
@@ -54,7 +54,7 @@ function Openai:conform_request(params)
   return params
 end
 
-function Openai:process_raw(response)
+function Openai:process_response(response)
   local chunk = response:pop_chunk()
   local raw_json = string.gsub(chunk, "^data:", "")
   local _ok, _json = pcall(vim.json.decode, raw_json)
