@@ -24,8 +24,8 @@ function Gemini:load_envs(override)
   _envs.AUTH = "key=" .. (_envs.GEMINI_API_KEY or " ")
   _envs.MODEL = "gemini-pro"
   _envs.GEMINI_API_HOST = Config.options.providers.gemini.api_host
-      or os.getenv("GEMINI_API_HOST")
-      or "https://generativelanguage.googleapis.com/v1beta"
+    or os.getenv("GEMINI_API_HOST")
+    or "https://generativelanguage.googleapis.com/v1beta"
   _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.GEMINI_API_HOST .. "/models")
   self.envs = vim.tbl_extend("force", _envs, override or {})
   return self.envs
@@ -109,10 +109,11 @@ function Gemini:conform_messages(params)
   return params
 end
 
-function Gemini:process_raw(response)
+function Gemini:process_response(response)
   local valid_accumulation = false
   local chunk = response:pop_chunk()
-  local cb = response.partial_result_cb
+  utils.log("Popped chunk: " .. chunk)
+  -- local cb = response.partial_result_cb
 
   local ok, json = pcall(vim.json.decode, chunk)
 
@@ -130,9 +131,9 @@ function Gemini:process_raw(response)
     -- try to get partial answers from Gemini
     _chunk = string.gsub(_chunk, "^%[", "")
     _chunk = string.gsub(_chunk, "%]$", "")
-    _chunk = string.gsub(_chunk, "^%,", "")
     _chunk = vim.trim(_chunk, "\r")
     _chunk = vim.trim(_chunk, "\n")
+    _chunk = string.gsub(_chunk, "^%,", "")
     ok, json = pcall(vim.json.decode, _chunk)
   end
 
@@ -154,6 +155,7 @@ function Gemini:process_raw(response)
 
   if not ok then
     -- but it back if its not processed
+    utils.log("Could not process chunk: " .. chunk)
     response:could_not_process(chunk)
     json = {}
   end
@@ -161,8 +163,9 @@ function Gemini:process_raw(response)
   if type(json) == "string" then
     utils.log("Something is going on, _json is a string, expecing a table..", vim.log.levels.ERROR)
   elseif vim.tbl_isempty(json) then
-    if response.current_text == "]" then
+    if chunk == "]" then
       response:set_processed_text("", "END")
+      utils.log("Got to the end", vim.log.levels.DEBUG)
     else
       local err = "Could not process the following raw chunk:\n" .. chunk
       response:set_processed_text(err, "ERROR")
@@ -191,7 +194,7 @@ function Gemini:process_raw(response)
       response:set_processed_text(total_text, "END")
     end
   end
-  cb(response)
+  -- cb(response)
 end
 
 return Gemini

@@ -28,6 +28,7 @@ function Response:set_processed_text(text)
 end
 
 function Response:add_chunk(chunk)
+  utils.log("Pushed chunk: " .. chunk)
   self.raw_chunk_tx.send(chunk)
 end
 
@@ -38,13 +39,13 @@ end
 function Response:run_async()
   async.run(function()
     while true do
-      self:_process_added_chunk(self.raw_chunk_rx.recv())
+      self:_process_added_chunk()
     end
   end)
 
   async.run(function()
     while true do
-      self.provider:process_raw(self)
+      self.provider:process_response(self)
     end
   end)
 
@@ -56,7 +57,10 @@ function Response:run_async()
   end)
 end
 
-function Response:_process_added_chunk(chunk)
+function Response:_process_added_chunk()
+  local chunk = self.raw_chunk_rx.recv()
+  utils.log("recv'd chunk: " .. chunk)
+
   if self.strategy == self.STRATEGY_LINE_BY_LINE then
     for line in chunk:gmatch("[^\n]+") do
       self.processed_raw_tx.send(line)
@@ -81,10 +85,13 @@ function Response:render()
 end
 
 function Response:pop_chunk()
+  utils.log("Try to pop chunk...")
   -- pop the next chunk and add anything that is not processs
   local _value = self.not_processed
   self.not_processed = ""
-  return _value .. self.processsed_raw_rx.recv()
+  local _chunk = self.processsed_raw_rx.recv()
+  utils.log("Got chunk... now appending to 'not_processed'")
+  return _value .. _chunk
 end
 
 function Response:get_accumulated_chunks()

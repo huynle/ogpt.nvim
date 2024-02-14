@@ -57,7 +57,7 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
       function(chunk)
         response:add_chunk(chunk)
         -- response.raw_tx.send(chunk)
-        -- self.provider:process_raw(response)
+        -- self.provider:process_response(response)
       end,
       function(_text, _state, _ctx)
         -- partial_result_fn(_text, _state, _ctx)
@@ -108,54 +108,54 @@ function Api:make_call(url, params, cb, ctx, raw_chunks, state, opts)
   }
 
   self.job = job
-      :new({
-        command = "curl",
-        args = curl_args,
-        on_exit = vim.schedule_wrap(function(response, exit_code)
-          os.remove(TMP_MSG_FILENAME)
-          if exit_code ~= 0 then
-            utils.log(
-              "An Error Occurred, when calling `curl " .. table.concat(curl_args, " ") .. "`",
-              vim.log.levels.ERROR
-            )
-            cb("ERROR: API Error", "ERROR")
-          end
+    :new({
+      command = "curl",
+      args = curl_args,
+      on_exit = vim.schedule_wrap(function(response, exit_code)
+        os.remove(TMP_MSG_FILENAME)
+        if exit_code ~= 0 then
+          utils.log(
+            "An Error Occurred, when calling `curl " .. table.concat(curl_args, " ") .. "`",
+            vim.log.levels.ERROR
+          )
+          cb("ERROR: API Error", "ERROR")
+        end
 
-          local result = table.concat(response:result(), "\n")
+        local result = table.concat(response:result(), "\n")
 
-          local ok, json = pcall(vim.json.decode, result)
-          if ok then
-            if json.error ~= nil then
-              local error_msg = {
-                "OGPT ERROR:",
-                self.provider.name,
-                vim.inspect(json.error) or "",
-                "Something went wrong.",
-              }
-              table.insert(error_msg, vim.inspect(params))
-              -- local error_msg = "OGPT ERROR: " .. (json.error.message or "Something went wrong")
-              cb(table.concat(error_msg, " "), "ERROR", ctx)
-              return
-            end
-            ctx, raw_chunks, state =
-                self.provider:process_line({ json = json, raw = result }, ctx, raw_chunks, state, cb, opts)
+        local ok, json = pcall(vim.json.decode, result)
+        if ok then
+          if json.error ~= nil then
+            local error_msg = {
+              "OGPT ERROR:",
+              self.provider.name,
+              vim.inspect(json.error) or "",
+              "Something went wrong.",
+            }
+            table.insert(error_msg, vim.inspect(params))
+            -- local error_msg = "OGPT ERROR: " .. (json.error.message or "Something went wrong")
+            cb(table.concat(error_msg, " "), "ERROR", ctx)
             return
           end
+          ctx, raw_chunks, state =
+            self.provider:process_line({ json = json, raw = result }, ctx, raw_chunks, state, cb, opts)
+          return
+        end
 
-          for line in result:gmatch("[^\n]+") do
-            local raw_json = string.gsub(line, "^data:", "")
-            local _ok, _json = pcall(vim.json.decode, raw_json)
-            if _ok then
-              ctx, raw_chunks, state =
-                  self.provider:process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb, opts)
-            else
-              ctx, raw_chunks, state =
-                  self.provider:process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb, opts)
-            end
+        for line in result:gmatch("[^\n]+") do
+          local raw_json = string.gsub(line, "^data:", "")
+          local _ok, _json = pcall(vim.json.decode, raw_json)
+          if _ok then
+            ctx, raw_chunks, state =
+              self.provider:process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb, opts)
+          else
+            ctx, raw_chunks, state =
+              self.provider:process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb, opts)
           end
-        end),
-      })
-      :start()
+        end
+      end),
+    })
+    :start()
 end
 
 function Api:close()
@@ -175,23 +175,23 @@ end
 local function loadConfigFromCommand(command, optionName, callback, defaultValue)
   local cmd = splitCommandIntoTable(command)
   job
-      :new({
-        command = cmd[1],
-        args = vim.list_slice(cmd, 2, #cmd),
-        on_exit = function(j, exit_code)
-          if exit_code ~= 0 then
-            logger.warn("Config '" .. optionName .. "' did not return a value when executed")
-            return
-          end
-          local value = j:result()[1]:gsub("%s+$", "")
-          if value ~= nil and value ~= "" then
-            callback(value)
-          elseif defaultValue ~= nil and defaultValue ~= "" then
-            callback(defaultValue)
-          end
-        end,
-      })
-      :start()
+    :new({
+      command = cmd[1],
+      args = vim.list_slice(cmd, 2, #cmd),
+      on_exit = function(j, exit_code)
+        if exit_code ~= 0 then
+          logger.warn("Config '" .. optionName .. "' did not return a value when executed")
+          return
+        end
+        local value = j:result()[1]:gsub("%s+$", "")
+        if value ~= nil and value ~= "" then
+          callback(value)
+        elseif defaultValue ~= nil and defaultValue ~= "" then
+          callback(defaultValue)
+        end
+      end,
+    })
+    :start()
 end
 
 local function loadConfigFromEnv(envName, configName, callback)

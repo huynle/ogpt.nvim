@@ -37,8 +37,8 @@ end
 function Textgenui:load_envs(override)
   local _envs = {}
   _envs.TEXTGEN_API_HOST = Config.options.providers.textgenui.api_host
-      or os.getenv("TEXTGEN_API_HOST")
-      or "https://api.textgen.com"
+    or os.getenv("TEXTGEN_API_HOST")
+    or "https://api.textgen.com"
   _envs.TEXTGEN_API_KEY = Config.options.providers.textgenui.api_key or os.getenv("TEXTGEN_API_KEY") or ""
   _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.TEXTGEN_API_HOST .. "/api/tags")
   _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.TEXTGEN_API_HOST)
@@ -109,7 +109,7 @@ function Textgenui:conform_messages(params)
   return params
 end
 
-function Textgenui:process_raw(response)
+function Textgenui:process_response(response)
   local ctx = response.ctx
   local chunk = response:pop_chunk()
 
@@ -144,9 +144,9 @@ function Textgenui:process_raw(response)
   if _json.token.text and string.find(_json.token.text, "</s>") then
     response:add_processed_text("", "END")
   elseif
-      _json.token.text
-      and vim.tbl_get(ctx, "tokens", "end_of_result")
-      and string.find(_json.token.text, vim.tbl_get(ctx, "tokens", "end_of_result"))
+    _json.token.text
+    and vim.tbl_get(ctx, "tokens", "end_of_result")
+    and string.find(_json.token.text, vim.tbl_get(ctx, "tokens", "end_of_result"))
   then
     ctx.context = _json.context
     response:add_processed_text("", "END")

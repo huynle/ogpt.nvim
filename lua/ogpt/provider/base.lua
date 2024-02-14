@@ -68,8 +68,8 @@ end
 function Provider:load_envs(override)
   local _envs = {}
   _envs.OLLAMA_API_HOST = Config.options.providers.ollama.api_host
-      or os.getenv("OLLAMA_API_HOST")
-      or "http://localhost:11434"
+    or os.getenv("OLLAMA_API_HOST")
+    or "http://localhost:11434"
   _envs.OLLAMA_API_KEY = Config.options.providers.ollama.api_key or os.getenv("OLLAMA_API_KEY") or ""
   _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.OLLAMA_API_HOST .. "/api/tags")
   _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OLLAMA_API_HOST .. "/api/generate")
@@ -157,7 +157,7 @@ function Provider:conform_messages(params)
   return params
 end
 
-function Provider:process_raw(response)
+function Provider:process_response(response)
   local chunk = response:pop_chunk()
   local ok, json = pcall(vim.json.decode, chunk)
 
@@ -190,9 +190,9 @@ function Provider:get_action_params(opts)
   return vim.tbl_extend(
     "force",
     { model = self.model }, -- add in model from provider default
-    self.api_params,        -- override with provider api_params
+    self.api_params, -- override with provider api_params
     opts or {}
-  )                         -- override with final options
+  ) -- override with final options
 end
 
 function Provider:expand_model(params, ctx)
@@ -239,7 +239,7 @@ function Provider:expand_model(params, ctx)
   -- final force override from the params that are set in the mode itself.
   -- This will enforce specific model params, e.g. max_token, etc
   local final_overrided_applied_params =
-      vim.tbl_extend("force", params, vim.tbl_get(_full_unfiltered_params, "model", "params") or {})
+    vim.tbl_extend("force", params, vim.tbl_get(_full_unfiltered_params, "model", "params") or {})
 
   params = self:conform_to_provider_request(final_overrided_applied_params)
 
