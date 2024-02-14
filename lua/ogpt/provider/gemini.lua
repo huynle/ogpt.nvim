@@ -113,27 +113,26 @@ function Gemini:process_response(response)
   local valid_accumulation = false
   local chunk = response:pop_chunk()
   utils.log("Popped chunk: " .. chunk)
-  -- local cb = response.partial_result_cb
 
   local ok, json = pcall(vim.json.decode, chunk)
 
+  -- if not okay, try cleaning the recv chun
   if not ok then
     local _chunk = chunk
     local has_changed = true
-    -- while has_changed do
-    -- local cleaned_front = string.gsub(_chunk, "^[%,\r\n%[%]", "")
-    -- local cleaned_back = string.gsub(cleaned_front, "[%]$", "")
-    -- if cleaned_back == chunk then
-    --   has_changed = false
-    -- end
-    -- end
-    -- _chunk = cleaned_back
-    -- try to get partial answers from Gemini
-    _chunk = string.gsub(_chunk, "^%[", "")
-    _chunk = string.gsub(_chunk, "%]$", "")
-    _chunk = vim.trim(_chunk, "\r")
-    _chunk = vim.trim(_chunk, "\n")
-    _chunk = string.gsub(_chunk, "^%,", "")
+    local count = 0
+    while has_changed or count < 5 do
+      count = count + 1
+      -- cleaning up the chunk, so it can be valid json
+      local cleaned_front = string.gsub(_chunk, "^[%,\r\n%[]", "")
+      local cleaned_back = string.gsub(cleaned_front, "[%]%,]$", "")
+      if cleaned_back == _chunk then
+        has_changed = false
+      else
+        has_changed = true
+        _chunk = cleaned_back
+      end
+    end
     ok, json = pcall(vim.json.decode, _chunk)
   end
 
