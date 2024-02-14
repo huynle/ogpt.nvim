@@ -24,8 +24,8 @@ end
 function Openai:load_envs(override)
   local _envs = {}
   _envs.OPENAI_API_HOST = Config.options.providers.openai.api_host
-    or os.getenv("OPENAI_API_HOST")
-    or "https://api.openai.com"
+      or os.getenv("OPENAI_API_HOST")
+      or "https://api.openai.com"
   _envs.OPENAI_API_KEY = Config.options.providers.openai.api_key or os.getenv("OPENAI_API_KEY") or ""
   _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.OPENAI_API_HOST .. "/v1/models")
   _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OPENAI_API_HOST .. "/v1/completions")
@@ -45,8 +45,6 @@ function Openai:parse_api_model_response(json, cb)
 end
 
 function Openai:conform_request(params)
-  -- params = M._conform_messages(params)
-
   for key, value in pairs(params) do
     if not vim.tbl_contains(self.api_parameters, key) then
       utils.log("Did not process " .. key .. " for " .. self.name)
@@ -57,70 +55,33 @@ function Openai:conform_request(params)
 end
 
 function Openai:process_raw(response)
-  local chunk = response.current_raw_chunk
-  -- local state = response.state
-  -- local ctx = response.ctx
-  -- local raw_chunks = response.processed_text
-  -- local params = response.params
-  -- local accumulate = response.accumulate_chunks
-
-  -- local ok, json = pcall(vim.json.decode, chunk)
-  -- if ok then
-  --   if json.error ~= nil then
-  --     local error_msg = {
-  --       "OGPT ERROR:",
-  --       self.provider.name,
-  --       vim.inspect(json.error) or "",
-  --       "Something went wrong.",
-  --     }
-  --     table.insert(error_msg, vim.inspect(params))
-  --     -- local error_msg = "OGPT ERROR: " .. (json.error.message or "Something went wrong")
-  --     cb(table.concat(error_msg, " "), "ERROR", ctx)
-  --     return
-  --   end
-  --   ctx, raw_chunks, state = self:process_line({ json = json, raw = chunk }, ctx, raw_chunks, state, cb, opts)
-  --   return
-  -- end
-
-  -- for line in chunk:gmatch("[^\n]+") do
+  local chunk = response:pop_chunk()
   local raw_json = string.gsub(chunk, "^data:", "")
   local _ok, _json = pcall(vim.json.decode, raw_json)
   if _ok then
-    self:process_line({ json = _json, raw = chunk }, response)
+    self:_process_line({ json = _json, raw = chunk }, response)
   else
-    self:process_line({ json = nil, raw = chunk }, response)
+    self:_process_line({ json = nil, raw = chunk }, response)
   end
-  -- end
 end
 
-function Openai:process_line(content, response)
-  local ctx = response.ctx
-  -- local total_text = response.processed_text
-  local state = response.state
-  local cb = response.partial_result_cb
+function Openai:_process_line(content, response)
   local _json = content.json
   local _raw = content.raw
   if _json then
     local text_delta = vim.tbl_get(_json, "choices", 1, "delta", "content")
     local text = vim.tbl_get(_json, "choices", 1, "message", "content")
     if text_delta then
-      response:add_processed_text(text_delta)
-      cb(response, state)
-      response:set_state("CONTINUE")
+      response:add_processed_text(text_delta, "CONTINUE")
     elseif text then
-      response:add_processed_text(text_delta)
-      response:set_state("END")
-      cb(response)
+      response:add_processed_text(text, "END")
     end
   elseif not _json and string.find(_raw, "[DONE]") then
-    response:set_state("END")
-    cb(response, "END")
+    response:add_processed_text("", "END")
   else
-    utils.log("Something NOT hanndled openai: _json\n" .. vim.inspect(_json))
-    utils.log("Something NOT hanndled openai: _raw\n" .. vim.inspect(_raw))
+    response:could_not_process(_raw)
+    utils.log("Could not process chunk for openai: " .. _raw, vim.log.levels.DEBUG)
   end
-
-  -- return ctx, total_text, state
 end
 
 return Openai

@@ -240,7 +240,7 @@ function M.partial(func, ...)
   return function(...)
     local args = { unpack(capturedArgs) } -- Captured arguments
     for _, v in ipairs({ ... }) do
-      table.insert(args, v) -- Appending new arguments
+      table.insert(args, v)               -- Appending new arguments
     end
     return func(unpack(args))
   end
@@ -257,14 +257,15 @@ end
 function M.add_partial_completion(opts, response)
   local panel = opts.panel
   local progress = opts.progress
-  local state = response.state
-  -- local text = response.current_text
+  local content = response:pop_content()
+  local text = content[1]
+  local state = content[2]
 
   if state == "ERROR" then
     if progress then
       progress(false)
     end
-    M.log("An Error Occurred", vim.log.levels.ERROR)
+    M.log("An Error Occurred: " .. text, vim.log.levels.ERROR)
     panel:unmount()
     return
   end
@@ -275,7 +276,7 @@ function M.add_partial_completion(opts, response)
     end
     vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
     vim.api.nvim_buf_set_lines(panel.bufnr, 0, -1, false, {}) -- clear the window, an put the final answer in
-    vim.api.nvim_buf_set_lines(panel.bufnr, 0, -1, false, response:get_processed_text_by_lines())
+    vim.api.nvim_buf_set_lines(panel.bufnr, 0, -1, false, vim.split(text, "\n"))
     if not opts.on_complete then
       return
     end
@@ -290,7 +291,6 @@ function M.add_partial_completion(opts, response)
       return
     end
     vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
-    -- text = M.trim(text)
   end
 
   if state == "START" or state == "CONTINUE" then
@@ -298,17 +298,16 @@ function M.add_partial_completion(opts, response)
       return
     end
     vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
-    local lines = vim.split(response.current_text, "\n", {})
+    local lines = vim.split(text, "\n", {})
     local length = #lines
-    local buffer = panel.bufnr
 
     for i, line in ipairs(lines) do
-      if buffer and vim.fn.bufexists(buffer) then
-        local currentLine = vim.api.nvim_buf_get_lines(buffer, -2, -1, false)[1]
+      if panel.bufnr and vim.fn.bufexists(panel.bufnr) then
+        local currentLine = vim.api.nvim_buf_get_lines(panel.bufnr, -2, -1, false)[1]
         if currentLine then
-          vim.api.nvim_buf_set_lines(buffer, -2, -1, false, { currentLine .. line })
+          vim.api.nvim_buf_set_lines(panel.bufnr, -2, -1, false, { currentLine .. line })
           if i == length and i > 1 then
-            vim.api.nvim_buf_set_lines(buffer, -1, -1, false, { "" })
+            vim.api.nvim_buf_set_lines(panel.bufnr, -1, -1, false, { "" })
           end
         end
       end
@@ -324,9 +323,9 @@ function M.process_string(inputString)
     for word in inputString:gmatch("[^,]+") do
       table.insert(resultTable, word) -- Insert each part into the resultTable
     end
-    return resultTable -- Return the resulting table
+    return resultTable                -- Return the resulting table
   else
-    return inputString -- If no commas found, return the inputString as it is
+    return inputString                -- If no commas found, return the inputString as it is
   end
 end
 
@@ -399,7 +398,8 @@ function M.format_table(tbl, indent)
   return result
 end
 
-local log_filename = Path:new(vim.fn.stdpath("state")):joinpath("ogpt", "ogpt.log"):absolute() -- convert Path object to string
+local log_filename = Path:new(vim.fn.stdpath("state")):joinpath("ogpt", "ogpt-" .. os.date("%Y-%m-%d") .. ".log")
+:absolute()                                                                                                                -- convert Path object to string
 
 function M.log(msg, level)
   msg = vim.inspect(msg)
@@ -409,7 +409,7 @@ function M.log(msg, level)
     vim.notify(msg, level, { title = "OGPT Debug" })
   end
 
-  local file = io.open(log_filename, "a")
+  local file = io.open(log_filename, "ab")
   if file then
     file:write(os.date("[%Y-%m-%d %H:%M:%S] "))
     file:write(msg .. "\n")

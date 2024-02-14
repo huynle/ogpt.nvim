@@ -68,8 +68,8 @@ end
 function Provider:load_envs(override)
   local _envs = {}
   _envs.OLLAMA_API_HOST = Config.options.providers.ollama.api_host
-    or os.getenv("OLLAMA_API_HOST")
-    or "http://localhost:11434"
+      or os.getenv("OLLAMA_API_HOST")
+      or "http://localhost:11434"
   _envs.OLLAMA_API_KEY = Config.options.providers.ollama.api_key or os.getenv("OLLAMA_API_KEY") or ""
   _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.OLLAMA_API_HOST .. "/api/tags")
   _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OLLAMA_API_HOST .. "/api/generate")
@@ -143,26 +143,6 @@ function Provider:conform_messages(params)
     table.remove(params.messages, _to_remove_system_idx[i])
   end
 
-  -- -- https://platform.openai.com/docs/api-reference/chat
-  -- if params.system then
-  --   table.insert(params.messages, 1, {
-  --     role = "system",
-  --     content = params.system,
-  --   })
-  -- end
-
-  local function gather_text_from_parts(parts)
-    if type(parts) == "string" then
-      return parts
-    else
-      local _text = {}
-      for _, part in ipairs(parts) do
-        table.insert(_text, part.text)
-      end
-      return table.concat(_text, " ")
-    end
-  end
-
   -- conform to support text only model
   local messages = params.messages
   local conformed_messages = {}
@@ -178,82 +158,47 @@ function Provider:conform_messages(params)
 end
 
 function Provider:process_raw(response)
-  local cb = response.partial_result_cb
-  local line = response:pop_chunk()
-  response.accumulated_chunks = {}
-  line = response.not_processed .. line
-  local ok, json = pcall(vim.json.decode, line)
+  local chunk = response:pop_chunk()
+  local ok, json = pcall(vim.json.decode, chunk)
 
   if not ok then
-    utils.log("Cannot process ollama response: \n" .. vim.inspect(line))
+    utils.log("Cannot process ollama response: \n" .. vim.inspect(chunk))
     json = {}
-    response.not_processed = line -- prepend it to the next raw line for processing
-  else
-    response.not_processed = ""
+    response:could_not_process(chunk)
+    return
   end
 
-  if json.error then
-    local error_msg = {
-      "OGPT ERROR:",
-      "Something went wrong.",
-      self.provider.name,
-      ":",
-      vim.inspect(json.error) or "",
-    }
-    table.insert(error_msg, vim.inspect(response.rest_params))
-    response.error = table.concat(error_msg, "")
-    response:set_state("ERROR")
-    cb(response)
-  end
-
-  if ok then
-    self:_process_line(json, response)
-  else
-    response.not_processed = line
-  end
-end
-
-function Provider:_process_line(json, response)
-  local cb = response.partial_result_cb
   -- given a JSON response from the STREAMING api, processs it
   if type(json) == "string" then
     utils.log("got something weird. " .. json, vim.log.levels.ERROR)
   elseif vim.tbl_isempty(json) then
-    -- pass
+    utils.log("got nothing in json.")
   elseif json.done then
     if json.message then
-      -- for stream=false case
-      response:add_processed_text(json.message.content)
-      response:set_state("CONTINUE")
+      response:add_processed_text(json.message.content, "CONTINUE")
     else
-      -- response.ctx = json.context
-      response:set_state("END")
+      response:add_processed_text("", "END")
     end
   elseif json.message then
-    response:add_processed_text(json.message.content)
-    response:set_state("CONTINUE")
+    response:add_processed_text(json.message.content, "CONTINUE")
   else
     utils.log("unexpected case in ollama", vim.log.levels.ERROR)
   end
-  cb(response)
-  -- end
 end
 
 function Provider:get_action_params(opts)
   return vim.tbl_extend(
     "force",
     { model = self.model }, -- add in model from provider default
-    self.api_params, -- override with provider api_params
+    self.api_params,        -- override with provider api_params
     opts or {}
-  ) -- override with final options
+  )                         -- override with final options
 end
 
 function Provider:expand_model(params, ctx)
   params = self:get_action_params(params)
   ctx = ctx or {}
   local provider_models = self.models
-  -- params = M.get_action_params(api.provider, params)
-  -- params = self:get_action_params(params)
   local _model = params.model
 
   local _completion_url = self:completion_url()
@@ -294,7 +239,7 @@ function Provider:expand_model(params, ctx)
   -- final force override from the params that are set in the mode itself.
   -- This will enforce specific model params, e.g. max_token, etc
   local final_overrided_applied_params =
-    vim.tbl_extend("force", params, vim.tbl_get(_full_unfiltered_params, "model", "params") or {})
+      vim.tbl_extend("force", params, vim.tbl_get(_full_unfiltered_params, "model", "params") or {})
 
   params = self:conform_to_provider_request(final_overrided_applied_params)
 
