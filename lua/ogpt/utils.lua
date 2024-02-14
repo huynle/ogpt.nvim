@@ -271,7 +271,7 @@ function M.add_partial_completion(opts, response)
   end
 
   if state == "END" then
-    M.log("Received END Flag", vim.log.levels.ERROR)
+    M.log("Received END Flag", vim.log.levels.DEBUG)
     if not M.is_buf_exists(panel.bufnr) then
       return
     end
@@ -402,14 +402,7 @@ end
 local log_filename =
   Path:new(vim.fn.stdpath("state")):joinpath("ogpt", "ogpt-" .. os.date("%Y-%m-%d") .. ".log"):absolute() -- convert Path object to string
 
-function M.log(msg, level)
-  msg = vim.inspect(msg)
-  if Config.options.debug then
-    vim.notify(msg, level, { title = "OGPT Debug" })
-  elseif level == vim.log.levels.ERROR then
-    vim.notify(msg, level, { title = "OGPT Debug" })
-  end
-
+function M.write_to_log(msg)
   local file = io.open(log_filename, "ab")
   if file then
     file:write(os.date("[%Y-%m-%d %H:%M:%S] "))
@@ -417,6 +410,19 @@ function M.log(msg, level)
     file:close()
   else
     vim.notify("Failed to open log file for writing", vim.log.levels.ERROR)
+  end
+end
+
+function M.log(msg, level)
+  level = level or vim.log.levels.INFO
+
+  msg = vim.inspect(msg)
+  if level >= Config.options.debug_log_level then
+    M.write_to_log(msg)
+  end
+
+  if level >= vim.log.levels.WARN then
+    vim.notify(msg, level, { title = "OGPT Debug" }, level)
   end
 end
 
