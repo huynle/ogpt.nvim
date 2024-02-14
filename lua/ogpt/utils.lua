@@ -254,68 +254,6 @@ function M.trim(s)
   return (s:gsub("^%s*(.-)%s*$", "%1"))
 end
 
-function M.add_partial_completion(opts, response)
-  local panel = opts.panel
-  local progress = opts.progress
-  local content = response:pop_content()
-  local text = content[1]
-  local state = content[2]
-
-  if state == "ERROR" then
-    if progress then
-      progress(false)
-    end
-    M.log("An Error Occurred: " .. text, vim.log.levels.ERROR)
-    panel:unmount()
-    return
-  end
-
-  if state == "END" then
-    M.log("Received END Flag", vim.log.levels.DEBUG)
-    if not M.is_buf_exists(panel.bufnr) then
-      return
-    end
-    vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
-    vim.api.nvim_buf_set_lines(panel.bufnr, 0, -1, false, {}) -- clear the window, an put the final answer in
-    vim.api.nvim_buf_set_lines(panel.bufnr, 0, -1, false, vim.split(text, "\n"))
-    if not opts.on_complete then
-      return
-    end
-    return opts.on_complete(response)
-  end
-
-  if state == "START" then
-    if progress then
-      progress(false)
-    end
-    if not M.is_buf_exists(panel.bufnr) then
-      return
-    end
-    vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
-  end
-
-  if state == "START" or state == "CONTINUE" then
-    if not M.is_buf_exists(panel.bufnr) then
-      return
-    end
-    vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
-    local lines = vim.split(text, "\n", {})
-    local length = #lines
-
-    for i, line in ipairs(lines) do
-      if panel.bufnr and vim.fn.bufexists(panel.bufnr) then
-        local currentLine = vim.api.nvim_buf_get_lines(panel.bufnr, -2, -1, false)[1]
-        if currentLine then
-          vim.api.nvim_buf_set_lines(panel.bufnr, -2, -1, false, { currentLine .. line })
-          if i == length and i > 1 then
-            vim.api.nvim_buf_set_lines(panel.bufnr, -1, -1, false, { "" })
-          end
-        end
-      end
-    end
-  end
-end
-
 function M.process_string(inputString)
   -- Check if the inputString contains a comma
   if inputString:find(",") then
@@ -417,11 +355,11 @@ function M.log(msg, level)
   level = level or vim.log.levels.INFO
 
   msg = vim.inspect(msg)
-  if level >= Config.options.debug_log_level then
+  if level >= Config.options.debug.log_level then
     M.write_to_log(msg)
   end
 
-  if level >= vim.log.levels.WARN then
+  if level >= Config.options.debug.notify_level then
     vim.notify(msg, level, { title = "OGPT Debug" }, level)
   end
 end

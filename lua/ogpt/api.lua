@@ -28,10 +28,7 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
   ctx.model = custom_params.model
   utils.log("Request to: " .. _completion_url)
   utils.log(params)
-  -- local raw_chunks = ""
-  -- local state = "START"
-  -- partial_result_fn = vim.schedule_wrap(partial_result_fn)
-  local response = Response(self.provider)
+  local response = Response(self.provider, opts)
   response.ctx = ctx
   response.rest_params = params
   response.partial_result_cb = partial_result_fn

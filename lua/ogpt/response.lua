@@ -8,7 +8,8 @@ local Response = Object("Response")
 Response.STRATEGY_LINE_BY_LINE = "line"
 Response.STRATEGY_CHUNK = "chunk"
 
-function Response:init(provider)
+function Response:init(provider, opts)
+  self.opts = opts or {}
   self.accumulated_chunks = {}
   self.processed_text = {}
   self.rest_params = {}
@@ -28,7 +29,7 @@ function Response:set_processed_text(text)
 end
 
 function Response:add_chunk(chunk)
-  utils.log("Pushed chunk: " .. chunk, vim.log.levels.DEBUG)
+  utils.log("Pushed chunk: " .. chunk, vim.log.levels.TRACE)
   self.raw_chunk_tx.send(chunk)
 end
 
@@ -52,14 +53,13 @@ function Response:run_async()
   async.run(function()
     while true do
       self:render()
-      -- self.partial_result_cb(self)
     end
   end)
 end
 
 function Response:_process_added_chunk()
   local chunk = self.raw_chunk_rx.recv()
-  utils.log("recv'd chunk: " .. chunk, vim.log.levels.DEBUG)
+  utils.log("recv'd chunk: " .. chunk, vim.log.levels.TRACE)
 
   if self.strategy == self.STRATEGY_LINE_BY_LINE then
     for line in chunk:gmatch("[^\n]+") do
@@ -68,7 +68,7 @@ function Response:_process_added_chunk()
   elseif self.strategy == self.STRATEGY_CHUNK then
     self.processed_raw_tx.send(chunk)
   else
-    utils.log("did not add chunk: " .. chunk, vim.log.levels.DEBUG)
+    utils.log("did not add chunk: " .. chunk, vim.log.levels.TRACE)
   end
 end
 
@@ -85,12 +85,12 @@ function Response:render()
 end
 
 function Response:pop_chunk()
-  utils.log("Try to pop chunk...", vim.log.levels.DEBUG)
+  utils.log("Try to pop chunk...", vim.log.levels.TRACE)
   -- pop the next chunk and add anything that is not processs
   local _value = self.not_processed
   self.not_processed = ""
   local _chunk = self.processsed_raw_rx.recv()
-  utils.log("Got chunk... now appending to 'not_processed'", vim.log.levels.DEBUG)
+  utils.log("Got chunk... now appending to 'not_processed'", vim.log.levels.TRACE)
   return _value .. _chunk
 end
 
@@ -129,6 +129,22 @@ function Response:is_in_progress()
     return true
   end
   return false
+end
+
+function Response:extract_code()
+  local response_text = self:get_processed_text()
+  local code_response = utils.extract_code(response_text)
+  -- if the chat is to edit code, it will try to extract out the code from response
+  local output_txt = response_text
+  if code_response then
+    output_txt = utils.match_indentation(response_text, code_response)
+  else
+    vim.notify("no codeblock detected", vim.log.levels.INFO)
+  end
+  if response_text.applied_changes then
+    vim.notify(response_text.applied_changes, vim.log.levels.INFO)
+  end
+  return output_txt
 end
 
 return Response

@@ -25,19 +25,19 @@ function PopupAction:init(name, opts)
   self.ui = opts.ui or {}
   self.cur_win = vim.api.nvim_get_current_win()
   self.edgy = Config.options.popup.edgy
-  self.popup = PopupWindow(Config.options.popup, Config.options.popup.edgy)
+  self.output_panel = PopupWindow(Config.options.popup, Config.options.popup.edgy)
   self.spinner = Spinner:new(function(state) end)
 
   self:update_variables()
 
-  self.popup:on({ "BufUnload" }, function()
+  self.output_panel:on({ "BufUnload" }, function()
     self:set_loading(false)
   end)
 end
 
 function PopupAction:close()
   self.stop = true
-  self.popup:unmount()
+  self.output_panel:unmount()
 end
 
 function PopupAction:run()
@@ -65,34 +65,21 @@ function PopupAction:run()
 
   if self.strategy == STRATEGY_DISPLAY then
     self:set_loading(true)
-    self.popup:mount(opts)
+    self.output_panel:mount(opts)
     params.stream = true
-    self.provider.api:chat_completions(
-      params,
-      utils.partial(utils.add_partial_completion, {
-        panel = self.popup,
-        progress = function(flag)
-          self:run_spinner(flag)
-        end,
-        on_complete = function(response)
-          -- utils.log("request completed - processed text is:\n" .. total_text, vim.log.levels.DEBUG)
-          if vim.fn.bufexists(self.popup.bufnr) then
-            vim.api.nvim_buf_set_option(self.popup.bufnr, "modifiable", true)
-          end
-        end,
-      }),
-      function()
-        -- should stop function
-        if self.stop then
-          -- self.stop = false
-          -- self:run_spinner(false)
-          self:set_loading(false)
-          return true
-        else
-          return false
-        end
+    self.provider.api:chat_completions(params, function(...)
+      self:addAnswerPartial(...)
+    end, function()
+      -- should stop function
+      if self.stop then
+        -- self.stop = false
+        -- self:run_spinner(false)
+        self:set_loading(false)
+        return true
+      else
+        return false
       end
-    )
+    end)
   else
     self:set_loading(true)
     self.provider.api:chat_completions(params, function(answer, usage)
