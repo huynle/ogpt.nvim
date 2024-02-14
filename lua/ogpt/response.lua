@@ -81,6 +81,7 @@ function Response:render()
 end
 
 function Response:pop_chunk()
+  -- pop the next chunk and add anything that is not processs
   local _value = self.not_processed
   self.not_processed = ""
   return _value .. self.processsed_raw_rx.recv()
