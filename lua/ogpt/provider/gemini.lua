@@ -41,8 +41,13 @@ function Gemini:parse_api_model_response(json, cb)
 end
 
 function Gemini:completion_url()
+  if self.stream_response then
+    return utils.ensureUrlProtocol(
+      self.envs.GEMINI_API_HOST .. "/models/" .. self.model .. ":streamGenerateContent?" .. self.envs.AUTH
+    )
+  end
   return utils.ensureUrlProtocol(
-    self.envs.GEMINI_API_HOST .. "/models/" .. self.model .. ":streamGenerateContent?" .. self.envs.AUTH
+    self.envs.GEMINI_API_HOST .. "/models/" .. self.model .. ":generateContent?" .. self.envs.AUTH
   )
 end
 

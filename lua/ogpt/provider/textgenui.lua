@@ -12,7 +12,7 @@ function Textgenui:init(opts)
   self.api_parameters = {
     "inputs",
     "parameters",
-    "stream",
+    -- "stream",
   }
   self.api_chat_request_options = {
     "best_of",
@@ -46,6 +46,13 @@ function Textgenui:load_envs(override)
   _envs.AUTHORIZATION_HEADER = "Authorization: Bearer " .. (_envs.TEXTGEN_API_KEY or " ")
   self.envs = vim.tbl_extend("force", _envs, override or {})
   return self.envs
+end
+
+function Textgenui:completion_url()
+  if self.stream_response then
+    return self.envs.TEXTGEN_API_HOST .. "/generate_stream"
+  end
+  return self.envs.TEXTGEN_API_HOST .. "/generate"
 end
 
 function Textgenui:conform_request(params)

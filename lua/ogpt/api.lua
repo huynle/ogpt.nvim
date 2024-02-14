@@ -14,13 +14,14 @@ function Api:init(provider, action, opts)
 end
 
 function Api:completions(custom_params, cb, opts)
+  -- TODO: not working atm
   local params = vim.tbl_extend("keep", custom_params, Config.options.api_params)
   params.stream = false
   self:make_call(self.COMPLETIONS_URL, params, cb, opts)
 end
 
 function Api:chat_completions(custom_params, partial_result_fn, should_stop, opts)
-  local stream = custom_params.stream or false
+  -- local stream = custom_params.stream or false
   local params, _completion_url, ctx = self.provider:expand_model(custom_params)
 
   ctx.params = params
@@ -34,56 +35,38 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
   response.partial_result_cb = partial_result_fn
   response:run_async()
 
-  if stream then
-    -- local accumulate = {}
-    local curl_args = {
-      "--silent",
-      "--show-error",
-      "--no-buffer",
-      _completion_url,
-      "-d",
-      vim.json.encode(params),
-    }
-    for _, header_item in ipairs(self.provider:request_headers()) do
-      table.insert(curl_args, header_item)
-    end
-
-    self:exec(
-      "curl",
-      curl_args,
-      function(chunk)
-        response:add_chunk(chunk)
-        -- response.raw_tx.send(chunk)
-        -- self.provider:process_response(response)
-      end,
-      function(_text, _state, _ctx)
-        -- partial_result_fn(_text, _state, _ctx)
-        -- if opts.on_stop then
-        --   opts.on_stop()
-        -- end
-      end,
-      should_stop,
-      function()
-        -- partial_result_fn(raw_chunks, "END", ctx)
-        -- if opts.on_stop then
-        --   opts.on_stop()
-        -- end
-      end
-    )
-  else
-    params.stream = false
-    self:make_call(self.provider.envs.CHAT_COMPLETIONS_URL, params, partial_result_fn, opts)
+  -- if params.stream then
+  -- local accumulate = {}
+  local curl_args = {
+    "--silent",
+    "--show-error",
+    "--no-buffer",
+    _completion_url,
+    "-d",
+    vim.json.encode(params),
+  }
+  for _, header_item in ipairs(self.provider:request_headers()) do
+    table.insert(curl_args, header_item)
   end
+
+  self:exec("curl", curl_args, function(chunk)
+    response:add_chunk(chunk)
+  end, function(...) end, should_stop, function(...) end)
+  -- else
+  --   -- params.stream = false
+  --   self:make_call(self.provider.envs.CHAT_COMPLETIONS_URL, params, partial_result_fn, opts)
+  -- end
 end
 
-function Api:edits(custom_params, cb)
-  local params = self.action.params
-  params.stream = true
-  params = vim.tbl_extend("force", params, custom_params)
-  self:chat_completions(params, cb)
-end
+-- function Api:edits(custom_params, cb)
+--   local params = self.action.params
+--   params.stream = true
+--   params = vim.tbl_extend("force", params, custom_params)
+--   self:chat_completions(params, cb)
+-- end
 
 function Api:make_call(url, params, cb, ctx, raw_chunks, state, opts)
+  -- TODO:  to be deprecated
   ctx = ctx or {}
   raw_chunks = raw_chunks or ""
   state = state or "START"
