@@ -121,6 +121,22 @@ function Gemini:process_response(response)
 
   local ok, json = pcall(vim.json.decode, chunk)
 
+  if not ok then
+    -- if not ok, try to keep process the accumulated stdout
+    ok, json = pcall(vim.json.decode, response:get_accumulated_chunks(), "")
+    if ok then
+      valid_accumulation = true
+      local total_text = {}
+      for _, part in ipairs(json) do
+        local text = vim.tbl_get(part, "candidates", 1, "content", "parts", 1, "text")
+        if text then
+          table.insert(total_text, text)
+        end
+      end
+      response:set_processed_text(total_text, "END")
+    end
+  end
+
   -- if not okay, try cleaning the recv chun
   if not ok then
     local _chunk = chunk
@@ -142,22 +158,6 @@ function Gemini:process_response(response)
   end
 
   if not ok then
-    -- if not ok, try to keep process the accumulated stdout
-    ok, json = pcall(vim.json.decode, response:get_accumulated_chunks(), "")
-    if ok then
-      valid_accumulation = true
-      local total_text = {}
-      for _, part in ipairs(json) do
-        local text = vim.tbl_get(part, "candidates", 1, "content", "parts", 1, "text")
-        if text then
-          table.insert(total_text, text)
-        end
-      end
-      response:set_processed_text(total_text, "END")
-    end
-  end
-
-  if not ok then
     -- but it back if its not processed
     utils.log("Could not process chunk: " .. chunk)
     response:could_not_process(chunk)
@@ -168,21 +168,11 @@ function Gemini:process_response(response)
     utils.log("Something is going on, _json is a string, expecing a table..", vim.log.levels.ERROR)
   elseif vim.tbl_isempty(json) then
     if chunk == "]" then
-      response:set_processed_text("", "END")
-      utils.log("Got to the end", vim.log.levels.DEBUG)
+      utils.log("Got to the end of response for Gemini", vim.log.levels.DEBUG)
     else
       local err = "Could not process the following raw chunk:\n" .. chunk
-      response:set_processed_text(err, "ERROR")
+      response:add_processed_text(err, "ERROR")
     end
-    -- elseif valid_accumulation then
-    --   local total_text = {}
-    --   for _, part in ipairs(json) do
-    --     local text = vim.tbl_get(part, "candidates", 1, "content", "parts", 1, "text")
-    --     if text then
-    --       table.insert(total_text, text)
-    --     end
-    --   end
-    --   -- response:set_processed_text(total_text, "END")
   else
     local text = vim.tbl_get(json, "candidates", 1, "content", "parts", 1, "text")
     if text then
@@ -195,10 +185,9 @@ function Gemini:process_response(response)
           table.insert(total_text, text)
         end
       end
-      response:set_processed_text(total_text, "END")
+      response:set_processed_text(total_text)
     end
   end
-  -- cb(response)
 end
 
 return Gemini

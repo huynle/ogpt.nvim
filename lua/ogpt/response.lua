@@ -7,9 +7,14 @@ local Response = Object("Response")
 
 Response.STRATEGY_LINE_BY_LINE = "line"
 Response.STRATEGY_CHUNK = "chunk"
+Response.STATE_INIT = "initialized"
+Response.STATE_INPROGRESS = "inprogress"
+Response.STATE_COMPLETED = "completed"
+Response.STATE_ERRORED = "errored"
+Response.STATE_STOPPED = "stopped"
 
-function Response:init(provider, opts)
-  self.opts = opts or {}
+function Response:init(provider, events)
+  self.events = events or {}
   self.accumulated_chunks = {}
   self.processed_text = {}
   self.rest_params = {}
@@ -22,6 +27,8 @@ function Response:init(provider, opts)
   self.raw_chunk_tx, self.raw_chunk_rx = channel.mpsc()
   self.processed_raw_tx, self.processsed_raw_rx = channel.mpsc()
   self.processed_content_tx, self.processsed_content_rx = channel.mpsc()
+  self.response_state = nil
+  self:set_state(self.STATE_INIT)
 end
 
 function Response:set_processed_text(text)
@@ -98,14 +105,14 @@ function Response:get_accumulated_chunks()
   return table.concat(self.accumulated_chunks, "")
 end
 
-function Response:add_processed_text(text, state)
+function Response:add_processed_text(text, flag)
   text = text or ""
   if vim.tbl_isempty(self.processed_text) then
     -- remove the first space found in most llm responses
     text = string.gsub(text, "^ ", "")
   end
   table.insert(self.processed_text, text)
-  self.processed_content_tx.send({ text, state })
+  self.processed_content_tx.send({ text, flag })
 end
 
 function Response:get_processed_text()
@@ -121,14 +128,34 @@ function Response:get_context()
 end
 
 function Response:set_state(state)
-  self.state = state
+  self.response_state = state
+  self:monitor_state()
 end
 
-function Response:is_in_progress()
-  if self.state ~= "END" then
-    return true
+function Response:monitor_state()
+  if self.response_state == self.STATE_INIT then
+    utils.log("Response Initialized.", vim.log.levels.DEBUG)
+    if self.events.on_start then
+      self.events.on_start()
+    end
+    --
+  elseif self.response_state == self.STATE_INPROGRESS then
+    utils.log("Response In-progress.", vim.log.levels.DEBUG)
+    --
+  elseif self.response_state == self.STATE_ERRORED then
+    utils.log("Response Errored.", vim.log.levels.DEBUG)
+    --
+  elseif self.response_state == self.STATE_COMPLETED then
+    utils.log("Response Completed.", vim.log.levels.DEBUG)
+    self:add_processed_text("", "END")
+    self:set_state(self.STATE_INIT)
+  elseif self.response_state == self.STATE_STOPPED then
+    utils.log("Response Stoped.", vim.log.levels.DEBUG)
+    self:add_processed_text("", "END")
+    self:set_state(self.STATE_INIT)
+  else
+    utils.log("unknown state: " .. self.response_state, vim.log.levels.ERROR)
   end
-  return false
 end
 
 function Response:extract_code()
