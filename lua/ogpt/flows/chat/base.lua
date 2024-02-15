@@ -104,7 +104,7 @@ function Chat:render_role()
 
   self.role_extmark_id = vim.api.nvim_buf_set_extmark(self.chat_input.bufnr, Config.namespace_id, 0, 0, {
     virt_text = {
-      { Config.options.chat.border_left_sign,  "OGPTTotalTokensBorder" },
+      { Config.options.chat.border_left_sign, "OGPTTotalTokensBorder" },
       {
         string.upper(self.role),
         "OGPTTotalTokens",
@@ -196,6 +196,9 @@ function Chat:_add(type, text, usage, idx)
     nr_of_lines = nr_of_lines + 1
     table.insert(lines, line)
   end
+
+  nr_of_lines = nr_of_lines + 1
+  table.insert(lines, "---------------------------------")
 
   table.insert(self.messages, {
     idx = idx,
@@ -472,18 +475,18 @@ function Chat:renderLastMessage()
     local total_tokens = msg.usage.total_tokens
     if total_tokens ~= nil then
       self.messages[self.selectedIndex].extmark_id =
-          vim.api.nvim_buf_set_extmark(self.chat_window.bufnr, Config.namespace_id, msg.end_line + 1, 0, {
-            virt_text = {
-              { Config.options.chat.border_left_sign,  "OGPTTotalTokensBorder" },
-              {
-                "TOKENS: " .. msg.usage.total_tokens,
-                "OGPTTotalTokens",
-              },
-              { Config.options.chat.border_right_sign, "OGPTTotalTokensBorder" },
-              { " ",                                   "" },
+        vim.api.nvim_buf_set_extmark(self.chat_window.bufnr, Config.namespace_id, msg.end_line + 1, 0, {
+          virt_text = {
+            { Config.options.chat.border_left_sign, "OGPTTotalTokensBorder" },
+            {
+              "TOKENS: " .. msg.usage.total_tokens,
+              "OGPTTotalTokens",
             },
-            virt_text_pos = "right_align",
-          })
+            { Config.options.chat.border_right_sign, "OGPTTotalTokensBorder" },
+            { " ", "" },
+          },
+          virt_text_pos = "right_align",
+        })
     end
 
     Signs.set_for_lines(self.chat_window.bufnr, msg.start_line, msg.end_line, "chat")
@@ -526,18 +529,15 @@ function Chat:toMessages()
     elseif msg.type == ANSWER then
       role = "assistant"
     end
-    table.insert(
-      messages,
-      {
-        role = role,
-        content = {
-          {
-            text = msg.text,
-            token = nil,
-          },
-        }
-      }
-    )
+    table.insert(messages, {
+      role = role,
+      content = {
+        {
+          text = msg.text,
+          token = nil,
+        },
+      },
+    })
   end
   -- return messages[#messages].content
   return messages
@@ -604,10 +604,10 @@ function Chat:display_input_suffix(suffix)
   if suffix then
     self.extmark_id = vim.api.nvim_buf_set_extmark(self.chat_input.bufnr, Config.namespace_id, 0, -1, {
       virt_text = {
-        { Config.options.chat.border_left_sign,  "OGPTTotalTokensBorder" },
-        { "" .. suffix,                          "OGPTTotalTokens" },
+        { Config.options.chat.border_left_sign, "OGPTTotalTokensBorder" },
+        { "" .. suffix, "OGPTTotalTokens" },
         { Config.options.chat.border_right_sign, "OGPTTotalTokensBorder" },
-        { " ",                                   "" },
+        { " ", "" },
       },
       virt_text_pos = "right_align",
     })
@@ -661,8 +661,8 @@ end
 function Chat:get_layout_params()
   local lines_height = vim.api.nvim_get_option("lines")
   local statusline_height = vim.o.laststatus == 0 and 0 or 1 -- height of the statusline if present
-  local cmdline_height = vim.o.cmdheight                     -- height of the cmdline if present
-  local tabline_height = vim.o.showtabline == 0 and 0 or 1   -- height of the tabline if present
+  local cmdline_height = vim.o.cmdheight -- height of the cmdline if present
+  local tabline_height = vim.o.showtabline == 0 and 0 or 1 -- height of the tabline if present
   local total_height = lines_height
   local used_height = statusline_height + cmdline_height + tabline_height
   local layout_height = total_height - used_height
