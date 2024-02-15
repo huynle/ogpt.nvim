@@ -10,6 +10,7 @@ function Provider:init(opts)
   opts = vim.tbl_extend("force", Config.options.providers[self.name], opts)
   self.enabled = opts.enabled
   self.model = opts.model
+  self.stream_response = true
   self.models = opts.models or {}
   self.api_host = opts.api_host
   self.api_key = opts.api_key
@@ -196,6 +197,7 @@ function Provider:get_action_params(opts)
 end
 
 function Provider:expand_model(params, ctx)
+  params.stream = self.stream_response
   params = self:get_action_params(params)
   ctx = ctx or {}
   local provider_models = self.models

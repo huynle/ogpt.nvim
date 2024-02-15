@@ -13,8 +13,10 @@ M.logs = {}
 function M.defaults()
   local defaults = {
     -- options of 0-5, is trace, debug, info, warn, error, off, respectively
-    debug_log_level = 2,
-    debug_notify_level = 3,
+    debug = {
+      log_level = 3,
+      notify_level = 3,
+    },
     edgy = false,
     single_window = false,
     yank_register = "+",
