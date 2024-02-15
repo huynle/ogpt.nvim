@@ -177,8 +177,6 @@ function Provider:process_response(response)
   elseif json.done then
     if json.message then
       response:add_processed_text(json.message.content, "CONTINUE")
-    else
-      response:add_processed_text("", "END")
     end
   elseif json.message then
     response:add_processed_text(json.message.content, "CONTINUE")

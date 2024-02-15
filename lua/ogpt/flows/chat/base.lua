@@ -3,6 +3,7 @@ local Layout = require("ogpt.common.layout")
 local Popup = require("ogpt.common.popup")
 
 local ChatInput = require("ogpt.input")
+local Response = require("ogpt.response")
 local Config = require("ogpt.config")
 local Parameters = require("ogpt.parameters")
 local Sessions = require("ogpt.flows.chat.sessions")
@@ -196,9 +197,6 @@ function Chat:_add(type, text, usage, idx)
     nr_of_lines = nr_of_lines + 1
     table.insert(lines, line)
   end
-
-  nr_of_lines = nr_of_lines + 1
-  table.insert(lines, "---------------------------------")
 
   table.insert(self.messages, {
     idx = idx,
@@ -730,6 +728,10 @@ end
 -- function Chat:stop_output()
 --   self.stop_flag = true
 -- end
+--
+function Chat:on_complete_response(response)
+  --
+end
 
 function Chat:open()
   self.session.parameters = vim.tbl_extend("keep", self.session.parameters, self.params)
@@ -775,6 +777,14 @@ function Chat:open()
         return
       end
 
+      -- create response object per api call
+      local response = Response(self.provider, {
+        on_start = function()
+          -- restart stop flag
+          self.stop_flag = false
+        end,
+      })
+
       -- clear input
       vim.api.nvim_buf_set_lines(self.chat_input.bufnr, 0, -1, false, { "" })
 
@@ -789,18 +799,16 @@ function Chat:open()
           messages = self:toMessages(),
           system = self.system_message,
         }, self.parameters_panel.params)
-        self.provider.api:chat_completions(params, function(...)
-          self:addAnswerPartial(...)
-        end, function()
-          -- check the stop flag if it should stop
-          -- return not self.is_running
-          return self.stop_flag
-        end, {
-          -- on_stop = function()
-          --   self:stopSpinner()
-          --   -- reset the stop flag
-          --   self.is_running = false
-          -- end,
+        self.provider.api:chat_completions(response, {
+          custom_params = params,
+          partial_result_fn = function(...)
+            self:addAnswerPartial(...)
+          end,
+          should_stop = function()
+            -- check the stop flag if it should stop
+            -- return not self.is_running
+            return self.stop_flag
+          end,
         })
       end
     end,

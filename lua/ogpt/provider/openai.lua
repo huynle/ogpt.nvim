@@ -74,10 +74,10 @@ function Openai:_process_line(content, response)
     if text_delta then
       response:add_processed_text(text_delta, "CONTINUE")
     elseif text then
-      response:add_processed_text(text, "END")
+      -- done
     end
   elseif not _json and string.find(_raw, "[DONE]") then
-    response:add_processed_text("", "END")
+    -- done
   else
     response:could_not_process(_raw)
     utils.log("Could not process chunk for openai: " .. _raw, vim.log.levels.DEBUG)

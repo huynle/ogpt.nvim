@@ -149,16 +149,16 @@ function Textgenui:process_response(response)
   end
 
   if _json.token.text and string.find(_json.token.text, "</s>") then
-    response:add_processed_text("", "END")
+    -- Done
   elseif
     _json.token.text
     and vim.tbl_get(ctx, "tokens", "end_of_result")
     and string.find(_json.token.text, vim.tbl_get(ctx, "tokens", "end_of_result"))
   then
     ctx.context = _json.context
-    response:add_processed_text("", "END")
+    -- done
   elseif _json.token.generated_text then
-    response:add_processed_text("", "END")
+    -- done
   else
     response:add_processed_text(_json.token.text, "CONTINUE")
   end

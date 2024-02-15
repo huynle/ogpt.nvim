@@ -7,6 +7,8 @@ local Response = require("ogpt.response")
 
 local Api = Object("Api")
 
+Api.STATE_COMPLETED = "COMPLETED"
+
 function Api:init(provider, action, opts)
   self.opts = opts
   self.provider = provider
@@ -20,7 +22,11 @@ function Api:completions(custom_params, cb, opts)
   self:make_call(self.COMPLETIONS_URL, params, cb, opts)
 end
 
-function Api:chat_completions(custom_params, partial_result_fn, should_stop, opts)
+function Api:chat_completions(response, inputs)
+  local custom_params = inputs.custom_params
+  local partial_result_fn = inputs.partial_result_fn
+  local should_stop = inputs.should_stop or function() end
+
   -- local stream = custom_params.stream or false
   local params, _completion_url, ctx = self.provider:expand_model(custom_params)
 
@@ -29,11 +35,27 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
   ctx.model = custom_params.model
   utils.log("Request to: " .. _completion_url)
   utils.log(params)
-  local response = Response(self.provider, opts)
   response.ctx = ctx
   response.rest_params = params
   response.partial_result_cb = partial_result_fn
   response:run_async()
+
+  local on_complete = inputs.on_complete or function()
+    response:set_state(response.STATE_COMPLETED)
+  end
+  local on_start = inputs.on_start
+    or function()
+      -- utils.log("Start Exec of: Curl " .. vim.inspect(curl_args), vim.log.levels.DEBUG)
+      response:set_state(response.STATE_INPROGRESS)
+    end
+  local on_error = inputs.on_error
+    or function(msg)
+      -- utils.log("Error running curl: " .. msg or "", vim.log.levels.ERROR)
+      response:set_state(response.STATE_ERROR)
+    end
+  local on_stop = inputs.on_stop or function()
+    response:set_state(response.STATE_STOPPED)
+  end
 
   -- if params.stream then
   -- local accumulate = {}
@@ -49,13 +71,9 @@ function Api:chat_completions(custom_params, partial_result_fn, should_stop, opt
     table.insert(curl_args, header_item)
   end
 
-  self:exec("curl", curl_args, function(chunk)
+  self:exec("curl", curl_args, on_start, function(chunk)
     response:add_chunk(chunk)
-  end, function(...) end, should_stop, function(...) end)
-  -- else
-  --   -- params.stream = false
-  --   self:make_call(self.provider.envs.CHAT_COMPLETIONS_URL, params, partial_result_fn, opts)
-  -- end
+  end, on_complete, on_error, on_stop, should_stop)
 end
 
 -- function Api:edits(custom_params, cb)
@@ -225,16 +243,16 @@ local function ensureUrlProtocol(str)
   return "https://" .. str
 end
 
-function Api:exec(cmd, args, on_stdout_chunk, on_complete, should_stop, on_stop)
-  local stdout = vim.loop.new_pipe()
+function Api:exec(cmd, args, on_start, on_stdout_chunk, on_complete, on_error, on_stop, should_stop)
   local stderr = vim.loop.new_pipe()
+  local stdout = vim.loop.new_pipe()
   local stderr_chunks = {}
 
   local handle, err
   local function on_stdout_read(_, chunk)
     if chunk then
       vim.schedule(function()
-        if should_stop and should_stop() then
+        if should_stop() then
           if handle ~= nil then
             handle:kill(2) -- send SIGINT
             pcall(function()
@@ -246,8 +264,7 @@ function Api:exec(cmd, args, on_stdout_chunk, on_complete, should_stop, on_stop)
             pcall(function()
               handle:close()
             end)
-            -- on_stop()
-            -- on_complete("", "END")
+            on_stop()
           end
         end
         on_stdout_chunk(chunk)
@@ -261,7 +278,7 @@ function Api:exec(cmd, args, on_stdout_chunk, on_complete, should_stop, on_stop)
     end
   end
 
-  utils.log("executing: " .. vim.inspect(cmd) .. " " .. vim.inspect(args), vim.log.levels.DEBUG)
+  on_start()
   handle, err = vim.loop.spawn(cmd, {
     args = args,
     stdio = { nil, stdout, stderr },
@@ -274,13 +291,15 @@ function Api:exec(cmd, args, on_stdout_chunk, on_complete, should_stop, on_stop)
 
     vim.schedule(function()
       if code ~= 0 then
-        on_complete(vim.trim(table.concat(stderr_chunks, "")), "ERROR")
+        on_error()
+      else
+        on_complete()
       end
     end)
   end)
 
   if not handle then
-    on_complete(cmd .. " could not be started: " .. err, "ERROR")
+    on_error(cmd .. " could not be started: " .. err)
   else
     stdout:read_start(on_stdout_read)
     stderr:read_start(on_stderr_read)

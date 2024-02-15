@@ -1,4 +1,5 @@
 local BaseAction = require("ogpt.flows.actions.base")
+local Response = require("ogpt.response")
 local Spinner = require("ogpt.spinner")
 local PopupWindow = require("ogpt.flows.actions.popup.window")
 local utils = require("ogpt.utils")
@@ -42,6 +43,7 @@ end
 
 function PopupAction:run()
   -- self.stop = false
+  local response = Response(self.provider)
   local params = self:get_params()
   local _, start_row, start_col, end_row, end_col = self:get_visual_selection()
   local opts = {
@@ -67,24 +69,32 @@ function PopupAction:run()
     self:set_loading(true)
     self.output_panel:mount(opts)
     params.stream = true
-    self.provider.api:chat_completions(params, function(...)
-      self:addAnswerPartial(...)
-    end, function()
-      -- should stop function
-      if self.stop then
-        -- self.stop = false
-        -- self:run_spinner(false)
-        self:set_loading(false)
-        return true
-      else
-        return false
-      end
-    end)
+    self.provider.api:chat_completions(response, {
+      custom_params = params,
+      partial_result_fn = function(...)
+        self:addAnswerPartial(...)
+      end,
+      should_stop = function()
+        -- should stop function
+        if self.stop then
+          -- self.stop = false
+          -- self:run_spinner(false)
+          self:set_loading(false)
+          return true
+        else
+          return false
+        end
+      end,
+    })
   else
     self:set_loading(true)
-    self.provider.api:chat_completions(params, function(answer, usage)
-      self:on_result(answer, usage)
-    end)
+    self.provider.api:chat_completions(response, {
+      custom_params = params,
+      partial_result_fn = function(...)
+        self:on_result(...)
+      end,
+      should_stop = nil,
+    })
   end
 end
 

@@ -1,4 +1,5 @@
 local BaseAction = require("ogpt.flows.actions.base")
+local Response = require("ogpt.response")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
 local Layout = require("ogpt.common.layout")
@@ -144,6 +145,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       end
     end,
     on_submit = vim.schedule_wrap(function(instruction)
+      local response = Response(self.provider)
       -- clear input
       vim.api.nvim_buf_set_lines(self.instructions_input.bufnr, 0, -1, false, { "" })
       vim.api.nvim_buf_set_lines(self.output_panel.bufnr, 0, -1, false, { "" })
@@ -160,9 +162,12 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       local params = vim.tbl_extend("keep", { messages = messages }, self.parameters_panel.params)
 
       params.stream = true
-      self.provider.api:chat_completions(params, function(...)
-        self:addAnswerPartial(...)
-      end)
+      self.provider.api:chat_completions(response, {
+        custom_params = params,
+        partial_result_fn = function(...)
+          self:addAnswerPartial(...)
+        end,
+      })
     end),
   })
 
