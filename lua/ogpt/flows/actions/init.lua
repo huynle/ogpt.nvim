@@ -52,25 +52,29 @@ end
 
 function M.run_action(opts)
   local ACTIONS = M.read_actions()
+  local action_name = table.remove(opts.fargs, 1)
 
-  local action_opts = loadstring("return " .. opts.args)() or {}
+  local action_opts = loadstring("return " .. table.concat(opts.fargs, " "))() or {}
 
-  local action_name = opts.fargs[1]
   local item = ACTIONS[action_name]
-
-  -- parse args
-  if item.args then
-    item.variables = {}
-    local i = 2
-    for key, value in pairs(item.args) do
-      local arg = type(value.default) == "function" and value.default() or value.default or ""
-      -- TODO: validataion
-      item.variables[key] = arg
-      i = i + 1
-    end
+  if not item then
+    vim.notify("Action '" .. action_name .. "' does not exist in OGPT Actions.  Try checking your config table/JSON.")
+    return
   end
 
-  opts = vim.tbl_extend("force", {}, action_opts, item)
+  -- -- parse args
+  -- if item.args then
+  --   item.variables = {}
+  --   local i = 2
+  --   for key, value in pairs(item.args) do
+  --     local arg = type(value.default) == "function" and value.default() or value.default or ""
+  --     -- TODO: validataion
+  --     item.variables[key] = arg
+  --     i = i + 1
+  --   end
+  -- end
+
+  opts = vim.tbl_extend("force", {}, item, action_opts)
   local class = classes_by_type[item.type]
   local action = class(action_name, opts)
   vim.schedule_wrap(action:run())

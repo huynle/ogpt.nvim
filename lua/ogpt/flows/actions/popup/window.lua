@@ -10,7 +10,7 @@ function PopupWindow:init(options, edgy)
   options = vim.tbl_deep_extend("keep", options or {}, Config.options.popup)
   self.options = options
 
-  PopupWindow.super.init(self, options, self.edgy)
+  PopupWindow.super.init(self, options, edgy)
 end
 
 function PopupWindow:update_popup_size(opts)

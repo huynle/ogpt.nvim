@@ -16,6 +16,12 @@ local STRATEGY_QUICK_FIX = "quick_fix"
 function PopupAction:init(name, opts)
   self.name = name or ""
   PopupAction.super.init(self, opts)
+
+  local popup_options = Config.options.popup
+  if type(opts.type) == "table" then
+    popup_options = vim.tbl_extend("force", popup_options, opts.type.popup or {})
+  end
+
   self.provider = Config.get_provider(opts.provider, self)
   -- self.params = Config.get_action_params(self.provider, opts.params or {})
   self.params = self.provider:get_action_params(opts.params)
@@ -26,8 +32,7 @@ function PopupAction:init(name, opts)
   self.strategy = opts.strategy or STRATEGY_DISPLAY
   self.ui = opts.ui or {}
   self.cur_win = vim.api.nvim_get_current_win()
-  self.edgy = Config.options.popup.edgy
-  self.output_panel = PopupWindow(Config.options.popup, Config.options.popup.edgy)
+  self.output_panel = PopupWindow(popup_options)
   self.spinner = Spinner:new(function(state) end)
 
   self:update_variables()

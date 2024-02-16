@@ -84,7 +84,10 @@ function M.run_action(opts)
       action:close()
     end
   end
-  table.insert(M.actions, Actions.run_action(opts))
+  local action_hdl = Actions.run_action(opts)
+  if action_hdl then
+    table.insert(M.actions, action_hdl)
+  end
 end
 
 return M

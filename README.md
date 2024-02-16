@@ -6,8 +6,8 @@
 ![Lua](https://img.shields.io/badge/Made%20with%20Lua-blueviolet.svg?style=for-the-badge&logo=lua)
 
 ## Features
-- **Multiple Providers**: OGPT.nvim can take multiple providers. Ollama, OpenAI, textgenui, more if there are pull requests
-- **Mix-match Provider**: default provider is used, but you can mix and match different provider AND specific model to different actions.
+- **Multiple Providers**: OGPT.nvim can take multiple providers. Ollama, OpenAI, textgenui, Gemini, more if there are pull requests
+- **Mix-match Provider**: default provider is used, but you can mix and match different provider AND specific model to different actions, at any point in your run or configurations.
 - **Interactive Q&A**: Engage in interactive question-and-answer sessions with the powerful gpt model (OGPT) using an intuitive interface.
 - **Persona-based Conversations**: Explore various perspectives and have conversations with different personas by selecting prompts from Awesome ChatGPT Prompts.
 - **Customizable Actions**: Execute a range of actions utilizing the gpt model, such as grammar
@@ -19,12 +19,11 @@ plugin configurations.
 
 ## Installation
 
-if you dont specify a provider, "ollama" will be the default provider. "http://localhost:11434" is
-your endpoint.
+If you do not specify a provider, `ollama` will be the default provider. `http://localhost:11434`
+is your endpoint. `mistral:7b` will be your default if the configuration is not updated.
 
 ```lua
-
--- Lazy
+-- Simple, minimal Lazy.nvim configuration
 {
   "huynle/ogpt.nvim",
     event = "VeryLazy",
@@ -47,7 +46,7 @@ your endpoint.
 
 ## Configuration
 
-`OGPT.nvim` comes with the following defaults, you can override any of the field by passing config as setup param.
+`OGPT.nvim` comes with the following defaults. You can override any of the fields by passing a config as setup parameters.
 
 https://github.com/huynle/ogpt.nvim/blob/main/lua/ogpt/config.lua
 
@@ -63,6 +62,158 @@ empowering you to generate natural language responses from Ollama's OGPT directl
 Custom Ollama API host with the configuration option `api_host_cmd` or
 environment variable called `$OLLAMA_API_HOST`. It's useful if you run Ollama remotely 
 
+### Gemini, TextGenUI, OpenAI Setup
+* not much here, you just have to get your API keys and provide that in your configuration. If your
+  configuration files are public, you probably want to create environment variable for your API
+keys
+
+### Edgy.nvim setup
+![edgy-example](assets/images/edgy-example.png.png)
+
+I prefer `edgy.nvim` over the floating windows. It allow for much better interaction. Here is an
+example of an 'edgy' configuration.
+
+```lua
+{
+{
+  "huynle/ogpt.nvim",
+    event = "VeryLazy",
+    opts = {
+      default_provider = "ollama",
+      edgy = true, -- enable this!
+      single_window = false -- set this to true if you want only one OGPT window to appear at a time
+      providers = {
+        ollama = {
+          api_host = os.getenv("OLLAMA_API_HOST") or "http://localhost:11434",
+          api_key = os.getenv("OLLAMA_API_KEY") or "",
+        }
+      }
+    },
+    dependencies = {
+      "MunifTanjim/nui.nvim",
+      "nvim-lua/plenary.nvim",
+      "nvim-telescope/telescope.nvim"
+    }
+},
+{
+    "folke/edgy.nvim",
+    event = "VeryLazy",
+    init = function()
+      vim.opt.laststatus = 3
+      vim.opt.splitkeep = "screen" -- or "topline" or "screen"
+    end,
+    },
+    opts = {
+      exit_when_last = false,
+      animate = {
+        enabled = false,
+      },
+      wo = {
+        winbar = true,
+        winfixwidth = true,
+        winfixheight = false,
+        winhighlight = "WinBar:EdgyWinBar,Normal:EdgyNormal",
+        spell = false,
+        signcolumn = "no",
+      },
+      keys = {
+        -- -- close window
+        ["q"] = function(win)
+          win:close()
+        end,
+        -- close sidebar
+        ["Q"] = function(win)
+          win.view.edgebar:close()
+        end,
+        -- increase width
+        ["<S-Right>"] = function(win)
+          win:resize("width", 3)
+        end,
+        -- decrease width
+        ["<S-Left>"] = function(win)
+          win:resize("width", -3)
+        end,
+        -- increase height
+        ["<S-Up>"] = function(win)
+          win:resize("height", 3)
+        end,
+        -- decrease height
+        ["<S-Down>"] = function(win)
+          win:resize("height", -3)
+        end,
+      },
+      right = {
+        {
+          title = "OGPT Popup",
+          ft = "ogpt-popup",
+          size = { width = 0.2 },
+          wo = {
+            wrap = true,
+          },
+        },
+        {
+          title = "OGPT Parameters",
+          ft = "ogpt-parameters-window",
+          size = { height = 6 },
+          wo = {
+            wrap = true,
+          },
+        },
+        {
+          title = "OGPT Template",
+          ft = "ogpt-template",
+          size = { height = 6 },
+        },
+        {
+          title = "OGPT Sesssions",
+          ft = "ogpt-sessions",
+          size = { height = 6 },
+          wo = {
+            wrap = true,
+          },
+        },
+        {
+          title = "OGPT System Input",
+          ft = "ogpt-system-window",
+          size = { height = 6 },
+        },
+        {
+          title = "OGPT",
+          ft = "ogpt-window",
+          size = { height = 0.5 },
+          wo = {
+            wrap = true,
+          },
+        },
+        {
+          title = "OGPT {{selection}}",
+          ft = "ogpt-selection",
+          size = { width = 80, height = 4 },
+          wo = {
+            wrap = true,
+          },
+        },
+        {
+          title = "OGPt {{instruction}}",
+          ft = "ogpt-instruction",
+          size = { width = 80, height = 4 },
+          wo = {
+            wrap = true,
+          },
+        },
+        {
+          title = "OGPT Chat",
+          ft = "ogpt-input",
+          size = { width = 80, height = 4 },
+          wo = {
+            wrap = true,
+          },
+        },
+      },
+    },
+  }
+}
+```
 
 
 ## Usage
@@ -129,9 +280,11 @@ opts = {
   actions = {
     grammar_correction = {
       type = "popup",
+      strategy = "replace",
+      provider = "ollama", -- default to "default_provider" if not provided
+      model = "mixtral:7b", -- default to "provider.<default_provider>.model" if not provided
       template = "Correct the given text to standard {{lang}}:\n\n```{{input}}```",
       system = "You are a helpful note writing assistant, given a text input, correct the text only for grammar and spelling error. You are to keep all formatting the same, e.g. markdown bullets, should stay as a markdown bullet in the result, and indents should stay the same. Return ONLY the corrected text.",
-      strategy = "replace",
       params = {
         temperature = 0.3,
       },
@@ -154,6 +307,19 @@ available for further editing requests
 
 The `display` strategy shows the output in a float window. 
 `append` and `replace` modify the text directly in the buffer with "a" or "r"
+
+
+#### Run With Options
+On the fly, you can execute a command line to call OGPT. An example to replace
+the grammar_correction call, is provided below.
+`:OGPTRun grammar_correction {provider="openai", model="gpt-4"}`
+
+To make it even more dynamic, you can change it to have the provider/model or any parameters be
+inputted by the user on the spot when the command is executed.
+`:OGPTRun grammar_correction {provider=vim.fn.input("Provider: "), edgy=false}`
+
+And now if you know Vim autocommands, you can start tying this into your workflow.
+More to come later.
 
 ### Interactive Chat Parameters
 
