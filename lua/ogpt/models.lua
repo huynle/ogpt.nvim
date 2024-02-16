@@ -3,7 +3,6 @@ local conf = require("telescope.config").values
 local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
 local job = require("plenary.job")
-local Api = require("ogpt.api")
 
 local Utils = require("ogpt.utils")
 local Config = require("ogpt.config")
@@ -20,13 +19,13 @@ end
 local function entry_maker(model)
   return {
     value = model.name,
-    display = model.name,
-    ordinal = model.digest,
+    display = model.display or model.name,
+    ordinal = model.digest or model.name,
     preview_command = preview_command,
   }
 end
 
-local finder = function(opts)
+local finder = function(provider, opts)
   local job_started = false
   local job_completed = false
   local results = {}
@@ -54,7 +53,9 @@ local finder = function(opts)
           :new({
             command = "curl",
             args = {
-              opts.url,
+              provider.envs.MODELS_URL,
+              "-H",
+              provider.envs.AUTHORIZATION_HEADER,
             },
             on_exit = vim.schedule_wrap(function(j, exit_code)
               if exit_code ~= 0 then
@@ -63,13 +64,33 @@ local finder = function(opts)
               end
 
               local response = table.concat(j:result(), "\n")
-              local json = vim.fn.json_decode(response)
+              local ok, json = pcall(vim.fn.json_decode, response)
 
-              for _, model in ipairs(json.models) do
+              if not ok then
+                vim.print(
+                  "OGPT ERRPR: something happened when trying request for models from " .. provider.envs.MODELS_URL
+                )
+                process_complete()
+                job_completed = true
+              end
+
+              local function process_single_model(model)
                 local v = entry_maker(model)
                 num_results = num_results + 1
                 results[num_results] = v
                 process_result(v)
+              end
+
+              if provider.parse_api_model_response then
+                provider.parse_api_model_response(json, process_single_model)
+              else
+                -- default processor for a REST response from a curl for models
+                for _, model in ipairs(json.models) do
+                  local v = entry_maker(model)
+                  num_results = num_results + 1
+                  results[num_results] = v
+                  process_result(v)
+                end
               end
 
               process_complete()
@@ -84,7 +105,7 @@ end
 --
 
 local M = {}
-function M.select_model(opts)
+function M.select_model(provider, opts)
   opts = opts or {}
   pickers
     .new(opts, {
@@ -93,10 +114,10 @@ function M.select_model(opts)
         height = 0.5,
       },
       results_title = "Select Ollama Model",
-      prompt_prefix = Config.options.popup_input.prompt,
+      prompt_prefix = Config.options.input_window.prompt,
       selection_caret = Config.options.chat.answer_sign .. " ",
       prompt_title = "Models",
-      finder = finder({ url = Api.MODELS_URL }),
+      finder = finder(provider),
       sorter = conf.generic_sorter(),
       attach_mappings = function(prompt_bufnr)
         actions.select_default:replace(function()

@@ -1,4 +1,4 @@
-local Popup = require("nui.popup")
+local Popup = require("ogpt.common.popup")
 local Text = require("nui.text")
 local defaults = require("nui.utils").defaults
 local is_type = require("nui.utils").is_type
@@ -22,11 +22,11 @@ local function patch_cursor_position(target_cursor, force)
   end
 end
 
-local Input = Popup:extend("NuiInput")
+local Input = Popup:extend("OgptInput")
 
 ---@param popup_options table
 ---@param options table
-function Input:init(popup_options, options)
+function Input:init(popup_options, options, edgy)
   vim.fn.sign_define("multiprompt_sign", { text = " ", texthl = "LineNr", numhl = "LineNr" })
   vim.fn.sign_define("singleprompt_sign", { text = " ", texthl = "LineNr", numhl = "LineNr" })
 
@@ -42,7 +42,7 @@ function Input:init(popup_options, options)
 
   popup_options.size.height = 2
 
-  Input.super.init(self, popup_options)
+  Input.super.init(self, popup_options, options.edgy)
 
   self._.default_value = defaults(options.default_value, "")
   self._.prompt = Text(defaults(options.prompt, ""))
@@ -97,7 +97,7 @@ function Input:init(popup_options, options)
   if options.on_change then
     props.on_change = function()
       local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
-      local max_lines = Config.options.popup_input.max_visible_lines -- Set the maximum number of lines here
+      local max_lines = Config.options.input_window.max_visible_lines -- Set the maximum number of lines here
       if max_lines ~= nil and #lines > max_lines then
         lines = { unpack(lines, 1, max_lines) } -- Only keep the first max_lines lines
       end
@@ -118,8 +118,6 @@ function Input:mount()
 
   Input.super.mount(self)
 
-  vim.api.nvim_buf_set_option(0, "ft", "ogpt-input")
-
   if props.on_change then
     vim.api.nvim_buf_attach(self.bufnr, false, {
       on_lines = props.on_change,
@@ -132,13 +130,13 @@ function Input:mount()
     end, { once = true })
   end
 
-  self:map("i", Config.options.popup_input.submit, function()
+  self:map("i", Config.options.input_window.submit, function()
     local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
     local value = table.concat(lines, "\n")
     props.on_submit(value)
   end, { noremap = true })
 
-  self:map("n", Config.options.popup_input.submit_n, function()
+  self:map("n", Config.options.input_window.submit_n, function()
     local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
     local value = table.concat(lines, "\n")
     props.on_submit(value)

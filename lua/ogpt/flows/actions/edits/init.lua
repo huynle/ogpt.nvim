@@ -1,73 +1,367 @@
-local classes = require("ogpt.common.classes")
 local BaseAction = require("ogpt.flows.actions.base")
-local Api = require("ogpt.api")
-local Utils = require("ogpt.utils")
+local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
+local Layout = require("ogpt.common.layout")
+local Popup = require("ogpt.common.popup")
+local ChatInput = require("ogpt.input")
+local Parameters = require("ogpt.parameters")
 
--- curl https://api.openai.com/v1/edits \
---   -H "Content-Type: application/json" \
---   -H "Authorization: Bearer $OLLAMA_API_KEY" \
---   -d '{
---   "model": "codellama:13b",
---   "input": "```r\ngenerate_random_points = function( base_lon, base_lat=38, max_distance = 10000, n_points=10, sample_method='hardcore',\n                                  random_seed = floor( base_lon * base_lat * 10000)) {\n\n  # for random point in the area -1...1, want to find latitude and longitude that matches these random points\n  # base_lat + random *\n\n set.seed(random_seed)\n\n lat_factor = max_distance / m_per_lat()\n lon_factor = max_distance / m_per_lon( base_lat )\n\n if (sample_method=='hardcore') {\n  beta <- n_points * 2; R = n_points / 2000\n  win <- disc(1) # Unit square for simulation\n  X1 <- rHardcore(beta, R, W = win) # Exact sampling -- beware it may run forever for some par.!\n } else {\n   # use random sampler\n }\n\nX1 %>%\n  as_tibble() %>%\n  mutate(\n         target_lon = base_lon + (x * lon_factor),\n         target_lat = base_lat + (y * lat_factor),\n         dist = distance_from( base_lon, base_lat, target_lon, target_lat)\n  ) %>%\n  filter( dist < max_distance) %>%\n  mutate(random=runif(n())) %>%\n  arrange(random) %>%\n  select(-random)\n\n}\n```\n",
---   "instruction": "Insert a roxygen skeleton to document this R function:",
---   "temperature": 0.7,
---   "top_p": 1
--- }'
+local EditAction = BaseAction:extend("EditAction")
 
-local EditAction = classes.class(BaseAction)
+local STRATEGY_EDIT = "edit"
+local STRATEGY_EDIT_CODE = "edit_code"
 
-local STRATEGY_REPLACE = "replace"
-local STRATEGY_DISPLAY = "display"
-
-function EditAction:init(opts)
-  self.super:init(opts)
-  self.params = opts.params or {}
-  self.template = opts.template or "{{input}}"
+function EditAction:init(name, opts)
+  self.name = name or ""
+  opts = opts or {}
+  EditAction.super.init(self, opts)
+  self.provider = Config.get_provider(opts.provider, self)
+  self.params = Config.get_action_params(self.provider.name, opts.params or {})
+  self.system = type(opts.system) == "function" and opts.system() or opts.system or ""
+  self.template = type(opts.template) == "function" and opts.template() or opts.template or "{{input}}"
   self.variables = opts.variables or {}
-  self.strategy = opts.strategy or STRATEGY_REPLACE
-end
+  self.strategy = opts.strategy or STRATEGY_EDIT
+  self.edgy = Config.options.edit.edgy
 
-function EditAction:render_template()
-  local data = {
-    filetype = self:get_filetype(),
-    input = self:get_selected_text(),
-  }
-  data = vim.tbl_extend("force", {}, data, self.variables)
-  local result = self.template
-  for key, value in pairs(data) do
-    result = result:gsub("{{" .. key .. "}}", Utils.escape_pattern(value))
-  end
-  return result
-end
+  self.instructions_input = nil
+  self.layout = nil
+  self.input_panel = nil
+  self.output_panel = nil
+  self.parameters_panel = nil
+  self.timer = nil
+  self.filetype = vim.api.nvim_buf_get_option(self:get_bufnr(), "filetype")
 
-function EditAction:get_params()
-  return vim.tbl_extend("force", Config.options.api_edit_params, self.params, { prompt = self:render_template() })
+  self.ui = opts.ui or {}
+
+  self:update_variables()
 end
 
 function EditAction:run()
   vim.schedule(function()
-    self:set_loading(true)
-
-    local params = self:get_params()
-    -- params.stream = false
-    Api.edits(params, function(answer, usage)
-      self:on_result(answer, usage)
-    end)
+    if self.strategy == STRATEGY_EDIT_CODE and self.opts.delay then
+      self:edit_with_instructions({}, { self:get_visual_selection() }, {
+        template = self.template,
+        variables = self.variables,
+        edit_code = true,
+        filetype = self:get_filetype(),
+      })
+    elseif self.strategy == STRATEGY_EDIT and self.opts.delay then
+      self:edit_with_instructions({}, { self:get_visual_selection() }, {
+        template = self.template,
+        variables = self.variables,
+        edit_code = false,
+      })
+    elseif self.strategy == STRATEGY_EDIT then
+      self:edit_with_instructions({}, { self:get_visual_selection() }, {
+        template = self.template,
+        variables = self.variables,
+      })
+    elseif self.strategy == STRATEGY_EDIT_CODE then
+      self:edit_with_instructions({}, { self:get_visual_selection() }, {
+        template = self.template,
+        variables = self.variables,
+        edit_code = true,
+        filetype = self:get_filetype(),
+      })
+    end
   end)
 end
 
-function EditAction:on_result(answer, usage)
-  vim.schedule(function()
-    self:set_loading(false)
+function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
+  opts = opts or {}
+  opts.params = opts.params or self.params
+  local api_params = opts.params
 
-    local bufnr = self:get_bufnr()
-    local visual_lines, start_row, start_col, end_row, end_col = self:get_visual_selection(bufnr)
-    local nlcount = Utils.count_newlines_at_end(table.concat(visual_lines, "\n"))
-    local answer_nlfixed = Utils.replace_newlines_at_end(answer, nlcount)
-    local lines = Utils.split_string_by_line(answer_nlfixed)
-    vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
-  end)
+  local visual_lines, start_row, start_col, end_row, end_col
+  if selection == nil then
+    visual_lines, start_row, start_col, end_row, end_col = utils.get_visual_lines(self.bufnr)
+  else
+    visual_lines, start_row, start_col, end_row, end_col = unpack(selection)
+  end
+
+  self.parameters_panel = Parameters({
+    type = "edits",
+    default_params = api_params,
+    session = nil,
+    parent = self,
+    edgy = Config.options.edit.edgy,
+  })
+  self.input_panel = Popup(Config.options.input_window, Config.options.edit.edgy)
+  self.output_panel = Popup(Config.options.output_window, Config.options.edit.edgy)
+  self.instructions_input = ChatInput(Config.options.instruction_window, {
+    edgy = Config.options.edit.edgy,
+    prompt = Config.options.input_window.prompt,
+    default_value = opts.instruction or "",
+    on_close = function()
+      -- if self.spinner:is_running() then
+      --   self.spinner:stop()
+      -- end
+      self:run_spinner(self.instructions_input, false)
+      if self.timer ~= nil then
+        self.timer:stop()
+      end
+    end,
+    on_submit = vim.schedule_wrap(function(instruction)
+      -- clear input
+      vim.api.nvim_buf_set_lines(self.instructions_input.bufnr, 0, -1, false, { "" })
+      vim.api.nvim_buf_set_lines(self.output_panel.bufnr, 0, -1, false, { "" })
+      -- show_progress()
+      self:run_spinner(self.instructions_input, true)
+
+      local input = table.concat(vim.api.nvim_buf_get_lines(self.input_panel.bufnr, 0, -1, false), "\n")
+
+      -- if instruction is empty, try to get the original instruction from opts
+      if instruction == "" then
+        instruction = opts.instruction or ""
+      end
+      local messages = self:build_edit_messages(input, instruction, opts)
+      local params = vim.tbl_extend("keep", { messages = messages }, self.parameters_panel.params)
+      self.provider.api:edits(
+        params,
+        utils.partial(utils.add_partial_completion, {
+          panel = self.output_panel,
+          on_complete = function(response)
+            -- on the completion, execute this function to extract out codeblocks
+            local nlcount = utils.count_newlines_at_end(response)
+            local output_txt = response
+            if opts.edit_code then
+              local code_response = utils.extract_code(response)
+              -- if the chat is to edit code, it will try to extract out the code from response
+              output_txt = response
+              if code_response then
+                output_txt = utils.match_indentation(response, code_response)
+              else
+                vim.notify("no codeblock detected", vim.log.levels.INFO)
+              end
+              if response.applied_changes then
+                vim.notify(response.applied_changes, vim.log.levels.INFO)
+              end
+            end
+            local output_txt_nlfixed = utils.replace_newlines_at_end(output_txt, nlcount)
+            local _output = utils.split_string_by_line(output_txt_nlfixed)
+            if self.output_panel.bufnr then
+              vim.api.nvim_buf_set_lines(self.output_panel.bufnr, 0, -1, false, _output)
+            end
+          end,
+          progress = function(flag)
+            self:run_spinner(flag)
+          end,
+        })
+      )
+    end),
+  })
+
+  self.layout = Layout(
+    {
+      relative = "editor",
+      position = "50%",
+      size = {
+        width = Config.options.popup_layout.center.width,
+        height = Config.options.popup_layout.center.height,
+      },
+    },
+
+    -- Layout.Box({
+    --   Layout.Box({
+    --     Layout.Box(self.input_panel, { grow = 1 }),
+    --     Layout.Box(self.instructions_input, { size = 3 }),
+    --   }, { dir = "col", size = "50%" }),
+    --   Layout.Box(self.output_panel, { size = "50%" }),
+    -- }, { dir = "row" }),
+
+    Layout.Box({
+      Layout.Box({
+        Layout.Box(self.input_panel, { grow = 1 }),
+        Layout.Box(self.instructions_input, { size = 3 }),
+      }, { dir = "col", grow = 1 }),
+      Layout.Box(self.output_panel, { grow = 1 }),
+      Layout.Box(self.parameters_panel, { size = 40 }),
+    }, { dir = "row" }),
+
+    Config.options.edit.edgy
+  )
+
+  -- accept output window
+  for _, window in ipairs({ self.input_panel, self.output_panel, self.instructions_input }) do
+    for _, mode in ipairs({ "n", "i" }) do
+      window:map(mode, Config.options.edit.keymaps.accept, function()
+        self.instructions_input.input_props.on_close()
+        local lines = vim.api.nvim_buf_get_lines(self.output_panel.bufnr, 0, -1, false)
+        vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
+        vim.notify("Successfully applied the change!", vim.log.levels.INFO)
+      end, { noremap = true })
+    end
+  end
+
+  -- use output as input
+  for _, window in ipairs({ self.input_panel, self.output_panel, self.instructions_input }) do
+    for _, mode in ipairs({ "n", "i" }) do
+      window:map(mode, Config.options.edit.keymaps.use_output_as_input, function()
+        local lines = vim.api.nvim_buf_get_lines(self.output_panel.bufnr, 0, -1, false)
+        vim.api.nvim_buf_set_lines(self.input_panel.bufnr, 0, -1, false, lines)
+        vim.api.nvim_buf_set_lines(self.output_panel.bufnr, 0, -1, false, {})
+      end, { noremap = true })
+    end
+  end
+
+  -- close
+  for _, window in ipairs({ self.input_panel, self.output_panel, self.instructions_input }) do
+    for _, mode in ipairs({ "n", "i" }) do
+      window:map(mode, Config.options.edit.keymaps.close, function()
+        self.spinner:stop()
+        if vim.fn.mode() == "i" then
+          vim.api.nvim_command("stopinsert")
+        end
+        vim.cmd("q")
+      end, { noremap = true })
+    end
+  end
+
+  -- toggle parameters
+  local parameters_open = true
+  for _, popup in ipairs({ self.parameters_panel, self.instructions_input, self.input_panel, self.output_panel }) do
+    for _, mode in ipairs({ "n", "i" }) do
+      popup:map(mode, Config.options.edit.keymaps.toggle_parameters, function()
+        if parameters_open then
+          self.layout:update(Layout.Box({
+            Layout.Box({
+              Layout.Box(self.input_panel, { grow = 1 }),
+              Layout.Box(self.instructions_input, { size = 3 }),
+            }, { dir = "col", size = "50%" }),
+            Layout.Box(self.output_panel, { size = "50%" }),
+          }, { dir = "row" }))
+          self.parameters_panel:hide()
+          vim.api.nvim_set_current_win(self.instructions_input.winid)
+        else
+          self.layout:update(Layout.Box({
+            Layout.Box({
+              Layout.Box(self.input_panel, { grow = 1 }),
+              Layout.Box(self.instructions_input, { size = 3 }),
+            }, { dir = "col", grow = 1 }),
+            Layout.Box(self.output_panel, { grow = 1 }),
+            Layout.Box(self.parameters_panel, { size = 40 }),
+          }, { dir = "row" }))
+          self.parameters_panel:show()
+          self.parameters_panel:mount()
+
+          vim.api.nvim_set_current_win(self.parameters_panel.winid)
+          vim.api.nvim_buf_set_option(self.parameters_panel.bufnr, "modifiable", false)
+          vim.api.nvim_win_set_option(self.parameters_panel.winid, "cursorline", true)
+        end
+        parameters_open = not parameters_open
+        -- set input and output settings
+        --  TODO
+        for _, window in ipairs({ self.input_panel, self.output_panel }) do
+          vim.api.nvim_buf_set_option(window.bufnr, "syntax", self.filetype)
+          vim.api.nvim_win_set_option(window.winid, "number", true)
+        end
+      end, {})
+    end
+  end
+
+  -- cycle windows
+  local active_panel = self.instructions_input
+  for _, popup in ipairs({ self.input_panel, self.output_panel, self.parameters_panel, self.instructions_input }) do
+    for _, mode in ipairs({ "n", "i" }) do
+      if mode == "i" and (popup == self.input_panel or popup == self.output_panel) then
+        goto continue
+      end
+      popup:map(mode, Config.options.edit.keymaps.cycle_windows, function()
+        if active_panel == self.instructions_input then
+          vim.api.nvim_set_current_win(self.input_panel.winid)
+          active_panel = self.input_panel
+          vim.api.nvim_command("stopinsert")
+        elseif active_panel == self.input_panel and mode ~= "i" then
+          vim.api.nvim_set_current_win(self.output_panel.winid)
+          active_panel = self.output_panel
+          vim.api.nvim_command("stopinsert")
+        elseif active_panel == self.output_panel and mode ~= "i" then
+          if parameters_open then
+            vim.api.nvim_set_current_win(self.parameters_panel.winid)
+            active_panel = self.parameters_panel
+          else
+            vim.api.nvim_set_current_win(self.instructions_input.winid)
+            active_panel = self.instructions_input
+          end
+        elseif active_panel == self.parameters_panel then
+          vim.api.nvim_set_current_win(self.instructions_input.winid)
+          active_panel = self.instructions_input
+        end
+      end, {})
+      ::continue::
+    end
+  end
+
+  -- toggle diff mode
+  local diff_mode = Config.options.edit.diff
+  for _, popup in ipairs({ self.parameters_panel, self.instructions_input, self.output_panel, self.input_panel }) do
+    for _, mode in ipairs({ "n", "i" }) do
+      popup:map(mode, Config.options.edit.keymaps.toggle_diff, function()
+        diff_mode = not diff_mode
+        for _, winid in ipairs({ self.input_panel.winid, self.output_panel.winid }) do
+          vim.api.nvim_set_current_win(winid)
+          if diff_mode then
+            vim.api.nvim_command("diffthis")
+          else
+            vim.api.nvim_command("diffoff")
+          end
+          vim.api.nvim_set_current_win(self.instructions_input.winid)
+        end
+      end, {})
+    end
+  end
+
+  -- set events
+  for _, popup in ipairs({ self.parameters_panel, self.instructions_input, self.output_panel, self.input_panel }) do
+    popup:on({ "BufUnload" }, function()
+      self:set_loading(false)
+    end)
+  end
+
+  self.layout:mount()
+  -- set input
+  if visual_lines then
+    vim.api.nvim_buf_set_lines(self.input_panel.bufnr, 0, -1, false, visual_lines)
+  end
+
+  -- set output
+  if output_lines then
+    vim.api.nvim_buf_set_lines(self.output_panel.bufnr, 0, -1, false, output_lines)
+  end
+
+  -- set input and output settings
+  for _, window in ipairs({ self.input_panel, self.output_panel }) do
+    vim.api.nvim_buf_set_option(window.bufnr, "syntax", "markdown")
+    vim.api.nvim_win_set_option(window.winid, "number", true)
+  end
+  -- end)
+end
+
+function EditAction:build_edit_messages(input, instructions, opts)
+  local _input = input
+  if opts.edit_code then
+    _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
+  else
+    _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
+  end
+  local variables = vim.tbl_extend("force", {}, {
+    instruction = instructions,
+    input = _input,
+    filetype = opts.filetype,
+  }, opts.variables)
+  local system_msg = opts.params.system or ""
+  local messages = {
+    {
+      role = "system",
+      content = system_msg,
+    },
+    {
+      role = "user",
+      content = self:render_template(variables, opts.template),
+    },
+  }
+
+  return messages
 end
 
 return EditAction

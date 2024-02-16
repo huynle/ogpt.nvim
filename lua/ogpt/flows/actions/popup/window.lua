@@ -1,23 +1,25 @@
-local Popup = require("nui.popup")
+local Popup = require("ogpt.common.popup")
 local Config = require("ogpt.config")
 local event = require("nui.utils.autocmd").event
 local Utils = require("ogpt.utils")
 
-local PreviewWindow = Popup:extend("PreviewWindow")
+local PopupWindow = Popup:extend("PopupWindow")
 
-function PreviewWindow:init(options)
-  options = vim.tbl_deep_extend("keep", options or {}, Config.options.preview_window)
+function PopupWindow:init(options, edgy)
+  options = vim.tbl_deep_extend("keep", options or {}, Config.options.popup)
+  self.options = options
 
-  PreviewWindow.super.init(self, options)
+  PopupWindow.super.init(self, options, self.edgy)
 end
 
-function PreviewWindow:update_popup_size(opts)
+function PopupWindow:update_popup_size(opts)
+  opts = vim.tbl_extend("force", self.options, opts or {})
   opts.lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
   local ui_opts = self:calculate_size(opts)
   self:update_layout(ui_opts)
 end
 
-function PreviewWindow:calculate_size(opts)
+function PopupWindow:calculate_size(opts)
   opts = opts or {}
   -- compute size
   -- the width is calculated based on the maximum number of lines and the height is calculated based on the width
@@ -71,13 +73,13 @@ function PreviewWindow:calculate_size(opts)
   return ui_opts
 end
 
-function PreviewWindow:mount(opts)
-  PreviewWindow.super.mount(self)
+function PopupWindow:mount(opts)
+  PopupWindow.super.mount(self)
 
   self:update_popup_size(opts)
 
   -- close
-  local keys = Config.options.preview_window.keymaps.close
+  local keys = Config.options.popup.keymaps.close
   if type(keys) ~= "table" then
     keys = { keys }
   end
@@ -91,21 +93,23 @@ function PreviewWindow:mount(opts)
   end
 
   -- accept output and replace
-  self:map("n", Config.options.preview_window.keymaps.accept, function()
-    -- local _lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
+  self:map("n", Config.options.popup.keymaps.accept, function()
+    local _lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
+    table.insert(_lines, "")
+    table.insert(_lines, "")
     vim.api.nvim_buf_set_text(
       opts.main_bufnr,
       opts.selection_idx.start_row - 1,
       opts.selection_idx.start_col - 1,
       opts.selection_idx.end_row - 1,
       opts.selection_idx.end_col,
-      opts.lines
+      _lines
     )
     vim.cmd("q")
   end)
 
   -- accept output and prepend
-  self:map("n", Config.options.preview_window.keymaps.prepend, function()
+  self:map("n", Config.options.popup.keymaps.prepend, function()
     local _lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
     table.insert(_lines, "")
     table.insert(_lines, "")
@@ -121,7 +125,7 @@ function PreviewWindow:mount(opts)
   end)
 
   -- accept output and append
-  self:map("n", Config.options.preview_window.keymaps.append, function()
+  self:map("n", Config.options.popup.keymaps.append, function()
     local _lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
     table.insert(_lines, 1, "")
     table.insert(_lines, "")
@@ -137,7 +141,7 @@ function PreviewWindow:mount(opts)
   end)
 
   -- yank code in output and close
-  self:map("n", Config.options.preview_window.keymaps.yank_code, function()
+  self:map("n", Config.options.popup.keymaps.yank_code, function()
     local _lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
     local _code = Utils.getSelectedCode(_lines)
     vim.fn.setreg(Config.options.yank_register, _code)
@@ -149,7 +153,7 @@ function PreviewWindow:mount(opts)
   end)
 
   -- yank output and close
-  self:map("n", Config.options.preview_window.keymaps.yank_to_register, function()
+  self:map("n", Config.options.popup.keymaps.yank_to_register, function()
     local _lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
     vim.fn.setreg(Config.options.yank_register, _lines)
 
@@ -180,4 +184,4 @@ function PreviewWindow:mount(opts)
   end)
 end
 
-return PreviewWindow
+return PopupWindow

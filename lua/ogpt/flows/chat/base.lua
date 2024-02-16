@@ -1,13 +1,12 @@
-local classes = require("ogpt.common.classes")
-local Layout = require("nui.layout")
-local Popup = require("nui.popup")
+local Object = require("ogpt.common.object")
+local Layout = require("ogpt.common.layout")
+local Popup = require("ogpt.common.popup")
 
 local ChatInput = require("ogpt.input")
-local Api = require("ogpt.api")
 local Config = require("ogpt.config")
 local Parameters = require("ogpt.parameters")
 local Sessions = require("ogpt.flows.chat.sessions")
-local Utils = require("ogpt.utils")
+local utils = require("ogpt.utils")
 local Signs = require("ogpt.signs")
 local Spinner = require("ogpt.spinner")
 local Session = require("ogpt.flows.chat.session")
@@ -18,9 +17,9 @@ ROLE_ASSISTANT = "assistant"
 ROLE_SYSTEM = "system"
 ROLE_USER = "user"
 
-local Chat = classes.class()
+local Chat = Object("Chat")
 
-function Chat:init()
+function Chat:init(opts)
   self.input_extmark_id = nil
 
   self.active_panel = nil
@@ -29,8 +28,10 @@ function Chat:init()
   -- quit indicator
   self.active = true
   self.focused = true
+  self.session = nil
 
   -- UI ELEMENTS
+  self.edgy = Config.options.chat.edgy
   self.layout = nil
   self.chat_panel = nil
   self.chat_input = nil
@@ -46,9 +47,11 @@ function Chat:init()
   self.prompt_lines = 1
 
   self.display_mode = Config.options.popup_layout.default
-  self.params = Config.options.api_params
+  self.params = Config.get_chat_params(opts.provider)
 
   self.session = Session.latest()
+
+  self.provider = Config.get_provider(self.session.parameters.provider, self)
   self.selectedIndex = 0
   self.role = ROLE_USER
   self.messages = {}
@@ -67,7 +70,8 @@ function Chat:welcome()
   self:set_cursor({ 1, 0 })
   self:set_system_message(nil, true)
 
-  if #self.session.conversation > 0 then
+  local conversation = self.session.conversation or {}
+  if #conversation > 0 then
     for idx, item in ipairs(self.session.conversation) do
       if item.type == SYSTEM then
         self:set_system_message(item.text, true)
@@ -77,8 +81,8 @@ function Chat:welcome()
     end
   end
 
-  if #self.session.conversation == 0 or (#self.session.conversation == 1 and self.system_message ~= nil) then
-    local lines = Utils.split_string_by_line(Config.options.chat.welcome_message)
+  if #conversation == 0 or (#conversation == 1 and self.system_message ~= nil) then
+    local lines = utils.split_string_by_line(Config.options.chat.welcome_message)
     self:set_lines(0, 0, false, lines)
     for line_num = 0, #lines do
       self:add_highlight("OGPTWelcome", line_num, 0, -1)
@@ -120,7 +124,7 @@ function Chat:set_system_message(msg, skip_session_add)
       usage = {},
     })
   else
-    self.system_role_panel:set_text(Utils.split_string_by_line(msg))
+    self.system_role_panel:set_text(utils.split_string_by_line(msg))
   end
 end
 
@@ -211,6 +215,7 @@ end
 
 function Chat:addAnswerPartial(text, state, ctx)
   if state == "ERROR" then
+    self:stopSpinner()
     return self:addAnswer(text, {})
   end
 
@@ -601,7 +606,7 @@ end
 function Chat:set_active_panel(panel)
   vim.api.nvim_set_current_win(panel.winid)
   self.active_panel = panel
-  Utils.change_mode_to_normal()
+  utils.change_mode_to_normal()
 
   if self.active_panel == self.chat_window then
     self:show_message_selection()
@@ -620,7 +625,7 @@ function Chat:get_layout_params()
   local layout_height = total_height - used_height
   local starting_row = tabline_height == 0 and 0 or 1
 
-  local width = Utils.calculate_percentage_width(Config.options.popup_layout.right.width)
+  local width = utils.calculate_percentage_width(Config.options.popup_layout.right.width)
   if self.parameters_open then
     width = width + 40
   end
@@ -656,11 +661,7 @@ function Chat:get_layout_params()
     }, { dir = self.display_mode == "center" and "row" or "col", grow = 1 })
   end
 
-  local box = Layout.Box({
-    left_layout,
-    Layout.Box(self.chat_input, { size = 2 + self.prompt_lines }),
-  }, { dir = "col" })
-
+  local box
   if self.parameters_open then
     box = Layout.Box({
       Layout.Box({
@@ -672,6 +673,11 @@ function Chat:get_layout_params()
         Layout.Box(self.sessions_panel, { grow = 1 }),
       }, { dir = "col", size = 40 }),
     }, { dir = "row" })
+  else
+    box = Layout.Box({
+      left_layout,
+      Layout.Box(self.chat_input, { size = 2 + self.prompt_lines }),
+    }, { dir = "col" })
   end
 
   return config, box
@@ -679,16 +685,25 @@ end
 
 function Chat:open()
   self.session.parameters = vim.tbl_extend("keep", self.session.parameters, self.params)
-  self.parameters_panel = Parameters.get_panel(self.session)
-  self.sessions_panel = Sessions.get_panel(function(session)
-    self:set_session(session)
-  end)
-  self.chat_window = Popup(Config.options.popup_window)
+  self.parameters_panel = Parameters({
+    type = "chat",
+    default_params = self.session.parameters,
+    session = self.session,
+    parent = self,
+    edgy = Config.options.chat.edgy,
+  })
+  self.sessions_panel = Sessions({
+    edgy = Config.options.chat.edgy,
+    set_session_cb = function(session)
+      self:set_session(session)
+    end,
+  })
+  self.chat_window = Popup(Config.options.output_window, Config.options.chat.edgy)
   self.system_role_panel = SystemWindow({
     on_change = function(text)
       self:set_system_message(text)
     end,
-  })
+  }, Config.options.chat.edgy)
   self.stop = false
   self.should_stop = function()
     if self.stop then
@@ -698,8 +713,9 @@ function Chat:open()
       return false
     end
   end
-  self.chat_input = ChatInput(Config.options.popup_input, {
-    prompt = Config.options.popup_input.prompt,
+  self.chat_input = ChatInput(Config.options.input_window, {
+    edgy = Config.options.chat.edgy,
+    prompt = Config.options.input_window.prompt,
     on_close = function()
       self:hide()
     end,
@@ -728,15 +744,16 @@ function Chat:open()
           -- prompt = self.messages[#self.messages].text,
           messages = self:toMessages(),
           system = self.system_message,
-        }, Parameters.params)
-        Api.chat_completions(params, function(answer, state, ctx)
+        }, self.parameters_panel.params)
+        self.provider.api:chat_completions(params, function(answer, state, ctx)
           self:addAnswerPartial(answer, state, ctx)
         end, self.should_stop)
       end
     end,
   })
 
-  self.layout = Layout(self:get_layout_params())
+  local _layout_options, _layout_box = self:get_layout_params()
+  self.layout = Layout(_layout_options, _layout_box, Config.options.chat.edgy)
   self:set_keymaps()
 
   -- initialize
@@ -821,11 +838,15 @@ function Chat:set_keymaps()
     self:redraw()
 
     if self.parameters_open then
+      self.parameters_panel:show()
+      self.sessions_panel:show()
       vim.api.nvim_buf_set_option(self.parameters_panel.bufnr, "modifiable", false)
       vim.api.nvim_win_set_option(self.parameters_panel.winid, "cursorline", true)
 
       self:set_active_panel(self.parameters_panel)
     else
+      self.parameters_panel:hide()
+      self.sessions_panel:hide()
       self:set_active_panel(self.chat_input)
     end
   end)
@@ -833,7 +854,7 @@ function Chat:set_keymaps()
   -- new session
   self:map(Config.options.chat.keymaps.new_session, function()
     self:new_session()
-    Sessions:refresh()
+    self.sessions_panel:refresh()
   end, { self.parameters_panel, self.chat_input, self.chat_window })
 
   -- cycle panes
@@ -957,7 +978,14 @@ function Chat:toggle()
 end
 
 function Chat:configure_parameters_panel(session)
-  self.parameters_panel = Parameters.get_panel(session)
+  -- self.parameters_panel = Parameters(session, self)
+  -- self.parameters_panel = Parameters({
+  --   type = " ",
+  --   default_params = self.session.parameters,
+  --   session = self.session,
+  --   parent = self,
+  -- })
+  --
   self:redraw()
 end
 
