@@ -227,15 +227,17 @@ Plugin exposes following commands:
 #### `OGPTActAs`
 `OGPTActAs` command which opens a prompt selection from [Awesome OGPT Prompts](https://github.com/f/awesome-chatgpt-prompts) to be used with the `mistral:7b` model.
 
-#### `OGPTRun edit_with_instructions` `OGPTRun edit_with_instructions` command which opens
+#### `OGPTRun edit_with_instructions`
+`OGPTRun edit_with_instructions` command which opens
 interactive window to edit selected text or whole window using the `deepseek-coder:6.7b` model, you
-can change in this in your config options. This model defined in `config.api_edit_params`.
+can change in this in your config options. This model defined in `config.<provider>.api_params`.
 
-#### `OGPTRun edit_code_with_instructions`
-This command opens an interactive window to edit selected text or the entire window using the
-`deepseek-coder:6.7b` model. You can modify this in your config options. The Ollama response will
-be extracted for its code content, and if it doesn't contain any codeblock, it will default back to
-the full response.
+Use `<c-p>` (default keymap, can be customized)  to open and close the parameter panels. Note
+this screenshot is using `edgy.nvim`
+
+![edit_with_instruction_no_params](assets/images/edit_with_instruction_no_param_panel.png)
+
+![edit_with_instructions_with_params](assets/images/edit_with_instruction_with_params_panel.png)
 
 #### `OGPTRun`
 
@@ -279,7 +281,12 @@ opts = {
   ...
   actions = {
     grammar_correction = {
-      type = "popup",
+      -- type = "popup", -- could be a string or table to override
+      type = {
+        popup = { -- overrides the default popup options - https://github.com/huynle/ogpt.nvim/blob/main/lua/ogpt/config.lua#L147-L180
+          edgy = true
+        }
+      },
       strategy = "replace",
       provider = "ollama", -- default to "default_provider" if not provided
       model = "mixtral:7b", -- default to "provider.<default_provider>.model" if not provided
@@ -309,17 +316,84 @@ The `display` strategy shows the output in a float window.
 `append` and `replace` modify the text directly in the buffer with "a" or "r"
 
 
-#### Run With Options
+#### Run With Options with Vim Commands
 On the fly, you can execute a command line to call OGPT. An example to replace
 the grammar_correction call, is provided below.
 `:OGPTRun grammar_correction {provider="openai", model="gpt-4"}`
 
 To make it even more dynamic, you can change it to have the provider/model or any parameters be
 inputted by the user on the spot when the command is executed.
-`:OGPTRun grammar_correction {provider=vim.fn.input("Provider: "), edgy=false}`
+`:OGPTRun grammar_correction {provider=vim.fn.input("Provider: "), type={popup={edgy=false}}}`
 
-And now if you know Vim autocommands, you can start tying this into your workflow.
-More to come later.
+Additionally, in the above example, `edgy.nvim` can be turned off. So that the response popup
+inline where the cursor would be. For additional options for the popup, please read through
+https://github.com/huynle/ogpt.nvim/blob/main/lua/ogpt/config.lua#L147-L180
+
+For example, you and have it popup and change `enter = false`, which leaves the cursor in the same
+location, instead of moving it to the popup.
+
+Additionally, for advanced users, this allows you to use Vim autocommands. For example, autocompletion
+can happen when the cursor is paused. Look at the various Template Helpers for this advanced
+options, because now 
+
+### Template Helpers
+Currently, the given inputs to the API gets scanned for `{{<template_helper_name>}}` for expansion.
+This is helpful when you want to give a little more context to your API requests, or simply to hook
+in additional function calls.
+
+#### Available Template Helpers
+Look at this file for the most up to date Template Helpers. If you have more template helpers,
+please make an MR, your contribution is appreciated!
+
+https://github.com/huynle/ogpt.nvim/blob/main/lua/ogpt/flows/actions/template_helpers.lua
+
+#### How to Use
+This is a custom action that I use all the time to use the visible windows
+as context to have AI answer any inline questions.
+
+```lua
+....
+  -- Other OGPT configurations here
+  ....
+  actions = {
+    infill_visible_code = {
+      type = "popup",
+      template = [[
+      Given the following code snippets, please complete the code by infilling the rest of the code in between the two
+      code snippets for BEFORE and AFTER, these snippets are given below.
+
+
+      Code BEFORE infilling position:
+      ```{{filetype}}
+      {{visible_window_content}}
+      {{before_cursor}}
+      ```
+
+      Code AFTER infilling position:
+      ```{{filetype}}
+      {{after_cursor}}
+      ```
+
+
+      Within the given snippets, complete the instructions that are given in between the
+      triple percent sign '%%%-' and '-%%%'. Note that the instructions as
+      could be multilines AND/OR it could be in a comment block of the code!!!
+
+      Lastly, apply the following conditions to your response.
+      * The response should replace the '%%%-' and '-%%%' if the code snippet was to be reused.
+      * PLEASE respond ONLY with the answers to the given instructions.
+      ]],
+      strategy = "display",
+      -- provider = "textgenui",
+      -- model = "mixtral-8-7b",
+      -- params = {
+      --   max_new_tokens = 1000,
+      -- },
+    },
+  -- more actions here
+  }
+....
+```
 
 ### Interactive Chat Parameters
 
@@ -698,6 +772,29 @@ return {
 ### Advanced setup
 
 
+### Reloading Actions for Faster Interaction
+
+When you are updating your actions frequently, I would recommend adding the following keys to your
+`lazy.nvim` `ogpt` configuration. This simply reload `ogpt.nvim` on the spot for you to see your
+updated actions.
+
+```lua
+...
+  -- other config options here
+    keys = {
+      {
+        "<leader>ro",
+        "<Cmd>Lazy reload ogpt.nvim<CR>",
+        desc = "RELOAD ogpt",
+      },
+    ...
+    }
+  -- other config options here
+...
+```
+
+
+
 #### Defining Custom Model
 
 This is an example of how to set up an Ollama Mixtral model server that might be sitting on a
@@ -846,6 +943,8 @@ opts = {
 
 
 ## OGPT planned work
++ [o] Response and Request objects. General interface for modularity, and additional provider
+  adoption.
 + [x] Use default provider, but can be overriden at anytime for specific action
 + [x] original functionality of ChatGPT.nvim to work with Ollama, TextGenUI(huggingface), OpenAI via `providers`
   + Look at the "default_provider" in the `config.lua`, default is `ollama`
