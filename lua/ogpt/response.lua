@@ -153,7 +153,7 @@ function Response:monitor_state()
     utils.log("Response Stoped.", vim.log.levels.DEBUG)
     self:add_processed_text("", "END")
     self:set_state(self.STATE_INIT)
-  else
+  elseif self.response_state then
     utils.log("unknown state: " .. self.response_state, vim.log.levels.ERROR)
   end
 end
