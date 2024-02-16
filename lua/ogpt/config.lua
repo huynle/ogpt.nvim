@@ -12,8 +12,13 @@ M.logs = {}
 
 function M.defaults()
   local defaults = {
-    debug = false,
+    -- options of 0-5, is trace, debug, info, warn, error, off, respectively
+    debug = {
+      log_level = 3,
+      notify_level = 3,
+    },
     edgy = false,
+    single_window = false,
     yank_register = "+",
     default_provider = "ollama",
     providers = {
@@ -23,8 +28,6 @@ function M.defaults()
         api_host = os.getenv("OPENAI_API_HOST") or "https://api.openai.com",
         api_key = os.getenv("OPENAI_API_KEY") or "",
         api_params = {
-          frequency_penalty = 0,
-          presence_penalty = 0,
           temperature = 0.5,
           top_p = 0.99,
         },
@@ -33,6 +36,20 @@ function M.defaults()
           presence_penalty = 0.5,
           temperature = 0.8,
           top_p = 0.99,
+        },
+      },
+      gemini = {
+        enabled = true,
+        api_host = os.getenv("GEMINI_API_HOST"),
+        api_key = os.getenv("GEMINI_API_KEY"),
+        model = "gemini-pro",
+        api_params = {
+          temperature = 0.5,
+          topP = 0.99,
+        },
+        api_chat_params = {
+          temperature = 0.5,
+          topP = 0.99,
         },
       },
       textgenui = {
@@ -63,8 +80,8 @@ function M.defaults()
           -- },
         },
         api_params = {
-          frequency_penalty = 0,
-          presence_penalty = 0,
+          -- frequency_penalty = 0,
+          -- presence_penalty = 0,
           temperature = 0.5,
           top_p = 0.99,
         },
@@ -100,8 +117,8 @@ function M.defaults()
           -- used for `edit` and `edit_code` strategy in the actions
           model = nil,
           -- model = "mistral:7b",
-          frequency_penalty = 0,
-          presence_penalty = 0,
+          -- frequency_penalty = 0,
+          -- presence_penalty = 0,
           temperature = 0.5,
           top_p = 0.99,
         },
@@ -154,7 +171,7 @@ function M.defaults()
       },
       keymaps = {
         close = { "<C-c>", "q" },
-        accept = "<C-CR>",
+        accept = "<C-y>",
         append = "a",
         prepend = "p",
         yank_code = "c",
@@ -241,13 +258,10 @@ function M.defaults()
         syntax = "markdown",
       },
     },
-    system_window = {
+    util_window = {
       border = {
         highlight = "FloatBorder",
         style = "rounded",
-        text = {
-          top = " SYSTEM ",
-        },
       },
       win_options = {
         wrap = true,
@@ -255,10 +269,8 @@ function M.defaults()
         foldcolumn = "2",
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
       },
-      buf_options = {
-        filetype = "ogpt-system-window",
-      },
     },
+
     input_window = {
       prompt = "  ",
       border = {
@@ -286,7 +298,7 @@ function M.defaults()
         style = "rounded",
         text = {
           top_align = "center",
-          top = " Instruction ",
+          top = " {{instruction}} ",
         },
       },
       win_options = {
@@ -323,8 +335,8 @@ function M.defaults()
         delay = true,
         extract_codeblock = true,
         params = {
-          frequency_penalty = 0,
-          presence_penalty = 0,
+          -- frequency_penalty = 0,
+          -- presence_penalty = 0,
           temperature = 0.5,
           top_p = 0.99,
         },
@@ -369,7 +381,7 @@ function M.setup(options)
 
   local function update_edgy_flag(chat_type)
     for _, t in ipairs(chat_type) do
-      if not M.options[t].edgy then
+      if M.options[t].edgy == nil then
         M.options[t].edgy = M.options.edgy
       end
     end
@@ -393,20 +405,21 @@ function M.get_provider(provider_name, action, override)
   local Api = require("ogpt.api")
   override = override or {}
   provider_name = provider_name or M.options.default_provider
-  local provider = require("ogpt.provider." .. provider_name)
-  local envs = provider.load_envs(override.envs)
-  provider = vim.tbl_extend("force", provider, override)
-  provider.envs = envs
+  local provider = require("ogpt.provider." .. provider_name)(override)
+  provider:load_envs(override.envs)
+  -- provider = vim.tbl_extend("force", provider, override)
+  -- provider.envs = envs
   provider.api = Api(provider, action, {})
   return provider
 end
 
 function M.get_action_params(provider, override)
-  provider = provider or M.options.default_provider
-  local default_params = M.options.providers[provider].api_params
-  default_params.model = default_params.model or M.options.providers[provider].model
-  default_params.provider = provider
-  return vim.tbl_extend("force", default_params, override or {})
+  provider = provider or M.get_provider(M.options.default_provider)
+  local default_params = provider:get_action_params(override)
+  -- default_params.model = default_params.model or provider.model
+  -- default_params.provider = provider
+  -- return vim.tbl_extend("force", default_params, override or {})
+  return default_params
 end
 
 function M.get_chat_params(provider, override)
@@ -417,12 +430,15 @@ function M.get_chat_params(provider, override)
   return vim.tbl_extend("force", default_params, override or {})
 end
 
-function M.expand_model(api, params)
-  local provider_models = M.options.providers[api.provider.name].models or {}
-  params = M.get_action_params(api.provider.name, params)
-  local _model = params.model
+function M.expand_model(api, params, ctx)
+  ctx = ctx or {}
+  -- local provider_models = M.options.providers[api.provider.name].models or {}
+  local provider_models = api.provider.models
+  -- params = M.get_action_params(api.provider, params)
+  params = api.provider:get_action_params(params)
+  local _model = params.model or api.provider.model
 
-  local _completion_url = api.provider.envs.CHAT_COMPLETIONS_URL
+  local _completion_url = api.provider:completion_url()
 
   local function _expand(name, _m)
     if type(_m) == "table" then
@@ -439,7 +455,9 @@ function M.expand_model(api, params)
           end
         end
       end
-      params.model = _m.name or name
+      params.model = _m or name
+    elseif not vim.tbl_contains(provider_models, _m) then
+      params.model = _m
     else
       for _name, model in pairs(provider_models) do
         if _name == _m then
@@ -452,26 +470,44 @@ function M.expand_model(api, params)
         end
       end
     end
+    return params
   end
 
-  _expand(nil, _model)
+  local _full_unfiltered_params = _expand(nil, _model)
+  -- ctx.tokens = _full_unfiltered_params.model.tokens or {}
+  -- final force override from the params that are set in the mode itself.
+  -- This will enforce specific model params, e.g. max_token, etc
+  local final_overrided_applied_params =
+    vim.tbl_extend("force", params, vim.tbl_get(_full_unfiltered_params, "model", "params") or {})
 
-  params = M.expand_url(api, params)
+  params = M.conform_to_provider_request(api, final_overrided_applied_params)
 
-  return params, _completion_url
+  return params, _completion_url, ctx
 end
 
-function M.expand_url(api, params)
-  params = M.get_action_params(api.provider.name, params)
+function M.conform_to_provider_request(api, params)
+  params = M.get_action_params(api.provider, params)
   local _model = params.model
-  local _conform_fn = _model and _model.conform_fn
+  local _conform_messages_fn = _model and _model.conform_messages_fn
+  local _conform_request_fn = _model and _model.conform_request_fn
 
-  if _conform_fn then
-    params = _conform_fn(params)
+  if _conform_messages_fn then
+    params = _conform_messages_fn(api.provider, params)
   else
-    params = api.provider.conform(params)
+    params = api.provider:conform_messages(params)
   end
+
+  if _conform_request_fn then
+    params = _conform_request_fn(api.provider, params)
+  else
+    params = api.provider:conform_request(params)
+  end
+
   return params
+end
+
+function M.get_local_model_definition(provider)
+  return M.options.providers[provider.name].models or {}
 end
 
 return M

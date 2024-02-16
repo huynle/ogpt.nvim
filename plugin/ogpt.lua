@@ -31,6 +31,15 @@ end, {
   end,
 })
 
+vim.api.nvim_create_user_command("OGPTRunWithOpts", function(params)
+  local args = loadstring("return " .. params.args)()
+  require("ogpt").run_action(args)
+end, {
+  nargs = "?",
+  force = true,
+  complete = "lua",
+})
+
 vim.api.nvim_create_user_command("OGPTCompleteCode", function(opts)
   opts = loadstring("return " .. opts.args)() or {}
   require("ogpt").complete_code(opts)

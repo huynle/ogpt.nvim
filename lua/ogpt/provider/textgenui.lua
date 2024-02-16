@@ -1,30 +1,39 @@
 local Config = require("ogpt.config")
 local utils = require("ogpt.utils")
-local M = {}
+local Response = require("ogpt.response")
 
-M.name = "textgenui"
+local ProviderBase = require("ogpt.provider.base")
+local Textgenui = ProviderBase:extend("Textgenui")
 
-M.request_params = {
-  "inputs",
-  "parameters",
-  "stream",
-}
+function Textgenui:init(opts)
+  Textgenui.super.init(self, opts)
+  self.name = "textgenui"
+  self.api_parameters = {
+    "inputs",
+    "parameters",
+    -- "stream",
+  }
+  self.api_chat_request_options = {
+    "best_of",
+    "decoder_input_details",
+    "details",
+    "do_sample",
+    "max_new_tokens",
+    "repetition_penalty",
+    "return_full_text",
+    "seed",
+    "stop",
+    "temperature",
+    "top_k",
+    "top_n_tokens",
+    "top_p",
+    "truncate",
+    "typical_p",
+    "watermark",
+  }
+end
 
-M.model_params = {
-  "seed",
-  "top_k",
-  "top_p",
-  "top_n_tokens",
-  "typical_p",
-  "stop",
-  "details",
-  "max_new_tokens",
-  "repetition_penalty",
-}
-
-M.envs = {}
-
-function M.load_envs()
+function Textgenui:load_envs(override)
   local _envs = {}
   _envs.TEXTGEN_API_HOST = Config.options.providers.textgenui.api_host
     or os.getenv("TEXTGEN_API_HOST")
@@ -34,23 +43,25 @@ function M.load_envs()
   _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.TEXTGEN_API_HOST)
   _envs.CHAT_COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.TEXTGEN_API_HOST)
   _envs.AUTHORIZATION_HEADER = "Authorization: Bearer " .. (_envs.TEXTGEN_API_KEY or " ")
-  M.envs = vim.tbl_extend("force", M.envs, _envs)
-  return M.envs
+  self.envs = vim.tbl_extend("force", _envs, override or {})
+  return self.envs
 end
 
-M.textgenui_options = { "seed", "top_k", "top_p", "stop" }
+function Textgenui:completion_url()
+  if self.stream_response then
+    return self.envs.TEXTGEN_API_HOST .. "/generate_stream"
+  end
+  return self.envs.TEXTGEN_API_HOST .. "/generate"
+end
 
-function M.conform(params)
+function Textgenui:conform_request(params)
   params = params or {}
-
-  -- textgenui uses "inputs"
-  params.inputs = M._conform_messages(params.messages or {})
 
   local param_options = {}
 
   for key, value in pairs(params) do
-    if not vim.tbl_contains(M.request_params, key) then
-      if vim.tbl_contains(M.model_params, key) then
+    if not vim.tbl_contains(self.api_parameters, key) then
+      if vim.tbl_contains(self.api_chat_request_options, key) then
         param_options[key] = value
         params[key] = nil
       else
@@ -65,53 +76,91 @@ function M.conform(params)
   return params
 end
 
-function M._conform_messages(messages)
+function Textgenui:conform_messages(params)
+  local messages = params.messages or {}
   -- https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1
   local tokens = {
     BOS = "<s>",
     EOS = "</s>",
+    BOSYS = "<<SYS>>",
+    EOSYS = "<</SYS>>",
     INST_START = "[INST]",
     INST_END = "[/INST]",
   }
   local _input = { tokens.BOS }
   for i, message in ipairs(messages) do
+    local text = utils.gather_text_from_parts(message.content)
     if i < #messages then -- Stop before the last item
-      if message.role == "user" then
+      if message.role == "system" then
+        table.insert(_input, tokens.BOSYS)
+        table.insert(_input, text)
+        table.insert(_input, tokens.EOSYS)
+      elseif message.role == "user" then
         table.insert(_input, tokens.INST_START)
-        table.insert(_input, message.content)
+        table.insert(_input, text)
         table.insert(_input, tokens.INST_END)
-      elseif message.role == "system" then
-        table.insert(_input, message.content)
+      elseif message.role == "assistant" then
+        table.insert(_input, text)
       end
     else
       table.insert(_input, tokens.EOS)
+      table.insert(_input, tokens.BOS)
       table.insert(_input, tokens.INST_START)
-      table.insert(_input, message.content)
+      table.insert(_input, text)
       table.insert(_input, tokens.INST_END)
     end
   end
   local final_string = table.concat(_input, " ")
-  return final_string
+  params.inputs = final_string
+  return params
 end
 
-function M.process_line(content, ctx, raw_chunks, state, cb)
-  local _json = content.json
-  local raw = content.raw
-  if _json.token then
-    if _json.token.text == "</s>" then
-      ctx.context = _json.context
-      cb(raw_chunks, "END", ctx)
-    else
-      cb(_json.token.text, state, ctx)
-      raw_chunks = raw_chunks .. _json.token.text
-      state = "CONTINUE"
-    end
-  elseif _json.error then
-    cb(_json.error, "ERROR", ctx)
-  else
-    print(_json)
+function Textgenui:process_response(response)
+  local ctx = response.ctx
+  local chunk = response:pop_chunk()
+
+  local raw_json = string.gsub(chunk, "^data:", "")
+
+  local ok, _json = pcall(vim.json.decode, raw_json)
+
+  if not ok then
+    utils.log("Something went wrong with parsing Textgetui json: " .. vim.inspect(response.current_raw_chunk))
+    response:could_not_process(chunk)
+    _json = {}
   end
-  return ctx, raw_chunks, state
+  _json = _json or {}
+
+  if _json.error ~= nil then
+    local error_msg = {
+      "OGPT ERROR:",
+      self.provider.name,
+      vim.inspect(_json.error) or "",
+      "Something went wrong.",
+    }
+    table.insert(error_msg, vim.inspect(response.rest_params))
+    response.error = error_msg
+    response:add_processed_text(error_msg, "ERROR")
+    return
+  end
+
+  if not _json.token then
+    return
+  end
+
+  if _json.token.text and string.find(_json.token.text, "</s>") then
+    -- Done
+  elseif
+    _json.token.text
+    and vim.tbl_get(ctx, "tokens", "end_of_result")
+    and string.find(_json.token.text, vim.tbl_get(ctx, "tokens", "end_of_result"))
+  then
+    ctx.context = _json.context
+    -- done
+  elseif _json.token.generated_text then
+    -- done
+  else
+    response:add_processed_text(_json.token.text, "CONTINUE")
+  end
 end
 
-return M
+return Textgenui
