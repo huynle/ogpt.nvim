@@ -16,6 +16,9 @@ optimization, summarization, bug fixing, code explanation, and code readability
 analysis. Additionally, you can define your own custom actions using a JSON file or just through
 plugin configurations.
 
+## Demo
+[Screencast from 2024-02-16 15-27-06.webm](https://github.com/huynle/ogpt.nvim/assets/2416122/2c810aee-d282-47c2-86bd-558e39658b0e)
+
 
 ## Installation
 
