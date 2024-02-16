@@ -1,4 +1,5 @@
 local BaseAction = require("ogpt.flows.actions.base")
+local Response = require("ogpt.response")
 local utils = require("ogpt.utils")
 local Config = require("ogpt.config")
 local Layout = require("ogpt.common.layout")
@@ -68,6 +69,20 @@ function EditAction:run()
   end)
 end
 
+function EditAction:on_complete(response)
+  -- on the completion, execute this function to extract out codeblocks
+  local output_txt = response:get_processed_text()
+  local nlcount = utils.count_newlines_at_end(output_txt)
+  if self.strategy == STRATEGY_EDIT_CODE then
+    output_txt = response:extract_code()
+  end
+  local output_txt_nlfixed = utils.replace_newlines_at_end(output_txt, nlcount)
+  local _output = utils.split_string_by_line(output_txt_nlfixed)
+  if self.output_panel.bufnr then
+    vim.api.nvim_buf_set_lines(self.output_panel.bufnr, 0, -1, false, _output)
+  end
+end
+
 function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   opts = opts or {}
   opts.params = opts.params or self.params
@@ -130,6 +145,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       end
     end,
     on_submit = vim.schedule_wrap(function(instruction)
+      local response = Response(self.provider)
       -- clear input
       vim.api.nvim_buf_set_lines(self.instructions_input.bufnr, 0, -1, false, { "" })
       vim.api.nvim_buf_set_lines(self.output_panel.bufnr, 0, -1, false, { "" })
@@ -146,38 +162,12 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       local params = vim.tbl_extend("keep", { messages = messages }, self.parameters_panel.params)
 
       params.stream = true
-      self.provider.api:chat_completions(
-        params,
-        utils.partial(utils.add_partial_completion, {
-          panel = self.output_panel,
-          on_complete = function(response)
-            -- on the completion, execute this function to extract out codeblocks
-            local nlcount = utils.count_newlines_at_end(response)
-            local output_txt = response
-            if opts.edit_code then
-              local code_response = utils.extract_code(response)
-              -- if the chat is to edit code, it will try to extract out the code from response
-              output_txt = response
-              if code_response then
-                output_txt = utils.match_indentation(response, code_response)
-              else
-                vim.notify("no codeblock detected", vim.log.levels.INFO)
-              end
-              if response.applied_changes then
-                vim.notify(response.applied_changes, vim.log.levels.INFO)
-              end
-            end
-            local output_txt_nlfixed = utils.replace_newlines_at_end(output_txt, nlcount)
-            local _output = utils.split_string_by_line(output_txt_nlfixed)
-            if self.output_panel.bufnr then
-              vim.api.nvim_buf_set_lines(self.output_panel.bufnr, 0, -1, false, _output)
-            end
-          end,
-          progress = function(flag)
-            self:run_spinner(flag)
-          end,
-        })
-      )
+      self.provider.api:chat_completions(response, {
+        custom_params = params,
+        partial_result_fn = function(...)
+          self:addAnswerPartial(...)
+        end,
+      })
     end),
   })
 
@@ -426,11 +416,9 @@ end
 
 function EditAction:build_edit_messages(input, instructions, opts)
   local _input = input
-  if opts.edit_code then
-    _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
-  else
-    _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
-  end
+
+  _input = "```" .. (opts.filetype or "") .. "\n" .. input .. "````"
+
   local variables = vim.tbl_extend("force", opts.variables, {
     instruction = instructions,
     input = _input,

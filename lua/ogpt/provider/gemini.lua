@@ -1,11 +1,17 @@
 local Config = require("ogpt.config")
 local utils = require("ogpt.utils")
-
+local Response = require("ogpt.response")
 local ProviderBase = require("ogpt.provider.base")
 local Gemini = ProviderBase:extend("Gemini")
 
 function Gemini:init(opts)
   Gemini.super.init(self, opts)
+  self.response_params = {
+    strategy = Response.STRATEGY_REGEX,
+    -- split_chunk_match_regex = "^%,\n+",
+    -- split_chunk_match_regex = '"text": "(.-)"',
+    split_chunk_match_regex = '"parts": %[[\n%s]+(.-)%]', -- capture everything in the "content.parts" of the response
+  }
   self.api_parameters = {
     "contents",
   }
@@ -40,8 +46,13 @@ function Gemini:parse_api_model_response(json, cb)
 end
 
 function Gemini:completion_url()
+  if self.stream_response then
+    return utils.ensureUrlProtocol(
+      self.envs.GEMINI_API_HOST .. "/models/" .. self.model .. ":streamGenerateContent?" .. self.envs.AUTH
+    )
+  end
   return utils.ensureUrlProtocol(
-    self.envs.GEMINI_API_HOST .. "/models/" .. self.model .. ":streamGenerateContent?" .. self.envs.AUTH
+    self.envs.GEMINI_API_HOST .. "/models/" .. self.model .. ":generateContent?" .. self.envs.AUTH
   )
 end
 
@@ -103,78 +114,34 @@ function Gemini:conform_messages(params)
     })
   end
 
-  -- -- https://ai.google.dev/tutorials/rest_quickstart#text-only_input
-  -- if params.system then
-  --   table.insert(params.messages, 1, {
-  --     role = "system",
-  --     content = params.system,
-  --   })
-  -- end
-
   params.messages = nil
   params.contents = _contents
   return params
 end
 
-function Gemini:process_raw(content, cb)
-  local chunk = content.raw
-  local state = content.state
-  local raw_chunks = content.content
-  local accumulate = content.accumulate
+function Gemini:process_response(response)
+  local chunk = response:pop_chunk()
+  utils.log("Popped chunk: " .. chunk)
 
   local ok, json = pcall(vim.json.decode, chunk)
+
   if not ok then
-    -- gemini is missing bracket on returns
-    chunk = string.gsub(chunk, "^%[", "")
-    chunk = string.gsub(chunk, "^%,", "")
-    chunk = string.gsub(chunk, "%]$", "")
-    chunk = vim.trim(chunk, "\n")
-    chunk = vim.trim(chunk, "\r")
-    ok, json = pcall(vim.json.decode, chunk)
+    -- but it back if its not processed
+    utils.log("Could not process chunk: " .. chunk)
+    response:could_not_process(chunk)
+    return
   end
 
-  if ok then
-    return self:process_line({ json = json, raw = accumulate }, ctx, raw_chunks, state, cb)
+  if type(json) == "string" then
+    utils.log("Something is going on, json is a string :" .. vim.inspect(json), vim.log.levels.ERROR)
   else
-    -- if not ok, try to keep process the accumulated stdout
-    ok, json = pcall(vim.json.decode, table.concat(accumulate, ""))
-    if ok then
-      return self:process_line({ json = json, raw = accumulate }, ctx, raw_chunks, state, cb)
-    end
-  end
-end
-
-function Gemini:process_line(content, ctx, raw_chunks, state, cb)
-  local _json = content.json or {}
-  local raw = content.raw
-
-  if type(_json) == "string" then
-    utils.log("Something is going on, _json is a string, expecing a table..", vim.log.levels.ERROR)
-  elseif vim.tbl_isempty(_json) then
-    if raw == "]" then
-      cb(raw_chunks, "END", ctx)
-    else
-      cb("Could not process the following raw chunk:\n" .. raw, "ERROR", ctx)
-    end
-  elseif _json then
-    local text = vim.tbl_get(_json, "candidates", 1, "content", "parts", 1, "text")
+    local text = vim.tbl_get(json, "text")
     if text then
-      cb(text, state)
-      raw_chunks = raw_chunks .. text
-      state = "CONTINUE"
+      response:add_processed_text(text, "CONTINUE")
     else
-      local total_text = {}
-      for _, part in ipairs(_json) do
-        text = vim.tbl_get(part, "candidates", 1, "content", "parts", 1, "text")
-        if text then
-          table.insert(total_text, text)
-        end
-      end
-      cb(table.concat(total_text, ""), "END")
+      utils.log("Mising 'text' from response: " .. vim.inspect(json))
     end
   end
-
-  return ctx, raw_chunks, state
 end
 
 return Gemini

@@ -3,6 +3,7 @@ local Layout = require("ogpt.common.layout")
 local Popup = require("ogpt.common.popup")
 
 local ChatInput = require("ogpt.input")
+local Response = require("ogpt.response")
 local Config = require("ogpt.config")
 local Parameters = require("ogpt.parameters")
 local Sessions = require("ogpt.flows.chat.sessions")
@@ -59,10 +60,13 @@ function Chat:init(opts)
   self.messages = {}
   self.spinner = Spinner:new(function(state)
     vim.schedule(function()
-      self:set_lines(-2, -1, false, { state .. " " .. Config.options.chat.loading_text })
+      -- self:set_lines(-2, -1, false, { state .. " " .. Config.options.chat.loading_text })
+      -- self:set_lines(-2, -1, false, { state })
       self:display_input_suffix(state)
     end)
-  end)
+  end, {
+    -- text = Config.options.chat.loading_text,
+  })
 end
 
 function Chat:welcome()
@@ -221,11 +225,24 @@ function Chat:addAnswer(text, usage)
   self:add(ANSWER, text, usage)
 end
 
-function Chat:addAnswerPartial(response, state)
-  local text = response.current_text
+function Chat:addAnswerPartial(response)
+  local content = response:pop_content()
+  local text = content[1]
+  local state = content[2]
+  -- local state = response.state
+  -- local text = response.current_text
   local ctx = response.ctx
+  self:stopSpinner()
+
+  if state == "START" then
+    self.is_running = true
+    self:set_lines(-2, -1, false, { "" })
+    vim.api.nvim_buf_set_option(self.chat_window.bufnr, "modifiable", true)
+  end
+
   if state == "ERROR" then
-    self:stopSpinner()
+    -- self:stopSpinner()
+    utils.log(text, vim.log.levels.ERROR)
     -- return self:addAnswer(text, {})
   end
 
@@ -235,11 +252,12 @@ function Chat:addAnswerPartial(response, state)
     start_line = prev.end_line + (prev.type == ANSWER and 2 or 1)
   end
 
-  if state == "END" and text == "" then
+  -- if state == "END" and text == "" then
   --   -- most likely, ended by the using raising the stop flag
   --   self:stopSpinner()
-  elseif state == "END" and text ~= "" then
-    self:stopSpinner()
+  if state == "END" then
+    -- self:stopSpinner()
+    vim.api.nvim_buf_set_option(self.chat_window.bufnr, "modifiable", true)
     local usage = {}
     local idx = self.session:add_item({
       type = ANSWER,
@@ -261,7 +279,7 @@ function Chat:addAnswerPartial(response, state)
       idx = idx,
       usage = usage or {},
       type = ANSWER,
-      text = response:get_total_processed_text(),
+      text = text,
       lines = lines,
       nr_of_lines = nr_of_lines,
       start_line = start_line,
@@ -271,13 +289,6 @@ function Chat:addAnswerPartial(response, state)
     self.selectedIndex = self.selectedIndex + 1
     vim.api.nvim_buf_set_lines(self.chat_window.bufnr, -1, -1, false, { "", "" })
     Signs.set_for_lines(self.chat_window.bufnr, start_line, end_line, "chat")
-  end
-
-  if state == "START" then
-    self.is_running = true
-    self:stopSpinner()
-    self:set_lines(-2, -1, false, { "" })
-    vim.api.nvim_buf_set_option(self.chat_window.bufnr, "modifiable", true)
   end
 
   if state == "START" or state == "CONTINUE" then
@@ -516,15 +527,15 @@ function Chat:toMessages()
     elseif msg.type == ANSWER then
       role = "assistant"
     end
-    table.insert(
-      messages,
-      { role = role, content = {
+    table.insert(messages, {
+      role = role,
+      content = {
         {
           text = msg.text,
           token = nil,
         },
-      } }
-    )
+      },
+    })
   end
   -- return messages[#messages].content
   return messages
@@ -717,6 +728,10 @@ end
 -- function Chat:stop_output()
 --   self.stop_flag = true
 -- end
+--
+function Chat:on_complete_response(response)
+  --
+end
 
 function Chat:open()
   self.session.parameters = vim.tbl_extend("keep", self.session.parameters, self.params)
@@ -762,6 +777,14 @@ function Chat:open()
         return
       end
 
+      -- create response object per api call
+      local response = Response(self.provider, {
+        on_start = function()
+          -- restart stop flag
+          self.stop_flag = false
+        end,
+      })
+
       -- clear input
       vim.api.nvim_buf_set_lines(self.chat_input.bufnr, 0, -1, false, { "" })
 
@@ -776,18 +799,16 @@ function Chat:open()
           messages = self:toMessages(),
           system = self.system_message,
         }, self.parameters_panel.params)
-        self.provider.api:chat_completions(params, function(answer, state, ctx)
-          self:addAnswerPartial(answer, state, ctx)
-        end, function()
-          -- check the stop flag if it should stop
-          -- return not self.is_running
-          return self.stop_flag
-        end, {
-          -- on_stop = function()
-          --   self:stopSpinner()
-          --   -- reset the stop flag
-          --   self.is_running = false
-          -- end,
+        self.provider.api:chat_completions(response, {
+          custom_params = params,
+          partial_result_fn = function(...)
+            self:addAnswerPartial(...)
+          end,
+          should_stop = function()
+            -- check the stop flag if it should stop
+            -- return not self.is_running
+            return self.stop_flag
+          end,
         })
       end
     end,

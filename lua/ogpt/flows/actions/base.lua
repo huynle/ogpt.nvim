@@ -223,4 +223,61 @@ function BaseAction:display_input_suffix(suffix)
   end
 end
 
+function BaseAction:on_complete(response)
+  -- empty
+end
+
+function BaseAction:addAnswerPartial(response)
+  local content = response:pop_content()
+  local text = content[1]
+  local state = content[2]
+
+  if state == "ERROR" then
+    self:run_spinner(false)
+    utils.log("An Error Occurred: " .. text, vim.log.levels.ERROR)
+    self.output_panel:unmount()
+    return
+  end
+
+  if state == "END" then
+    utils.log("Received END Flag", vim.log.levels.DEBUG)
+    if not utils.is_buf_exists(self.output_panel.bufnr) then
+      return
+    end
+    vim.api.nvim_buf_set_option(self.output_panel.bufnr, "modifiable", true)
+    vim.api.nvim_buf_set_lines(self.output_panel.bufnr, 0, -1, false, {}) -- clear the window, an put the final answer in
+    vim.api.nvim_buf_set_lines(self.output_panel.bufnr, 0, -1, false, vim.split(text, "\n"))
+    self:on_complete(response)
+  end
+
+  if state == "START" then
+    self:run_spinner(false)
+    if not utils.is_buf_exists(self.output_panel.bufnr) then
+      return
+    end
+    vim.api.nvim_buf_set_option(self.output_panel.bufnr, "modifiable", true)
+  end
+
+  if state == "START" or state == "CONTINUE" then
+    if not utils.is_buf_exists(self.output_panel.bufnr) then
+      return
+    end
+    vim.api.nvim_buf_set_option(self.output_panel.bufnr, "modifiable", true)
+    local lines = vim.split(text, "\n", {})
+    local length = #lines
+
+    for i, line in ipairs(lines) do
+      if self.output_panel.bufnr and vim.fn.bufexists(self.output_panel.bufnr) then
+        local currentLine = vim.api.nvim_buf_get_lines(self.output_panel.bufnr, -2, -1, false)[1]
+        if currentLine then
+          vim.api.nvim_buf_set_lines(self.output_panel.bufnr, -2, -1, false, { currentLine .. line })
+          if i == length and i > 1 then
+            vim.api.nvim_buf_set_lines(self.output_panel.bufnr, -1, -1, false, { "" })
+          end
+        end
+      end
+    end
+  end
+end
+
 return BaseAction

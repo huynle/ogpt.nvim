@@ -1,6 +1,7 @@
 local Object = require("ogpt.common.object")
 local Config = require("ogpt.config")
 local utils = require("ogpt.utils")
+local Response = require("ogpt.response")
 
 local Provider = Object("Provider")
 
@@ -9,11 +10,18 @@ function Provider:init(opts)
   opts = vim.tbl_extend("force", Config.options.providers[self.name], opts)
   self.enabled = opts.enabled
   self.model = opts.model
+  self.stream_response = true
   self.models = opts.models or {}
   self.api_host = opts.api_host
   self.api_key = opts.api_key
   self.api_params = opts.api_params
   self.api_chat_params = opts.api_chat_params
+  self.response_params = {
+    strategy = Response.STRATEGY_LINE_BY_LINE,
+    split_chunk_match_regex = nil,
+    -- split_chunk_match_regex = "[^%,]+", -- use to splitting by commas
+    -- split_chunk_match_regex = "[^\n]+", -- use to splitting by newline character
+  }
   self.envs = {}
   self.api_parameters = {
     "model",
@@ -141,26 +149,6 @@ function Provider:conform_messages(params)
     table.remove(params.messages, _to_remove_system_idx[i])
   end
 
-  -- https://platform.openai.com/docs/api-reference/chat
-  if params.system then
-    table.insert(params.messages, 1, {
-      role = "system",
-      content = params.system,
-    })
-  end
-
-  local function gather_text_from_parts(parts)
-    if type(parts) == "string" then
-      return parts
-    else
-      local _text = {}
-      for _, part in ipairs(parts) do
-        table.insert(_text, part.text)
-      end
-      return table.concat(_text, " ")
-    end
-  end
-
   -- conform to support text only model
   local messages = params.messages
   local conformed_messages = {}
@@ -175,67 +163,31 @@ function Provider:conform_messages(params)
   return params
 end
 
-function Provider:process_raw(content, cb, opts)
-  local chunk = content.raw
-  local state = content.state
-  local raw_chunks = content.content
-  local accumulate = content.accumulate
-  local ctx = content.ctx
+function Provider:process_response(response)
+  local chunk = response:pop_chunk()
   local ok, json = pcall(vim.json.decode, chunk)
 
-  -- if not ok then
-  --   -- gemini is missing bracket on returns
-  --   chunk = string.gsub(chunk, "^%[", "")
-  --   chunk = string.gsub(chunk, "^%,", "")
-  --   chunk = string.gsub(chunk, "%]$", "")
-  --   chunk = vim.trim(chunk, "\n")
-  --   chunk = vim.trim(chunk, "\r")
-  --   ok, json = pcall(vim.json.decode, chunk)
-  -- end
-
-  if ok then
-    if json.error ~= nil then
-      local error_msg = {
-        "OGPT ERROR:",
-        self.provider.name,
-        vim.inspect(json.error) or "",
-        "Something went wrong.",
-      }
-      table.insert(error_msg, vim.inspect(params))
-      -- local error_msg = "OGPT ERROR: " .. (json.error.message or "Something went wrong")
-      cb(table.concat(error_msg, " "), "ERROR", ctx)
-      -- return
-      return { ctx, raw_chunks, state }
-    end
-    return self:process_line({ json = json, raw = chunk }, ctx, raw_chunks, state, cb)
+  if not ok then
+    utils.log("Cannot process ollama response: \n" .. vim.inspect(chunk))
+    json = {}
+    response:could_not_process(chunk)
+    return
   end
-end
 
-function Provider:process_line(content, ctx, raw_chunks, state, cb)
-  local _json = content.json
-  local raw = content.raw
   -- given a JSON response from the STREAMING api, processs it
-  if _json and _json.done then
-    if _json.message then
-      -- for stream=false case
-      cb(_json.message.content, state, ctx)
-      raw_chunks = raw_chunks .. _json.message.content
-      state = "CONTINUE"
-    else
-      ctx.context = _json.context
-      cb(raw_chunks, "END", ctx)
+  if type(json) == "string" then
+    utils.log("got something weird. " .. json, vim.log.levels.ERROR)
+  elseif vim.tbl_isempty(json) then
+    utils.log("got nothing in json.")
+  elseif json.done then
+    if json.message then
+      response:add_processed_text(json.message.content, "CONTINUE")
     end
-  elseif type(_json) == "string" then
-    utils.log("got something weird. " .. _json)
-  elseif not vim.tbl_isempty(_json) then
-    if _json and _json.message then
-      cb(_json.message.content, state, ctx)
-      raw_chunks = raw_chunks .. _json.message.content
-      state = "CONTINUE"
-    end
+  elseif json.message then
+    response:add_processed_text(json.message.content, "CONTINUE")
+  else
+    utils.log("unexpected case in ollama", vim.log.levels.ERROR)
   end
-
-  return ctx, raw_chunks, state
 end
 
 function Provider:get_action_params(opts)
@@ -248,11 +200,10 @@ function Provider:get_action_params(opts)
 end
 
 function Provider:expand_model(params, ctx)
+  params.stream = self.stream_response
   params = self:get_action_params(params)
   ctx = ctx or {}
   local provider_models = self.models
-  -- params = M.get_action_params(api.provider, params)
-  -- params = self:get_action_params(params)
   local _model = params.model
 
   local _completion_url = self:completion_url()

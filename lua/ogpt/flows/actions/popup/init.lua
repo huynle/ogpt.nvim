@@ -1,4 +1,5 @@
 local BaseAction = require("ogpt.flows.actions.base")
+local Response = require("ogpt.response")
 local Spinner = require("ogpt.spinner")
 local PopupWindow = require("ogpt.flows.actions.popup.window")
 local utils = require("ogpt.utils")
@@ -21,27 +22,29 @@ function PopupAction:init(name, opts)
   self.system = type(opts.system) == "function" and opts.system() or opts.system or ""
   self.template = type(opts.template) == "function" and opts.template() or opts.template or "{{input}}"
   self.variables = opts.variables or {}
+  self.on_events = opts.on_events or {}
   self.strategy = opts.strategy or STRATEGY_DISPLAY
   self.ui = opts.ui or {}
   self.cur_win = vim.api.nvim_get_current_win()
   self.edgy = Config.options.popup.edgy
-  self.popup = PopupWindow(Config.options.popup, Config.options.popup.edgy)
+  self.output_panel = PopupWindow(Config.options.popup, Config.options.popup.edgy)
   self.spinner = Spinner:new(function(state) end)
 
   self:update_variables()
 
-  self.popup:on({ "BufUnload" }, function()
+  self.output_panel:on({ "BufUnload" }, function()
     self:set_loading(false)
   end)
 end
 
 function PopupAction:close()
   self.stop = true
-  self.popup:unmount()
+  self.output_panel:unmount()
 end
 
 function PopupAction:run()
   -- self.stop = false
+  local response = Response(self.provider)
   local params = self:get_params()
   local _, start_row, start_col, end_row, end_col = self:get_visual_selection()
   local opts = {
@@ -65,24 +68,14 @@ function PopupAction:run()
 
   if self.strategy == STRATEGY_DISPLAY then
     self:set_loading(true)
-    self.popup:mount(opts)
+    self.output_panel:mount(opts)
     params.stream = true
-    self.provider.api:chat_completions(
-      params,
-      utils.partial(utils.add_partial_completion, {
-        panel = self.popup,
-        progress = function(flag)
-          self:run_spinner(flag)
-        end,
-        on_complete = function(total_text)
-          -- utils.log("request completed - processed text is:\n" .. total_text, vim.log.levels.DEBUG)
-          if vim.fn.bufexists(self.popup.bufnr) then
-            vim.api.nvim_buf_set_option(self.popup.bufnr, "modifiable", true)
-            vim.api.nvim_buf_set_lines(self.popup.bufnr, -2, -1, false, vim.split(total_text, "\n", {}))
-          end
-        end,
-      }),
-      function()
+    self.provider.api:chat_completions(response, {
+      custom_params = params,
+      partial_result_fn = function(...)
+        self:addAnswerPartial(...)
+      end,
+      should_stop = function()
         -- should stop function
         if self.stop then
           -- self.stop = false
@@ -92,13 +85,17 @@ function PopupAction:run()
         else
           return false
         end
-      end
-    )
+      end,
+    })
   else
     self:set_loading(true)
-    self.provider.api:chat_completions(params, function(answer, usage)
-      self:on_result(answer, usage)
-    end)
+    self.provider.api:chat_completions(response, {
+      custom_params = params,
+      partial_result_fn = function(...)
+        self:on_result(...)
+      end,
+      should_stop = nil,
+    })
   end
 end
 
