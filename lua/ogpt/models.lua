@@ -53,9 +53,8 @@ local finder = function(provider, opts)
           :new({
             command = "curl",
             args = {
-              provider.envs.MODELS_URL,
-              "-H",
-              provider.envs.AUTHORIZATION_HEADER,
+              provider:models_url(),
+              table.unpack(provider:request_headers()),
             },
             on_exit = vim.schedule_wrap(function(j, exit_code)
               if exit_code ~= 0 then
@@ -81,16 +80,20 @@ local finder = function(provider, opts)
                 process_result(v)
               end
 
-              if provider.parse_api_model_response then
-                provider.parse_api_model_response(json, process_single_model)
-              else
-                -- default processor for a REST response from a curl for models
-                for _, model in ipairs(json.models) do
-                  local v = entry_maker(model)
-                  num_results = num_results + 1
-                  results[num_results] = v
-                  process_result(v)
-                end
+              local _models = {}
+              _models = vim.tbl_extend("force", _models, json.models or {})
+              _models = vim.tbl_extend("force", _models, Config.get_local_model_definition(provider) or {})
+
+              provider:parse_api_model_response(json, process_single_model)
+
+              -- default processor for a REST response from a curl for models
+              for name, properties in pairs(_models) do
+                local v = entry_maker({
+                  name = name,
+                })
+                num_results = num_results + 1
+                results[num_results] = v
+                process_result(v)
               end
 
               process_complete()

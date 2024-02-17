@@ -1,18 +1,31 @@
 local Popup = require("ogpt.common.popup")
 local Config = require("ogpt.config")
 
-local SystemWindow = Popup:extend("SystemWindow")
+local UtilWindow = Popup:extend("UtilWindow")
 
-function SystemWindow:init(options, edgy)
+function UtilWindow:init(options, edgy)
+  local popup_defaults = {
+    border = {
+      text = {
+        top = options.display or "UTIL",
+      },
+    },
+    buf_options = {
+      filetype = options.filetype or "ogpt-util-window",
+    },
+  }
+  local popup_options = vim.tbl_deep_extend("force", Config.options.util_window, popup_defaults)
+
+  self.virtual_text = options.virtual_text
+  self.default_text = options.default_text or ""
   self.working = false
   self.on_change = options.on_change
 
-  options = vim.tbl_deep_extend("force", options or {}, Config.options.system_window)
-
-  SystemWindow.super.init(self, options, edgy)
+  UtilWindow.super.init(self, popup_options, edgy)
+  self:set_text(vim.fn.split(self.default_text, "\n"))
 end
 
-function SystemWindow:toggle_placeholder()
+function UtilWindow:toggle_placeholder()
   local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
   local text = table.concat(lines, "\n")
 
@@ -24,7 +37,7 @@ function SystemWindow:toggle_placeholder()
     self.extmark = vim.api.nvim_buf_set_extmark(self.bufnr, Config.namespace_id, 0, 0, {
       virt_text = {
         {
-          "You are a helpful assistant.",
+          self.virtual_text or "",
           "@comment",
         },
       },
@@ -33,14 +46,14 @@ function SystemWindow:toggle_placeholder()
   end
 end
 
-function SystemWindow:set_text(text)
+function UtilWindow:set_text(text)
   self.working = true
   vim.api.nvim_buf_set_lines(self.bufnr, 0, -1, false, text)
   self.working = false
 end
 
-function SystemWindow:mount()
-  SystemWindow.super.mount(self)
+function UtilWindow:mount()
+  UtilWindow.super.mount(self)
 
   self:toggle_placeholder()
   vim.api.nvim_buf_attach(self.bufnr, false, {
@@ -50,10 +63,12 @@ function SystemWindow:mount()
       if not self.working then
         local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
         local text = table.concat(lines, "\n")
-        self.on_change(text)
+        if self.on_change and type(self.on_change) == "function" then
+          self.on_change(text)
+        end
       end
     end,
   })
 end
 
-return SystemWindow
+return UtilWindow

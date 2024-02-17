@@ -88,10 +88,21 @@ function Session:add_item(item)
     item.ctx = nil
   end
   if ctx and ctx.params and ctx.params.options then
+    -- ollama uses "options" to pass in parameters in its api calls
     self.parameters = ctx.params.options
     self.parameters.model = ctx.params.model
-    item.context = ctx.context
+  else
+    -- self.parameters = vim.tbl_extend("force", self.parameters, vim.tbl_get(ctx, "params", "parameters") or {})
+    self.parameters = vim.tbl_get(ctx, "params", "parameters") or {} or self.parameters
   end
+
+  -- add provider anbd model into a session to track
+  self.parameters.provider = ctx.provider
+  self.parameters.model = ctx.model
+
+  -- handling context token
+  item.context = ctx.context
+
   if self.updated_at == self.name and item.type == 1 then
     self.name = item.text
   end

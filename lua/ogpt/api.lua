@@ -3,8 +3,11 @@ local Config = require("ogpt.config")
 local logger = require("ogpt.common.logger")
 local Object = require("ogpt.common.object")
 local utils = require("ogpt.utils")
+local Response = require("ogpt.response")
 
 local Api = Object("Api")
+
+Api.STATE_COMPLETED = "COMPLETED"
 
 function Api:init(provider, action, opts)
   self.opts = opts
@@ -12,95 +15,76 @@ function Api:init(provider, action, opts)
   self.action = action
 end
 
-function Api:completions(custom_params, cb)
+function Api:completions(custom_params, cb, opts)
+  -- TODO: not working atm
   local params = vim.tbl_extend("keep", custom_params, Config.options.api_params)
   params.stream = false
-  self:make_call(self.COMPLETIONS_URL, params, cb)
+  self:make_call(self.COMPLETIONS_URL, params, cb, opts)
 end
 
-function Api:chat_completions(custom_params, partial_result_fn, should_stop, opts)
-  local stream = custom_params.stream or false
-  local params, _completion_url = Config.expand_model(self, custom_params)
+function Api:chat_completions(response, inputs)
+  local custom_params = inputs.custom_params
+  local partial_result_fn = inputs.partial_result_fn
+  local should_stop = inputs.should_stop or function() end
 
-  local ctx = {}
+  -- local stream = custom_params.stream or false
+  local params, _completion_url, ctx = self.provider:expand_model(custom_params)
+
   ctx.params = params
+  ctx.provider = self.provider.name
+  ctx.model = custom_params.model
   utils.log("Request to: " .. _completion_url)
   utils.log(params)
+  response.ctx = ctx
+  response.rest_params = params
+  response.partial_result_cb = partial_result_fn
+  response:run_async()
 
-  if stream then
-    local raw_chunks = ""
-    local state = "START"
-
-    partial_result_fn = vim.schedule_wrap(partial_result_fn)
-
-    self:exec(
-      "curl",
-      {
-        "--silent",
-        "--show-error",
-        "--no-buffer",
-        _completion_url,
-        "-H",
-        "Content-Type: application/json",
-        "-H",
-        self.provider.envs.AUTHORIZATION_HEADER,
-        "-d",
-        vim.json.encode(params),
-      },
-      function(chunk)
-        local ok, json = pcall(vim.json.decode, chunk)
-        if ok then
-          if json.error ~= nil then
-            local error_msg = {
-              "OGPT ERROR:",
-              self.provider.name,
-              vim.inspect(json.error) or "",
-              "Something went wrong.",
-            }
-            table.insert(error_msg, vim.inspect(params))
-            -- local error_msg = "OGPT ERROR: " .. (json.error.message or "Something went wrong")
-            partial_result_fn(table.concat(error_msg, " "), "ERROR", ctx)
-            return
-          end
-          ctx, raw_chunks, state =
-            self.provider.process_line({ json = json, raw = chunk }, ctx, raw_chunks, state, partial_result_fn)
-          return
-        end
-
-        for line in chunk:gmatch("[^\n]+") do
-          local raw_json = string.gsub(line, "^data:", "")
-          local _ok, _json = pcall(vim.json.decode, raw_json)
-          if _ok then
-            ctx, raw_chunks, state =
-              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, partial_result_fn)
-          else
-            ctx, raw_chunks, state =
-              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, partial_result_fn)
-          end
-        end
-      end,
-      function(err, _)
-        partial_result_fn(err, "ERROR", ctx)
-      end,
-      should_stop,
-      function()
-        partial_result_fn(raw_chunks, "END", ctx)
-      end
-    )
-  else
-    params.stream = false
-    self:make_call(self.provider.envs.CHAT_COMPLETIONS_URL, params, partial_result_fn)
+  local on_complete = inputs.on_complete or function()
+    response:set_state(response.STATE_COMPLETED)
   end
+  local on_start = inputs.on_start
+    or function()
+      -- utils.log("Start Exec of: Curl " .. vim.inspect(curl_args), vim.log.levels.DEBUG)
+      response:set_state(response.STATE_INPROGRESS)
+    end
+  local on_error = inputs.on_error
+    or function(msg)
+      -- utils.log("Error running curl: " .. msg or "", vim.log.levels.ERROR)
+      response:set_state(response.STATE_ERROR)
+    end
+  local on_stop = inputs.on_stop or function()
+    response:set_state(response.STATE_STOPPED)
+  end
+
+  -- if params.stream then
+  -- local accumulate = {}
+  local curl_args = {
+    "--silent",
+    "--show-error",
+    "--no-buffer",
+    _completion_url,
+    "-d",
+    vim.json.encode(params),
+  }
+  for _, header_item in ipairs(self.provider:request_headers()) do
+    table.insert(curl_args, header_item)
+  end
+
+  self:exec("curl", curl_args, on_start, function(chunk)
+    response:add_chunk(chunk)
+  end, on_complete, on_error, on_stop, should_stop)
 end
 
-function Api:edits(custom_params, cb)
-  local params = self.action.params
-  params.stream = true
-  params = vim.tbl_extend("force", params, custom_params)
-  self:chat_completions(params, cb)
-end
+-- function Api:edits(custom_params, cb)
+--   local params = self.action.params
+--   params.stream = true
+--   params = vim.tbl_extend("force", params, custom_params)
+--   self:chat_completions(params, cb)
+-- end
 
-function Api:make_call(url, params, cb, ctx, raw_chunks, state)
+function Api:make_call(url, params, cb, ctx, raw_chunks, state, opts)
+  -- TODO:  to be deprecated
   ctx = ctx or {}
   raw_chunks = raw_chunks or ""
   state = state or "START"
@@ -116,12 +100,9 @@ function Api:make_call(url, params, cb, ctx, raw_chunks, state)
 
   local curl_args = {
     url,
-    "-H",
-    "Content-Type: application/json",
-    "-H",
-    self.provider.envs.AUTHORIZATION_HEADER,
     "-d",
     "@" .. TMP_MSG_FILENAME,
+    table.unpack(self.provider:request_headers()),
   }
 
   self.job = job
@@ -135,7 +116,7 @@ function Api:make_call(url, params, cb, ctx, raw_chunks, state)
             "An Error Occurred, when calling `curl " .. table.concat(curl_args, " ") .. "`",
             vim.log.levels.ERROR
           )
-          cb("ERROR: API Error")
+          cb("ERROR: API Error", "ERROR")
         end
 
         local result = table.concat(response:result(), "\n")
@@ -154,7 +135,8 @@ function Api:make_call(url, params, cb, ctx, raw_chunks, state)
             cb(table.concat(error_msg, " "), "ERROR", ctx)
             return
           end
-          ctx, raw_chunks, state = self.provider.process_line({ json = json, raw = result }, ctx, raw_chunks, state, cb)
+          ctx, raw_chunks, state =
+            self.provider:process_line({ json = json, raw = result }, ctx, raw_chunks, state, cb, opts)
           return
         end
 
@@ -163,10 +145,10 @@ function Api:make_call(url, params, cb, ctx, raw_chunks, state)
           local _ok, _json = pcall(vim.json.decode, raw_json)
           if _ok then
             ctx, raw_chunks, state =
-              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb)
+              self.provider:process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb, opts)
           else
             ctx, raw_chunks, state =
-              self.provider.process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb)
+              self.provider:process_line({ json = _json, raw = line }, ctx, raw_chunks, state, cb, opts)
           end
         end
       end),
@@ -261,24 +243,29 @@ local function ensureUrlProtocol(str)
   return "https://" .. str
 end
 
-function Api:exec(cmd, args, on_stdout_chunk, on_complete, should_stop, on_stop)
-  local stdout = vim.loop.new_pipe()
+function Api:exec(cmd, args, on_start, on_stdout_chunk, on_complete, on_error, on_stop, should_stop)
   local stderr = vim.loop.new_pipe()
+  local stdout = vim.loop.new_pipe()
   local stderr_chunks = {}
 
   local handle, err
   local function on_stdout_read(_, chunk)
     if chunk then
       vim.schedule(function()
-        if should_stop and should_stop() then
+        if should_stop() then
           if handle ~= nil then
             handle:kill(2) -- send SIGINT
-            stdout:close()
-            stderr:close()
-            handle:close()
+            pcall(function()
+              stdout:close()
+            end)
+            pcall(function()
+              stderr:close()
+            end)
+            pcall(function()
+              handle:close()
+            end)
             on_stop()
           end
-          return
         end
         on_stdout_chunk(chunk)
       end)
@@ -291,6 +278,7 @@ function Api:exec(cmd, args, on_stdout_chunk, on_complete, should_stop, on_stop)
     end
   end
 
+  on_start()
   handle, err = vim.loop.spawn(cmd, {
     args = args,
     stdio = { nil, stdout, stderr },
@@ -303,13 +291,15 @@ function Api:exec(cmd, args, on_stdout_chunk, on_complete, should_stop, on_stop)
 
     vim.schedule(function()
       if code ~= 0 then
-        on_complete(vim.trim(table.concat(stderr_chunks, "")))
+        on_error()
+      else
+        on_complete()
       end
     end)
   end)
 
   if not handle then
-    on_complete(cmd .. " could not be started: " .. err)
+    on_error(cmd .. " could not be started: " .. err)
   else
     stdout:read_start(on_stdout_read)
     stderr:read_start(on_stderr_read)

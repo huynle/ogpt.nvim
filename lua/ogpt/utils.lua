@@ -1,4 +1,5 @@
 local Config = require("ogpt.config")
+local Path = require("plenary.path")
 local M = {}
 
 local ESC_FEEDKEY = vim.api.nvim_replace_termcodes("<ESC>", true, false, true)
@@ -253,56 +254,6 @@ function M.trim(s)
   return (s:gsub("^%s*(.-)%s*$", "%1"))
 end
 
-function M.add_partial_completion(opts, text, state)
-  local panel = opts.panel
-  local progress = opts.progress
-
-  if state == "ERROR" then
-    if progress then
-      progress(false)
-    end
-    M.log("An Error Occurred: " .. text, vim.log.levels.ERROR)
-    panel:unmount()
-    return
-  end
-
-  local start_line = 0
-  if state == "END" and text ~= "" then
-    if not opts.on_complete then
-      return
-    end
-    return opts.on_complete(text)
-  end
-
-  if state == "START" then
-    if progress then
-      progress(false)
-    end
-    if M.is_buf_exists(panel.bufnr) then
-      vim.api.nvim_buf_set_option(panel.bufnr, "modifiable", true)
-    end
-    text = M.trim(text)
-  end
-
-  if state == "START" or state == "CONTINUE" then
-    local lines = vim.split(text, "\n", {})
-    local length = #lines
-    local buffer = panel.bufnr
-
-    for i, line in ipairs(lines) do
-      if buffer and vim.fn.bufexists(buffer) then
-        local currentLine = vim.api.nvim_buf_get_lines(buffer, -2, -1, false)[1]
-        if currentLine then
-          vim.api.nvim_buf_set_lines(buffer, -2, -1, false, { currentLine .. line })
-          if i == length and i > 1 then
-            vim.api.nvim_buf_set_lines(buffer, -1, -1, false, { "" })
-          end
-        end
-      end
-    end
-  end
-end
-
 function M.process_string(inputString)
   -- Check if the inputString contains a comma
   if inputString:find(",") then
@@ -386,12 +337,30 @@ function M.format_table(tbl, indent)
   return result
 end
 
+local log_filename =
+  Path:new(vim.fn.stdpath("state")):joinpath("ogpt", "ogpt-" .. os.date("%Y-%m-%d") .. ".log"):absolute() -- convert Path object to string
+
+function M.write_to_log(msg)
+  local file = io.open(log_filename, "ab")
+  if file then
+    file:write(os.date("[%Y-%m-%d %H:%M:%S] "))
+    file:write(msg .. "\n")
+    file:close()
+  else
+    vim.notify("Failed to open log file for writing", vim.log.levels.ERROR)
+  end
+end
+
 function M.log(msg, level)
+  level = level or vim.log.levels.INFO
+
   msg = vim.inspect(msg)
-  level = level or vim.log.levels.DEBUG
-  Config.logs[#Config.logs + 1] = { msg = msg, level = level }
-  if Config.options.debug then
-    vim.notify(msg, level, { title = "OGPT Debug" })
+  if level >= Config.options.debug.log_level then
+    M.write_to_log(msg)
+  end
+
+  if level >= Config.options.debug.notify_level then
+    vim.notify(msg, level, { title = "OGPT Debug" }, level)
   end
 end
 
@@ -401,6 +370,18 @@ function M.shallow_copy(t)
     t2[k] = v
   end
   return t2
+end
+
+function M.gather_text_from_parts(parts)
+  if type(parts) == "string" then
+    return parts
+  else
+    local _text = {}
+    for _, part in ipairs(parts) do
+      table.insert(_text, part.text)
+    end
+    return table.concat(_text, " ")
+  end
 end
 
 return M
