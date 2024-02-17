@@ -133,6 +133,11 @@ function BaseAction:update_variables()
       return self:get_selected_text()
     end,
   })
+
+  -- pull in action defined args
+  self.variables = vim.tbl_extend("force", self.variables, self.opts.args or {})
+
+  -- add in plugin predefined template helpers
   for helper, helper_fn in pairs(template_helpers) do
     local _v = { [helper] = helper_fn }
     self.variables = vim.tbl_extend("force", self.variables, _v)
