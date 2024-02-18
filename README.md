@@ -266,11 +266,7 @@ An example of custom action may look like this: (`#` marks comments)
       ]
     }
     "args": {
-      "argument": {
-          "type": "strig",
-          "optional": "true",
-          "default": "some value"
-      }
+      "argument": "some value" -- or function
     }
   }
 }
