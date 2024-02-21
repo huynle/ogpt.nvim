@@ -22,13 +22,14 @@ function BaseAction:init(opts)
   self.stop = true
   self.output_panel = nil
   self.spinner = Spinner:new(function(state) end)
+  self.bufnr = self:get_bufnr()
 end
 
 function BaseAction:get_bufnr()
-  if not self._bufnr then
-    self._bufnr = vim.api.nvim_get_current_buf()
+  if not self.bufnr then
+    self.bufnr = vim.api.nvim_get_current_buf()
   end
-  return self._bufnr
+  return self.bufnr
 end
 
 function BaseAction:get_filetype()

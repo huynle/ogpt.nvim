@@ -209,7 +209,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
       window:map(mode, Config.options.edit.keymaps.accept, function()
         self.instructions_input.input_props.on_close()
         local lines = vim.api.nvim_buf_get_lines(self.output_panel.bufnr, 0, -1, false)
-        vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
+        vim.api.nvim_buf_set_text(self.bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
         vim.notify("Successfully applied the change!", vim.log.levels.INFO)
       end, { noremap = true })
     end
