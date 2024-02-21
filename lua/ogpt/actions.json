@@ -23,11 +23,7 @@
       "temperature": 0.3
     },
     "args": {
-      "lang": {
-        "type": "string",
-        "optional": "true",
-        "default": "english"
-      }
+      "lang": "english"
     }
   },
   "keywords": {
