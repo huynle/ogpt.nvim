@@ -14,6 +14,9 @@ function PopupWindow:init(options, edgy)
 end
 
 function PopupWindow:update_popup_size(opts)
+  if self.edgy then
+    return
+  end
   opts = vim.tbl_extend("force", self.options, opts or {})
   opts.lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
   local ui_opts = self:calculate_size(opts)
