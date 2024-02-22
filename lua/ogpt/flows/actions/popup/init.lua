@@ -18,9 +18,7 @@ function PopupAction:init(name, opts)
   PopupAction.super.init(self, opts)
 
   local popup_options = Config.options.popup
-  if type(opts.type) == "table" then
-    popup_options = vim.tbl_extend("force", popup_options, opts.type.popup or {})
-  end
+  popup_options = vim.tbl_extend("force", popup_options, opts.type_opts or {})
 
   self.provider = Config.get_provider(opts.provider, self)
   -- self.params = Config.get_action_params(self.provider, opts.params or {})
