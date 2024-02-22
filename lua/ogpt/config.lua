@@ -146,7 +146,12 @@ function M.defaults()
     },
     popup = {
       edgy = nil, -- use global default
-      position = 1,
+      dynamic_resize = true,
+      position = {
+        row = 0,
+        col = 30,
+      },
+      relative = "cursor",
       size = {
         width = "40%",
         height = 10,
