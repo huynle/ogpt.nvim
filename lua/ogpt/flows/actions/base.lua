@@ -273,10 +273,11 @@ function BaseAction:addAnswerPartial(response)
     local length = #lines
 
     for i, line in ipairs(lines) do
-      if i == length and i > 1 then
-        vim.api.nvim_buf_set_lines(self.output_panel.bufnr, -1, -1, false, { "" })
-      end
       if self.output_panel.bufnr and vim.fn.bufexists(self.output_panel.bufnr) then
+        if i > 1 then
+          -- create a new line in the streaming output only if
+          vim.api.nvim_buf_set_lines(self.output_panel.bufnr, -1, -1, false, { "" }) -- add in the new line here
+        end
         local currentLine = vim.api.nvim_buf_get_lines(self.output_panel.bufnr, -2, -1, false)[1]
         if currentLine then
           vim.api.nvim_buf_set_lines(self.output_panel.bufnr, -2, -1, false, { currentLine .. line })
