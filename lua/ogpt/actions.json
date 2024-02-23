@@ -2,12 +2,12 @@
   "complete_code": {
     "type": "popup",
     "strategy": "display",
-    "template": "Complete the following code written in {{lang}} by pasting the existing code and continuing it.\n\nExisting code:\n```{{filetype}}\n{{input}}\n```\n\n```{{filetype}}\n"
+    "template": "Complete the following code written in {{{lang}}} by pasting the existing code and continuing it.\n\nExisting code:\n```{{{filetype}}}\n{{{input}}}\n```\n\n```{{{filetype}}}\n"
   },
   "grammar_correction": {
     "type": "popup",
     "strategy": "display",
-    "template": "Correct this to standard {{lang}}:\n\n{{input}}""args": {
+    "template": "Correct this to standard {{{lang}}}:\n\n{{{input}}}""args": {
       "lang": {
         "type": "string",
         "optional": "true",
@@ -18,7 +18,7 @@
   "translate": {
     "type": "popup",
     "strategy": "display",
-    "template": "Translate this into {{lang}}:\n\n{{input}}",
+    "template": "Translate this into {{{lang}}}:\n\n{{{input}}}",
     "params": {
       "temperature": 0.3
     },
@@ -29,7 +29,7 @@
   "keywords": {
     "type": "popup",
     "strategy": "display",
-    "template": "Extract the main keywords from the following text.\n\n{{input}}",
+    "template": "Extract the main keywords from the following text.\n\n{{{input}}}",
     "params": {
       "temperature": 0.5,
       "frequency_penalty": 0.8
@@ -38,34 +38,34 @@
   "docstring": {
     "type": "popup",
     "strategy": "edit",
-    "template": "# An elaborate, high quality docstring for the above function:\n# Writing a good docstring\n\nThis is an example of writing a really good docstring that follows a best practice for the given language. Attention is paid to detailing things like\n* parameter and return types (if applicable)\n* any errors that might be raised or returned, depending on the language\n\nI received the following code:\n\n```{{filetype}}\n{{input}}\n```\n\nThe code with a really good docstring added is below:\n\n```{{filetype}}",
+    "template": "# An elaborate, high quality docstring for the above function:\n# Writing a good docstring\n\nThis is an example of writing a really good docstring that follows a best practice for the given language. Attention is paid to detailing things like\n* parameter and return types (if applicable)\n* any errors that might be raised or returned, depending on the language\n\nI received the following code:\n\n```{{{filetype}}}\n{{{input}}}\n```\n\nThe code with a really good docstring added is below:\n\n```{{{filetype}}}",
     "params": {}
   },
   "add_tests": {
     "type": "popup",
     "strategy": "display",
-    "template": "Implement tests for the following code.\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nTests:\n```{{filetype}}",
+    "template": "Implement tests for the following code.\n\nCode:\n```{{{filetype}}}\n{{{input}}}\n```\n\nTests:\n```{{{filetype}}}",
     "params": {}
   },
   "optimize_code": {
     "type": "popup",
     "strategy": "edit",
-    "template": "Optimize the following code.\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nOptimized version:\n```{{filetype}}"
+    "template": "Optimize the following code.\n\nCode:\n```{{{filetype}}}\n{{{input}}}\n```\n\nOptimized version:\n```{{{filetype}}}"
   },
   "summarize": {
     "type": "popup",
     "strategy": "display",
-    "template": "Summarize the following text.\n\nText:\n\"\"\"\n{{input}}\n\"\"\"\n\nSummary:"
+    "template": "Summarize the following text.\n\nText:\n\"\"\"\n{{{input}}}\n\"\"\"\n\nSummary:"
   },
   "fix_bugs": {
     "type": "edit",
-    "template": "Fix bugs in the below code\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nFixed code:\n```{{filetype}}"
+    "template": "Fix bugs in the below code\n\nCode:\n```{{{filetype}}}\n{{{input}}}\n```\n\nFixed code:\n```{{{filetype}}}"
   },
   "explain_code": {
     "type": "popup",
     "strategy": "display",
     "title": " Explain Code",
-    "template": "Explain the following code:\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nUse markdown format.\nHere's what the above code is doing:\n```",
+    "template": "Explain the following code:\n\nCode:\n```{{{filetype}}}\n{{{input}}}\n```\n\nUse markdown format.\nHere's what the above code is doing:\n```",
     "params": {
       "stop": [
         "```"
@@ -75,7 +75,7 @@
   "roxygen_edit": {
     "type": "popup",
     "strategy": "display",
-    "template": "Insert a roxygen skeleton to document this R function:\n\n```{{filetype}}\n[insert]\n\n{{input}}\n\n```",
+    "template": "Insert a roxygen skeleton to document this R function:\n\n```{{{filetype}}}\n[insert]\n\n{{{input}}}\n\n```",
     "params": {
       "temperature": 0.5,
       "max_tokens": 1024
@@ -84,7 +84,7 @@
   "code_readability_analysis": {
     "type": "popup",
     "strategy": "quick_fix",
-    "template": "{{input}}",
+    "template": "{{{input}}}",
     "params": {
       "max_tokens": 2048,
       "messages": [

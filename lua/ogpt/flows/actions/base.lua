@@ -22,13 +22,14 @@ function BaseAction:init(opts)
   self.stop = true
   self.output_panel = nil
   self.spinner = Spinner:new(function(state) end)
+  self.bufnr = self:get_bufnr()
 end
 
 function BaseAction:get_bufnr()
-  if not self._bufnr then
-    self._bufnr = vim.api.nvim_get_current_buf()
+  if not self.bufnr then
+    self.bufnr = vim.api.nvim_get_current_buf()
   end
-  return self._bufnr
+  return self.bufnr
 end
 
 function BaseAction:get_filetype()
@@ -148,20 +149,20 @@ function BaseAction:render_template(variables, templates)
   variables = vim.tbl_extend("force", self.variables, variables or {})
   -- lazily render the final string.
   -- it recursively loop on the template string until it does not find anymore
-  -- {{}} patterns
+  -- {{{}}} patterns
   local stop = false
   local depth = 2
   local result = self.template
-  local pattern = "%{%{(([%w_]+))%}%}"
+  local pattern = "%{%{%{(([%w_]+))%}%}%}"
   repeat
     for match in string.gmatch(result, pattern) do
       local value = variables[match]
       if value then
-        value = type(value) == "function" and value() or value
+        value = type(value) == "function" and value(self.variables) or value
         local escaped_value = utils.escape_pattern(value)
-        result = string.gsub(result, "{{" .. match .. "}}", escaped_value)
+        result = string.gsub(result, "{{{" .. match .. "}}}", escaped_value)
       else
-        utils.log("Cannot find {{" .. match .. "}}", vim.log.levels.ERROR)
+        utils.log("Cannot find {{{" .. match .. "}}}", vim.log.levels.ERROR)
         stop = true
       end
     end

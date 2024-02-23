@@ -14,6 +14,9 @@ function PopupWindow:init(options, edgy)
 end
 
 function PopupWindow:update_popup_size(opts)
+  if self.edgy then
+    return
+  end
   opts = vim.tbl_extend("force", self.options, opts or {})
   opts.lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
   local ui_opts = self:calculate_size(opts)
@@ -70,14 +73,14 @@ function PopupWindow:calculate_size(opts)
         col = opts.selection_idx.start_col,
       },
     },
-  }, opts.default_ui)
+  }, opts.default_ui or {})
   return ui_opts
 end
 
 function PopupWindow:mount(opts)
   PopupWindow.super.mount(self)
 
-  self:update_popup_size(opts)
+  -- self:update_popup_size(opts)
   popup_keymap.apply_map(self, opts)
 
   -- unmount component when closing window
@@ -89,10 +92,24 @@ function PopupWindow:mount(opts)
   end)
 
   -- dynamically resize
-  -- https://github.com/MunifTanjim/nui.nvim/blob/main/lua/nui/popup/README.md#popupupdate_layout
-  self:on(event.CursorMoved, function()
-    self:update_popup_size(opts)
-  end)
+  if self.options.dynamic_resize then
+    -- set the event
+    -- https://github.com/MunifTanjim/nui.nvim/blob/main/lua/nui/popup/README.md#popupupdate_layout
+    self:on(event.CursorMoved, function()
+      self:update_popup_size(opts)
+    end)
+  else
+    opts = {
+      cur_win = opts.cur_win,
+      name = opts.name,
+      ui_h = self.options.size.height,
+      ui_w = self.options.size.width,
+      selection_idx = opts.selection_idx,
+    }
+  end
+
+  -- create the inital window
+  self:update_popup_size(opts)
 end
 
 return PopupWindow
