@@ -2,6 +2,7 @@ local Object = require("ogpt.common.object")
 local utils = require("ogpt.utils")
 local async = require("plenary.async.async")
 local channel = require("plenary.async.control").channel
+local Deque = require("plenary.async.structs").Deque
 
 local Response = Object("Response")
 
@@ -25,6 +26,7 @@ function Response:init(provider, events)
   self.strategy = provider.rest_strategy
   self.provider = provider
   self.not_processed = ""
+  self.not_processed_raw = Deque.new()
   self.raw_chunk_tx, self.raw_chunk_rx = channel.mpsc()
   self.processed_raw_tx, self.processsed_raw_rx = channel.mpsc()
   self.processed_content_tx, self.processsed_content_rx = channel.mpsc()
@@ -67,8 +69,16 @@ function Response:run_async()
 end
 
 function Response:_process_added_chunk()
-  local chunk = self.raw_chunk_rx.recv()
-  utils.log("recv'd chunk: " .. chunk, vim.log.levels.TRACE)
+  local _chunk = self.raw_chunk_rx.recv()
+  utils.log("recv'd chunk: " .. _chunk, vim.log.levels.TRACE)
+
+  self.not_processed_raw:pushright(_chunk)
+
+  local chunk = _chunk
+  for i, queued_chunk in self.not_processed_raw:ipairs_left() do
+    chunk = chunk .. queued_chunk
+    self.not_processed_raw[i] = nil
+  end
 
   if self.provider.response_params.strategy == self.STRATEGY_CHUNK then
     self.processed_raw_tx.send(chunk)
@@ -89,6 +99,7 @@ function Response:_process_added_chunk()
 
   if not success then
     utils.log("Chunk COULD NOT BE PROCESSED by regex: '" .. _split_regex .. "' : " .. chunk, vim.log.levels.DEBUG)
+    self.not_processed_raw:pushleft(chunk)
   end
 end
 
