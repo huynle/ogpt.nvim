@@ -1,51 +1,9 @@
 local Config = require("ogpt.config")
 local Path = require("plenary.path")
+local Job = require("plenary.job")
 local M = {}
 
 local ESC_FEEDKEY = vim.api.nvim_replace_termcodes("<ESC>", true, false, true)
-
-M.ollama_options = {
-  "num_keep",
-  "seed",
-  "num_predict",
-  "top_k",
-  "top_p",
-  "tfs_z",
-  "typical_p",
-  "repeat_last_n",
-  "temperature",
-  "repeat_penalty",
-  "presence_penalty",
-  "frequency_penalty",
-  "mirostat",
-  "mirostat_tau",
-  "mirostat_eta",
-  "penalize_newline",
-  "stop",
-  "numa",
-  "num_ctx",
-  "num_batch",
-  "num_gqa",
-  "num_gpu",
-  "main_gpu",
-  "low_vram",
-  "f16_kv",
-  "logits_all",
-  "vocab_only",
-  "use_mmap",
-  "use_mlock",
-  "embedding_only",
-  "rope_frequency_base",
-  "rope_frequency_scale",
-  "num_thread",
-}
-
-M.textgenui_options = {
-  "seed",
-  "top_k",
-  "top_p",
-  "stop",
-}
 
 function M.split(text)
   local t = {}
@@ -449,6 +407,43 @@ function M.extract_urls(text_with_URLs)
     end
   end
   return urls
+end
+
+function M.system(args, writer)
+  args = args or {}
+  local job = Job:new({
+    command = table.remove(args, 1),
+    args = args or {},
+    writer = writer,
+  })
+  return job
+  -- job:sync()
+  -- return table.concat(job:result(), "\n")
+end
+
+function M.curl(args, on_exit)
+  local stdout_results = {}
+
+  -- on_exit = on_exit or function(j, return_val)
+  --   stdout_results = j:result()
+  -- end
+  local curl_args = {
+    "--silent",
+    "--show-error",
+    "--no-buffer",
+  }
+  for _, arg in ipairs(args) do
+    table.insert(curl_args, arg)
+  end
+
+  local job = Job:new({
+    command = "curl",
+    args = curl_args,
+    -- on_exit = on_exit,
+  })
+  -- job:sync()
+  -- return table.concat(job:result(), "\n")
+  return job
 end
 
 return M

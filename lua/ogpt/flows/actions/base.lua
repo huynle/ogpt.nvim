@@ -158,7 +158,9 @@ function BaseAction:render_template(variables, templates)
     for match in string.gmatch(result, pattern) do
       local value = variables[match]
       if value then
-        value = type(value) == "function" and value(self.variables) or value
+        if type(value) == "function" then
+          value = value(self.variables)
+        end
         local escaped_value = utils.escape_pattern(value)
         result = string.gsub(result, "{{{" .. match .. "}}}", escaped_value)
       else
