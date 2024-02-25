@@ -75,38 +75,39 @@ function Response:_process_added_chunk()
   -- push on to queue
   self.not_processed_raw:pushright(_chunk)
 
-  local chunk = _chunk
+  local chunk = ""
   -- clear the queue each time to try to get a full chunk
   for i, queued_chunk in self.not_processed_raw:ipairs_left() do
-    chunk = chunk .. queued_chunk
-    utils.log("Adding to final chunk: " .. chunk, vim.log.levels.TRACE)
+    utils.log("Adding to final chunk: " .. queued_chunk, vim.log.levels.TRACE)
     self.not_processed_raw[i] = nil
+    chunk = chunk .. queued_chunk
   end
 
+  -- Run different strategies for processsing responses here
   if self.provider.response_params.strategy == self.STRATEGY_CHUNK then
     self.processed_raw_tx.send(chunk)
-    return
-  end
-  -- everything regex related below this line
-  local _split_regex = "[^\n]+" -- default regex, for line-by-line strategy
-  if self.provider.response_params.strategy == self.STRATEGY_REGEX then
-    _split_regex = self.provider.response_params.split_chunk_match_regex or _split_regex
-  end
+  elseif self.provider.response_params.strategy == self.STRATEGY_REGEX then
+    chunk = _chunk
+    local _split_regex = "[^\n]+" -- default regex, for line-by-line strategy
+    if self.provider.response_params.strategy == self.STRATEGY_REGEX then
+      _split_regex = self.provider.response_params.split_chunk_match_regex or _split_regex
+    end
 
-  local success = false
-  for line in chunk:gmatch(_split_regex) do
-    success = true
-    utils.log("Chunk processed using regex: " .. _split_regex, vim.log.levels.DEBUG)
-    utils.log("Chunk processed result: " .. line, vim.log.levels.DEBUG)
-    self.processed_raw_tx.send(line)
-  end
+    local success = false
+    for line in chunk:gmatch(_split_regex) do
+      success = true
+      utils.log("Chunk processed using regex: " .. _split_regex, vim.log.levels.DEBUG)
+      utils.log("Chunk processed result: " .. line, vim.log.levels.DEBUG)
+      self.processed_raw_tx.send(line)
+    end
 
-  if not success then
-    utils.log(
-      "Chunk COULD NOT BE PROCESSED by regex (pushed left on queue): '" .. _split_regex .. "' : " .. chunk,
-      vim.log.levels.DEBUG
-    )
-    self.not_processed_raw:pushleft(chunk)
+    if not success then
+      utils.log(
+        "Chunk COULD NOT BE PROCESSED by regex (pushed left on queue): '" .. _split_regex .. "' : " .. chunk,
+        vim.log.levels.DEBUG
+      )
+      self.not_processed_raw:pushleft(chunk)
+    end
   end
 end
 
@@ -131,11 +132,11 @@ function Response:pop_chunk()
   -- return _value .. _chunk
 
   local _chunk = self.processsed_raw_rx.recv()
-  utils.log("adding processed raw: " .. _chunk, vim.log.levels.TRACE)
+  utils.log("pushing processed raw to queue: " .. _chunk, vim.log.levels.TRACE)
 
   -- push on to queue
   self.not_processed:pushright(_chunk)
-  utils.log("popping processed raw: " .. _chunk, vim.log.levels.TRACE)
+  utils.log("popping processed raw from queue: " .. _chunk, vim.log.levels.TRACE)
   return self.not_processed:popleft()
 
   -- local chunk = _chunk
