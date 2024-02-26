@@ -2,6 +2,7 @@ local Object = require("ogpt.common.object")
 local utils = require("ogpt.utils")
 local async = require("plenary.async.async")
 local channel = require("plenary.async.control").channel
+local Deque = require("plenary.async.structs").Deque
 
 local Response = Object("Response")
 
@@ -24,7 +25,8 @@ function Response:init(provider, events)
   self.in_progress = false
   self.strategy = provider.rest_strategy
   self.provider = provider
-  self.not_processed = ""
+  self.not_processed = Deque.new()
+  self.not_processed_raw = Deque.new()
   self.raw_chunk_tx, self.raw_chunk_rx = channel.mpsc()
   self.processed_raw_tx, self.processsed_raw_rx = channel.mpsc()
   self.processed_content_tx, self.processsed_content_rx = channel.mpsc()
@@ -43,7 +45,7 @@ function Response:add_chunk(chunk)
 end
 
 function Response:could_not_process(chunk)
-  self.not_processed = chunk
+  self.not_processed:pushleft(chunk)
 end
 
 function Response:run_async()
@@ -67,28 +69,49 @@ function Response:run_async()
 end
 
 function Response:_process_added_chunk()
-  local chunk = self.raw_chunk_rx.recv()
-  utils.log("recv'd chunk: " .. chunk, vim.log.levels.TRACE)
+  local _chunk = self.raw_chunk_rx.recv()
+  utils.log("recv'd chunk: " .. _chunk, vim.log.levels.TRACE)
 
+  -- push on to queue
+  self.not_processed_raw:pushright(_chunk)
+
+  local chunk = ""
+  -- clear the queue each time to try to get a full chunk
+  for i, queued_chunk in self.not_processed_raw:ipairs_left() do
+    utils.log("Adding to final chunk: " .. queued_chunk, vim.log.levels.TRACE)
+    self.not_processed_raw[i] = nil
+    chunk = chunk .. queued_chunk
+  end
+
+  -- Run different strategies for processsing responses here
   if self.provider.response_params.strategy == self.STRATEGY_CHUNK then
     self.processed_raw_tx.send(chunk)
-    return
-  end
-  -- everything regex related below this line
-  local _split_regex = "[^\n]+" -- default regex, for line-by-line strategy
-  if self.provider.response_params.strategy == self.STRATEGY_REGEX then
-    _split_regex = self.provider.response_params.split_chunk_match_regex or _split_regex
-  end
+  elseif
+    self.provider.response_params.strategy == self.STRATEGY_LINE_BY_LINE
+    or self.provider.response_params.strategy == self.STRATEGY_REGEX
+  then
+    chunk = _chunk
+    local _split_regex = "[^\n]+" -- default regex, for line-by-line strategy
+    if self.provider.response_params.strategy == self.STRATEGY_REGEX then
+      _split_regex = self.provider.response_params.split_chunk_match_regex or _split_regex
+    end
 
-  local success = false
-  for line in chunk:gmatch(_split_regex) do
-    success = true
-    utils.log("Chunk processed using regex: " .. _split_regex, vim.log.levels.DEBUG)
-    self.processed_raw_tx.send(line)
-  end
+    local success = false
+    for line in chunk:gmatch(_split_regex) do
+      success = true
+      utils.log("Chunk processed using regex: " .. _split_regex, vim.log.levels.DEBUG)
+      utils.log("Chunk processed result: " .. line, vim.log.levels.DEBUG)
+      self.processed_raw_tx.send(line)
+    end
 
-  if not success then
-    utils.log("Chunk COULD NOT BE PROCESSED by regex: '" .. _split_regex .. "' : " .. chunk, vim.log.levels.DEBUG)
+    if not success then
+      utils.log(
+        "Chunk COULD NOT BE PROCESSED by regex (pushed left on queue): '" .. _split_regex .. "' : " .. chunk,
+        vim.log.levels.DEBUG
+      )
+      self.not_processed_raw:pushleft(chunk)
+    end
+  else
   end
 end
 
@@ -105,13 +128,29 @@ function Response:render()
 end
 
 function Response:pop_chunk()
-  utils.log("Try to pop chunk...", vim.log.levels.TRACE)
-  -- pop the next chunk and add anything that is not processs
-  local _value = self.not_processed
-  self.not_processed = ""
+  -- -- pop the next chunk and add anything that is not processs
+  -- local _value = self.not_processed
+  -- self.not_processed = ""
+  -- local _chunk = self.processsed_raw_rx.recv()
+  -- utils.log("Got chunk... now appending to 'not_processed'", vim.log.levels.TRACE)
+  -- return _value .. _chunk
+
   local _chunk = self.processsed_raw_rx.recv()
-  utils.log("Got chunk... now appending to 'not_processed'", vim.log.levels.TRACE)
-  return _value .. _chunk
+  utils.log("pushing processed raw to queue: " .. _chunk, vim.log.levels.TRACE)
+
+  -- push on to queue
+  self.not_processed:pushright(_chunk)
+  utils.log("popping processed raw from queue: " .. _chunk, vim.log.levels.TRACE)
+  return self.not_processed:popleft()
+
+  -- local chunk = _chunk
+  -- -- clear the queue each time to try to get a full chunk
+  -- for i, queued_chunk in self.not_processed:ipairs_left() do
+  --   chunk = chunk .. queued_chunk
+  --   utils.log("Adding to final processed output: " .. chunk, vim.log.levels.TRACE)
+  --   self.not_processed[i] = nil
+  -- end
+  -- return chunk
 end
 
 function Response:get_accumulated_chunks()

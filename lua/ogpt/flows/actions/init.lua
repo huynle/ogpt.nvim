@@ -62,18 +62,6 @@ function M.run_action(opts)
     return
   end
 
-  -- -- parse args
-  -- if item.args then
-  --   item.variables = {}
-  --   local i = 2
-  --   for key, value in pairs(item.args) do
-  --     local arg = type(value.default) == "function" and value.default() or value.default or ""
-  --     -- TODO: validataion
-  --     item.variables[key] = arg
-  --     i = i + 1
-  --   end
-  -- end
-
   opts = vim.tbl_extend("force", {}, item, action_opts)
   local class = classes_by_type[item.type]
   local action = class(action_name, opts)

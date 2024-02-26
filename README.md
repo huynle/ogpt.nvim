@@ -189,7 +189,7 @@ example of an 'edgy' configuration.
           },
         },
         {
-          title = "OGPT {{selection}}",
+          title = "OGPT {{{selection}}}",
           ft = "ogpt-selection",
           size = { width = 80, height = 4 },
           wo = {
@@ -197,7 +197,7 @@ example of an 'edgy' configuration.
           },
         },
         {
-          title = "OGPt {{instruction}}",
+          title = "OGPt {{{instruction}}}",
           ft = "ogpt-instruction",
           size = { width = 80, height = 4 },
           wo = {
@@ -257,7 +257,7 @@ An example of custom action may look like this: (`#` marks comments)
 {
   "action_name": {
     "type": "popup", # "popup" or "edit"
-    "template": "A template using possible variable: {{filetype}} (neovim filetype), {{input}} (the selected text) an {{argument}} (provided on the command line)",
+    "template": "A template using possible variable: {{{filetype}}} (neovim filetype), {{{input}}} (the selected text) an {{{argument}}} (provided on the command line)",
     "strategy": "replace", # or "display" or "append" or "edit"
     "params": { # parameters according to the official Ollama API
       "model": "mistral:7b", # or any other model supported by `"type"` in the Ollama API, use the playground for reference
@@ -289,7 +289,7 @@ opts = {
       strategy = "replace",
       provider = "ollama", -- default to "default_provider" if not provided
       model = "mixtral:7b", -- default to "provider.<default_provider>.model" if not provided
-      template = "Correct the given text to standard {{lang}}:\n\n```{{input}}```",
+      template = "Correct the given text to standard {{{lang}}}:\n\n```{{{input}}}```",
       system = "You are a helpful note writing assistant, given a text input, correct the text only for grammar and spelling error. You are to keep all formatting the same, e.g. markdown bullets, should stay as a markdown bullet in the result, and indents should stay the same. Return ONLY the corrected text.",
       params = {
         temperature = 0.3,
@@ -322,7 +322,7 @@ the grammar_correction call, is provided below.
 
 To make it even more dynamic, you can change it to have the provider/model or any parameters be
 inputted by the user on the spot when the command is executed.
-`:OGPTRun grammar_correction {provider=vim.fn.input("Provider: "), type={popup={edgy=false}}}`
+`:OGPTRun grammar_correction {provider=vim.fn.input("Provider: "), type={popup={edgy=false}}}}`
 
 Additionally, in the above example, `edgy.nvim` can be turned off. So that the response popup
 inline where the cursor would be. For additional options for the popup, please read through
@@ -336,7 +336,7 @@ can happen when the cursor is paused. Look at the various Template Helpers for t
 options, because now 
 
 ### Template Helpers
-Currently, the given inputs to the API gets scanned for `{{<template_helper_name>}}` for expansion.
+Currently, the given inputs to the API gets scanned for `{{{<template_helper_name>}}}` for expansion.
 This is helpful when you want to give a little more context to your API requests, or simply to hook
 in additional function calls.
 
@@ -363,14 +363,14 @@ as context to have AI answer any inline questions.
 
 
       Code BEFORE infilling position:
-      ```{{filetype}}
-      {{visible_window_content}}
-      {{before_cursor}}
+      ```{{{filetype}}}
+      {{{visible_window_content}}}
+      {{{before_cursor}}}
       ```
 
       Code AFTER infilling position:
-      ```{{filetype}}
-      {{after_cursor}}
+      ```{{{filetype}}}
+      {{{after_cursor}}}
       ```
 
 
@@ -659,11 +659,11 @@ return {
         },
       },
 
-      -- {{input}} is always available as the selected/highlighted text
+      -- {{{input}}} is always available as the selected/highlighted text
       actions = {
         grammar_correction = {
           type = "popup",
-          template = "Correct the given text to standard {{lang}}:\n\n```{{input}}```",
+          template = "Correct the given text to standard {{{lang}}}:\n\n```{{{input}}}```",
           system = "You are a helpful note writing assistant, given a text input, correct the text only for grammar and spelling error. You are to keep all formatting the same, e.g. markdown bullets, should stay as a markdown bullet in the result, and indents should stay the same. Return ONLY the corrected text.",
           strategy = "replace",
           params = {
@@ -679,7 +679,7 @@ return {
         },
         translate = {
           type = "popup",
-          template = "Translate this into {{lang}}:\n\n{{input}}",
+          template = "Translate this into {{{lang}}}:\n\n{{{input}}}",
           strategy = "display",
           params = {
             temperature = 0.3,
@@ -694,7 +694,7 @@ return {
         },
         keywords = {
           type = "popup",
-          template = "Extract the main keywords from the following text to be used as document tags.\n\n```{{input}}```",
+          template = "Extract the main keywords from the following text to be used as document tags.\n\n```{{{input}}}```",
           strategy = "display",
           params = {
             model = "general_model", -- use of model alias, generally, this model alias should be available to all providers in use
@@ -704,7 +704,7 @@ return {
         },
         do_complete_code = {
           type = "popup",
-          template = "Code:\n```{{filetype}}\n{{input}}\n```\n\nCompleted Code:\n```{{filetype}}",
+          template = "Code:\n```{{{filetype}}}\n{{{input}}}\n```\n\nCompleted Code:\n```{{{filetype}}}",
           strategy = "display",
           params = {
             model = "coder",
@@ -727,7 +727,7 @@ return {
             },
           },
           system = "You are a helpful assistant",
-          template = "{{question}}",
+          template = "{{{question}}}",
           strategy = "display",
         },
 
@@ -743,14 +743,14 @@ return {
             },
           },
           system = "You are a helpful assistant",
-          template = "Given the follow snippet, {{instruction}}.\n\nsnippet:\n```{{filetype}}\n{{input}}\n```",
+          template = "Given the follow snippet, {{{instruction}}}.\n\nsnippet:\n```{{{filetype}}}\n{{{input}}}\n```",
           strategy = "display",
         },
 
         optimize_code = {
           type = "popup",
           system = "You are a helpful coding assistant. Complete the given prompt.",
-          template = "Optimize the code below, following these instructions:\n\n{{instruction}}.\n\nCode:\n```{{filetype}}\n{{input}}\n```\n\nOptimized version:\n```{{filetype}}",
+          template = "Optimize the code below, following these instructions:\n\n{{{instruction}}}.\n\nCode:\n```{{{filetype}}}\n{{{input}}}\n```\n\nOptimized version:\n```{{{filetype}}}",
           strategy = "edit_code",
           params = {
             model = "coder",
@@ -912,7 +912,7 @@ opts = {
       },
     },
     {
-      title = "OGPT {{selection}}",
+      title = "OGPT {{{selection}}}",
       ft = "ogpt-selection",
       size = { width = 80, height = 4 },
       wo = {
@@ -920,7 +920,7 @@ opts = {
       },
     },
     {
-      title = "OGPt {{instruction}}",
+      title = "OGPt {{{instruction}}}",
       ft = "ogpt-instruction",
       size = { width = 80, height = 4 },
       wo = {

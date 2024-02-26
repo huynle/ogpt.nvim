@@ -20,7 +20,7 @@ function EditAction:init(name, opts)
   self.provider = Config.get_provider(opts.provider, self)
   self.params = Config.get_action_params(self.provider, opts.params or {})
   self.system = type(opts.system) == "function" and opts.system() or opts.system or ""
-  self.template = type(opts.template) == "function" and opts.template() or opts.template or "{{input}}"
+  self.template = type(opts.template) == "function" and opts.template() or opts.template or "{{{input}}}"
   self.variables = opts.variables or {}
   self.strategy = opts.strategy or STRATEGY_EDIT
   self.edgy = Config.options.edit.edgy
@@ -107,13 +107,13 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
   })
   self.selection_panel = UtilWindow({
     filetype = "ogpt-selection",
-    display = "{{selection}}",
+    display = "{{{selection}}}",
     virtual_text = "No selection was made..",
   }, Config.options.chat.edgy)
   self.template_panel = UtilWindow({
     filetype = "ogpt-template",
     display = "Template",
-    virtual_text = "Template is not defined.. will use the {{selection}}",
+    virtual_text = "Template is not defined.. will use the {{{selection}}}",
     default_text = self.template,
     on_change = function(text)
       self.template = text
