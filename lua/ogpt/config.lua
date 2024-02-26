@@ -283,7 +283,7 @@ function M.defaults()
         style = "rounded",
         text = {
           top_align = "center",
-          top = " {{input}} ",
+          top = " {{{input}}} ",
         },
       },
       win_options = {
@@ -303,7 +303,7 @@ function M.defaults()
         style = "rounded",
         text = {
           top_align = "center",
-          top = " {{instruction}} ",
+          top = " {{{instruction}}} ",
         },
       },
       win_options = {
@@ -336,7 +336,7 @@ function M.defaults()
       edit_code_with_instructions = {
         type = "edit",
         strategy = "edit_code",
-        template = "Given the follow code snippet, {{instruction}}.\n\nCode:\n```{{filetype}}\n{{input}}\n```",
+        template = "Given the follow code snippet, {{{instruction}}}.\n\nCode:\n```{{{filetype}}}\n{{{input}}}\n```",
         delay = true,
         extract_codeblock = true,
         params = {
@@ -354,7 +354,7 @@ function M.defaults()
         -- model = "mistral:7b",
         type = "edit",
         strategy = "edit",
-        template = "Given the follow input, {{instruction}}.\n\nInput:\n```{{filetype}}\n{{input}}\n```",
+        template = "Given the follow input, {{{instruction}}}.\n\nInput:\n```{{{filetype}}}\n{{{input}}}\n```",
         delay = true,
         params = {
           temperature = 0.5,

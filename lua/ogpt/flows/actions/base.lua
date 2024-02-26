@@ -149,20 +149,22 @@ function BaseAction:render_template(variables, templates)
   variables = vim.tbl_extend("force", self.variables, variables or {})
   -- lazily render the final string.
   -- it recursively loop on the template string until it does not find anymore
-  -- {{}} patterns
+  -- {{{}}} patterns
   local stop = false
   local depth = 2
   local result = self.template
-  local pattern = "%{%{(([%w_]+))%}%}"
+  local pattern = "%{%{%{(([%w_]+))%}%}%}"
   repeat
     for match in string.gmatch(result, pattern) do
       local value = variables[match]
       if value then
-        value = type(value) == "function" and value(self.variables) or value
+        if type(value) == "function" then
+          value = value(self.variables)
+        end
         local escaped_value = utils.escape_pattern(value)
-        result = string.gsub(result, "{{" .. match .. "}}", escaped_value)
+        result = string.gsub(result, "{{{" .. match .. "}}}", escaped_value)
       else
-        utils.log("Cannot find {{" .. match .. "}}", vim.log.levels.ERROR)
+        utils.log("Cannot find {{{" .. match .. "}}}", vim.log.levels.ERROR)
         stop = true
       end
     end
@@ -274,12 +276,13 @@ function BaseAction:addAnswerPartial(response)
 
     for i, line in ipairs(lines) do
       if self.output_panel.bufnr and vim.fn.bufexists(self.output_panel.bufnr) then
+        if i > 1 then
+          -- create a new line in the streaming output only if
+          vim.api.nvim_buf_set_lines(self.output_panel.bufnr, -1, -1, false, { "" }) -- add in the new line here
+        end
         local currentLine = vim.api.nvim_buf_get_lines(self.output_panel.bufnr, -2, -1, false)[1]
         if currentLine then
           vim.api.nvim_buf_set_lines(self.output_panel.bufnr, -2, -1, false, { currentLine .. line })
-          if i == length and i > 1 then
-            vim.api.nvim_buf_set_lines(self.output_panel.bufnr, -1, -1, false, { "" })
-          end
         end
       end
     end
