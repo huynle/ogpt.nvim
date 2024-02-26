@@ -86,7 +86,10 @@ function Response:_process_added_chunk()
   -- Run different strategies for processsing responses here
   if self.provider.response_params.strategy == self.STRATEGY_CHUNK then
     self.processed_raw_tx.send(chunk)
-  elseif self.provider.response_params.strategy == self.STRATEGY_REGEX then
+  elseif
+    self.provider.response_params.strategy == self.STRATEGY_LINE_BY_LINE
+    or self.provider.response_params.strategy == self.STRATEGY_REGEX
+  then
     chunk = _chunk
     local _split_regex = "[^\n]+" -- default regex, for line-by-line strategy
     if self.provider.response_params.strategy == self.STRATEGY_REGEX then
@@ -108,6 +111,7 @@ function Response:_process_added_chunk()
       )
       self.not_processed_raw:pushleft(chunk)
     end
+  else
   end
 end
 
