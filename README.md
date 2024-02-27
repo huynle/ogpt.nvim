@@ -84,7 +84,7 @@ example of an 'edgy' configuration.
     opts = {
       default_provider = "ollama",
       edgy = true, -- enable this!
-      single_window = false -- set this to true if you want only one OGPT window to appear at a time
+      single_window = false, -- set this to true if you want only one OGPT window to appear at a time
       providers = {
         ollama = {
           api_host = os.getenv("OLLAMA_API_HOST") or "http://localhost:11434",
@@ -105,7 +105,6 @@ example of an 'edgy' configuration.
       vim.opt.laststatus = 3
       vim.opt.splitkeep = "screen" -- or "topline" or "screen"
     end,
-    },
     opts = {
       exit_when_last = false,
       animate = {
