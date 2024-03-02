@@ -153,6 +153,14 @@ function BaseAction:render_template(variables, templates)
   local stop = false
   local depth = 2
   local result = self.template
+  -- deprecating warning of {{}} (double curly)
+  if vim.fn.match(result, [[\v\{\{([^}]+)\}\}(})@!]]) ~= -1 then
+    utils.log(
+      "You may be using the {{<template_helper>}}, please updated to {{{<template_helpers>}}} (triple curly braces)in your custom actions.",
+      vim.log.levels.ERROR
+    )
+  end
+
   local pattern = "%{%{%{(([%w_]+))%}%}%}"
   repeat
     for match in string.gmatch(result, pattern) do
