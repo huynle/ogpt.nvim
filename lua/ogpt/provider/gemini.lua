@@ -9,7 +9,8 @@ function Gemini:init(opts)
   self.response_params = {
     strategy = Response.STRATEGY_REGEX,
     -- split_chunk_match_regex = "^%,\n+",
-    split_chunk_match_regex = '"text": "(.-)"',
+    split_chunk_match_regex = '"text": %"(.-)%"\n',
+    -- split_chunk_match_regex = '"text": %"(.-)%"[\n%}]',
     -- split_chunk_match_regex = '"parts": %[[\n%s]+(.-)%]', -- capture everything in the "content.parts" of the response
   }
   self.api_parameters = {
@@ -125,7 +126,7 @@ function Gemini:process_response(response)
   -- response:add_processed_text(chunk, "CONTINUE")
 
   -- reconstruct a quick json object to properly decode the string
-  local ok, json = pcall(vim.json.decode, '{"text": "' .. chunk .. '"}')
+  local ok, json = pcall(vim.json.decode, [[{"text": "]] .. chunk .. [["}]])
 
   if not ok then
     -- but it back if its not processed
