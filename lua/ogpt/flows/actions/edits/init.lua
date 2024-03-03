@@ -126,7 +126,7 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
     virtual_text = "Define your LLM system message here...",
     default_text = opts.params.system,
     on_change = function(text)
-      self.template = text
+      self.system = text
     end,
   }, Config.options.chat.edgy)
 
