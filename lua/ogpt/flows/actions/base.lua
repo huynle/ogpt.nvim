@@ -132,7 +132,9 @@ function BaseAction:update_variables()
     input = function()
       return self:get_selected_text()
     end,
-    selection = utils.get_selected_range(self:get_bufnr()),
+    selection = function()
+      return utils.get_selected_range(self:get_bufnr())
+    end,
   })
 
   -- pull in action defined args
