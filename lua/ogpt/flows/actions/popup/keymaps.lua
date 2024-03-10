@@ -39,6 +39,11 @@ function M.apply_map(popup, opts)
   -- accept output and append
   popup:map("n", Config.options.popup.keymaps.append, function()
     local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
+    local line_count = vim.api.nvim_buf_line_count(opts.main_bufnr)
+    if line_count == opts.selection_idx.end_row then
+      -- add an additional line, if not, we get index out or range
+      vim.api.nvim_buf_set_lines(opts.main_bufnr, line_count, line_count, false, { "" })
+    end
     table.insert(_lines, 1, "")
     table.insert(_lines, "")
     vim.api.nvim_buf_set_text(
