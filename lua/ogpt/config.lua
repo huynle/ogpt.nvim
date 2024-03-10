@@ -52,6 +52,21 @@ function M.defaults()
           topP = 0.99,
         },
       },
+      anthropic = {
+        enabled = true,
+        api_key = os.getenv("ANTHROPIC_API_KEY"),
+        model = "claude-3-opus-20240229",
+        api_params = {
+          temperature = 0.5,
+          top_p = 0.99,
+          max_tokens = 1024,
+        },
+        api_chat_params = {
+          temperature = 0.5,
+          top_p = 0.99,
+          max_tokens = 1024,
+        },
+      },
       textgenui = {
         enabled = true,
         api_host = os.getenv("OGPT_API_HOST"),
