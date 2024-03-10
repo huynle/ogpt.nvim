@@ -51,6 +51,8 @@ function BaseAction:get_visual_selection()
 end
 
 function BaseAction:get_selected_text()
+  -- selection using vim GV, after selection is made, it remains in
+  -- vim registry, and this function recall that selection
   local lines, _, _, _, _ = self:get_visual_selection()
   return table.concat(lines, "\n")
 end
@@ -130,9 +132,7 @@ function BaseAction:update_variables()
     input = function()
       return self:get_selected_text()
     end,
-    selection = function()
-      return self:get_selected_text()
-    end,
+    selection = utils.get_selected_range(self:get_bufnr()),
   })
 
   -- pull in action defined args
