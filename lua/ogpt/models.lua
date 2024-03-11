@@ -59,27 +59,26 @@ local finder = function(provider, opts)
       end
 
       if not job_started and provider:models_url() then
-        job_started = true
-        job
-          :new({
-            command = "curl",
-            args = {
-              provider:models_url(),
-              table.unpack(provider:request_headers()),
-            },
-            on_exit = vim.schedule_wrap(function(j, exit_code)
-              if exit_code ~= 0 then
-                vim.notify("An Error Occurred, cannot fetch list of prompts ...", vim.log.levels.ERROR)
-                process_complete()
-              end
-
+        local args = {}
+        vim.list_extend(args, { provider:models_url() })
+        vim.list_extend(args, provider:request_headers())
+        local job_opts = {
+          command = "curl",
+          args = args,
+          on_exit = vim.schedule_wrap(function(j, exit_code)
+            if exit_code ~= 0 then
+              vim.notify("An Error Occurred, cannot fetch list of prompts ...", vim.log.levels.ERROR)
+            else
               provider:parse_api_model_response(j:result(), process_single_model)
+            end
 
-              process_complete()
-              job_completed = true
-            end),
-          })
-          :start()
+            process_complete()
+            job_completed = true
+          end),
+        }
+
+        job_started = true
+        job:new(job_opts):start()
       else
         process_complete()
       end
