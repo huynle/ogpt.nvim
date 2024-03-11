@@ -71,6 +71,16 @@ function M.wrapTextToTable(text, maxLineLength)
   return lines
 end
 
+---@return table selected range, contains {start} and {end} tables with {line} (0-indexed, end inclusive) and {character} (0-indexed, end exclusive) values
+function M.get_selected_range(bufnr)
+  local z_save = vim.fn.getreg("z")
+  vim.cmd('silent! normal! "zy')
+  local selected = vim.fn.getreg("z")
+  selected = string.gsub(vim.fn.escape(selected, "\\/"), "\n", "\\n")
+  vim.fn.setreg("z", z_save)
+  return selected
+end
+
 function M.get_visual_lines(bufnr)
   vim.api.nvim_feedkeys(ESC_FEEDKEY, "n", true)
   vim.api.nvim_feedkeys("gv", "x", false)

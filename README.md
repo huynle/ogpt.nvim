@@ -6,7 +6,7 @@
 ![Lua](https://img.shields.io/badge/Made%20with%20Lua-blueviolet.svg?style=for-the-badge&logo=lua)
 
 ## Features
-- **Multiple Providers**: OGPT.nvim can take multiple providers. Ollama, OpenAI, textgenui, Gemini, more if there are pull requests
+- **Multiple Providers**: OGPT.nvim can take multiple providers. Ollama, OpenAI, textgenui, Gemini, Anthropic, more if there are pull requests
 - **Mix-match Provider**: default provider is used, but you can mix and match different provider AND specific model to different actions, at any point in your run or configurations.
 - **Interactive Q&A**: Engage in interactive question-and-answer sessions with the powerful gpt model (OGPT) using an intuitive interface.
 - **Persona-based Conversations**: Explore various perspectives and have conversations with different personas by selecting prompts from Awesome ChatGPT Prompts.
@@ -65,7 +65,7 @@ empowering you to generate natural language responses from Ollama's OGPT directl
 Custom Ollama API host with the configuration option `api_host_cmd` or
 environment variable called `$OLLAMA_API_HOST`. It's useful if you run Ollama remotely 
 
-### Gemini, TextGenUI, OpenAI Setup
+### Gemini, TextGenUI, OpenAI, Anthropic Setup
 * not much here, you just have to get your API keys and provide that in your configuration. If your
   configuration files are public, you probably want to create environment variable for your API
 keys
@@ -84,7 +84,7 @@ example of an 'edgy' configuration.
     opts = {
       default_provider = "ollama",
       edgy = true, -- enable this!
-      single_window = false -- set this to true if you want only one OGPT window to appear at a time
+      single_window = false, -- set this to true if you want only one OGPT window to appear at a time
       providers = {
         ollama = {
           api_host = os.getenv("OLLAMA_API_HOST") or "http://localhost:11434",
@@ -105,7 +105,6 @@ example of an 'edgy' configuration.
       vim.opt.laststatus = 3
       vim.opt.splitkeep = "screen" -- or "topline" or "screen"
     end,
-    },
     opts = {
       exit_when_last = false,
       animate = {
