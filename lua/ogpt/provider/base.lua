@@ -103,12 +103,19 @@ function Provider:request_headers()
   }
 end
 
-function Provider:parse_api_model_response(json, cb)
-  -- Given a json object from the api, parse this and get the names of the model to be displayed
-  for _, model in ipairs(json.models) do
-    cb({
-      name = model.name,
-    })
+function Provider:parse_api_model_response(res, cb)
+  local response = table.concat(res, "\n")
+  local ok, json = pcall(vim.fn.json_decode, response)
+
+  if not ok then
+    vim.print("OGPT ERROR: something happened when trying request for models from " .. self:models_url())
+  else
+    -- Given a json object from the api, parse this and get the names of the model to be displayed
+    for _, model in ipairs(json.models) do
+      cb({
+        name = model.name,
+      })
+    end
   end
 end
 

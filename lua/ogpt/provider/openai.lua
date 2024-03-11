@@ -34,12 +34,18 @@ function Openai:load_envs(override)
   return self.envs
 end
 
-function Openai:parse_api_model_response(json, cb)
-  local data = json.data or {}
-  for _, model in ipairs(data) do
-    cb({
-      name = model.id,
-    })
+function Openai:parse_api_model_response(res, cb)
+  local response = table.concat(res, "\n")
+  local ok, json = pcall(vim.fn.json_decode, response)
+  if not ok then
+    vim.print("OGPT ERROR: something happened when trying request for models from " .. self:models_url())
+  else
+    local data = json.data or {}
+    for _, model in ipairs(data) do
+      cb({
+        name = model.id,
+      })
+    end
   end
 end
 
