@@ -52,7 +52,8 @@ function Anthropic:completion_url()
 end
 
 function Anthropic:models_url()
-  return utils.ensureUrlProtocol(self.envs.ANTHROPIC_API_HOST)
+  -- no support yet
+  return
 end
 
 function Anthropic:request_headers()

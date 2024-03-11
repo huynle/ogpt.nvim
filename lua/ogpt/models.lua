@@ -47,7 +47,7 @@ local finder = function(provider, opts)
         process_complete()
       end
 
-      if not job_started then
+      if not job_started and provider:models_url() then
         job_started = true
         job
           :new({
