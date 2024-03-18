@@ -416,7 +416,7 @@ https://github.com/huynle/ogpt.nvim/blob/main/lua/ogpt/config.lua#L18-L28
 ### Interactive Popup for 'display' strategy
 https://github.com/huynle/ogpt.nvim/blob/main/lua/ogpt/config.lua#L174-L181
 
-When the setting window is opened (with `<C-o>`), settings can be modified by
+When the parameter panels is opened (with `<C-o>`), settings can be modified by
 pressing `Enter` on the related config. Settings are saved across sessions.
 
 ### Example `lazy.nvim` Configuration
