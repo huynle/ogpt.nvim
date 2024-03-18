@@ -112,17 +112,15 @@ function M.defaults()
         api_host = os.getenv("OLLAMA_API_HOST") or "http://localhost:11434",
         api_key = os.getenv("OLLAMA_API_KEY") or "",
         models = {
-          {
-            -- create a modify url specifically for mixtral to run
-            name = "mistral:7b",
-            modify_url = function(url)
-              return url
-            end,
-            -- conform_fn = function(params)
-            --   -- Different models might have different instruction format
-            --   -- for example, Mixtral operates on `<s> [INST] Instruction [/INST] Model answer</s> [INST] Follow-up instruction [/INST] `
-            -- end,
-          },
+          -- create a modify url specifically for mixtral to run
+          name = "mistral:7b",
+          modify_url = function(url)
+            return url
+          end,
+          -- conform_fn = function(params)
+          --   -- Different models might have different instruction format
+          --   -- for example, Mixtral operates on `<s> [INST] Instruction [/INST] Model answer</s> [INST] Follow-up instruction [/INST] `
+          -- end,
         },
         model = {
           name = "mistral:7b",
