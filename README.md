@@ -485,7 +485,7 @@ return {
     },
 
     opts = {
-      default_provider = "ollama"
+      default_provider = "ollama",
       -- default edgy flag
       -- set this to true if you prefer to use edgy.nvim (https://github.com/folke/edgy.nvim) instead of floating windows
       edgy = false, 
@@ -493,7 +493,7 @@ return {
         ollama= {
           api_host = os.getenv("OLLAMA_API_HOST"),
           -- default model
-          model = "mistral:7b"
+          model = "mistral:7b",
           -- model definitions
           models = {
             -- alias to actual model name, helpful to define same model name across multiple providers
@@ -758,6 +758,8 @@ return {
             },
           },
         },
+      },
+    },
     dependencies = {
       "MunifTanjim/nui.nvim",
       "nvim-lua/plenary.nvim",
