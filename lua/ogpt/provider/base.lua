@@ -181,7 +181,7 @@ function Provider:process_response(response)
     return
   end
 
-  -- given a JSON response from the STREAMING api, processs it
+  -- given a JSON response from the STREAMING api, process it
   if type(json) == "string" then
     utils.log("got something weird. " .. json, vim.log.levels.ERROR)
   elseif vim.tbl_isempty(json) then

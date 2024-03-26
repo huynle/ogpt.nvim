@@ -167,7 +167,7 @@ example of an 'edgy' configuration.
           size = { height = 6 },
         },
         {
-          title = "OGPT Sesssions",
+          title = "OGPT Sessions",
           ft = "ogpt-sessions",
           size = { height = 6 },
           wo = {
@@ -892,7 +892,7 @@ opts = {
       size = { height = 6 },
     },
     {
-      title = "OGPT Sesssions",
+      title = "OGPT Sessions",
       ft = "ogpt-sessions",
       size = { height = 6 },
       wo = {
