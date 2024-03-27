@@ -99,7 +99,7 @@ end
 M.run_action = function(opts)
   if opts.args == "" then
     M.select_action({
-      cb = function(key, value)
+      cb = function(key)
         local _opts = vim.tbl_extend("force", opts, {
           args = key,
           fargs = {

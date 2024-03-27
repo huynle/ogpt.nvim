@@ -120,7 +120,7 @@ function BaseAction:run()
   self:set_loading(true)
 end
 
-function BaseAction:on_result(answer, usage)
+function BaseAction:on_result(answer)
   self:set_loading(false)
 end
 
