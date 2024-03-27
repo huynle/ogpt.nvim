@@ -432,7 +432,7 @@ function EditAction:build_edit_messages(input, instructions, opts)
     },
     {
       role = "user",
-      content = self:render_template(variables, opts.template),
+      content = self:render_template(variables),
     },
   }
 
