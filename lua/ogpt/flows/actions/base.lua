@@ -168,6 +168,11 @@ function BaseAction:render_template(variables)
     for match in string.gmatch(template, pattern) do
       local value = variables[match]
       if value then
+        -- Get "default" if value is table type
+        if type(value) == "table" then
+          value = value["default"]
+        end
+        -- Run function if value is function type
         if type(value) == "function" then
           value = value(self.variables)
         end
