@@ -133,11 +133,11 @@ function Textgenui:process_response(response)
   if _json.error ~= nil then
     local error_msg = {
       "OGPT ERROR:",
-      self.provider.name,
       vim.inspect(_json.error) or "",
       "Something went wrong.",
     }
     table.insert(error_msg, vim.inspect(response.rest_params))
+    error_msg = table.concat(error_msg, " ")
     response.error = error_msg
     response:add_processed_text(error_msg, "ERROR")
     return
