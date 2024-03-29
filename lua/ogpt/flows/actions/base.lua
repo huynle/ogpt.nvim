@@ -133,7 +133,8 @@ function BaseAction:update_variables()
       return self:get_selected_text()
     end,
     selection = function()
-      return utils.get_selected_range(self:get_bufnr())
+      -- return utils.get_selected_range(self:get_bufnr())
+      return self:get_selected_text()
     end,
   })
 
