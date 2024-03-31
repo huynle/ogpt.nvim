@@ -166,7 +166,7 @@ function M.defaults()
         row = 0,
         col = 30,
       },
-      relative = "cursor",
+      -- relative = "cursor",
       size = {
         width = "40%",
         height = 10,
@@ -187,7 +187,8 @@ function M.defaults()
       win_options = {
         wrap = true,
         linebreak = true,
-        winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+        -- winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+        winhighlight = "Normal:Normal,FloatBorder:Normal,Search:None",
       },
       keymaps = {
         close = { "<C-c>", "q" },
@@ -219,7 +220,8 @@ function M.defaults()
           },
         },
         win_options = {
-          winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+          -- winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+          winhighlight = "Normal:Normal,FloatBorder:Normal,Search:None",
         },
         buf_options = {
           filetype = "ogpt-sessions",
@@ -271,7 +273,8 @@ function M.defaults()
         wrap = true,
         linebreak = true,
         foldcolumn = "1",
-        winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+        -- winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+        winhighlight = "Normal:Normal,FloatBorder:Normal,Search:None",
       },
       buf_options = {
         filetype = "ogpt-window",
@@ -287,7 +290,8 @@ function M.defaults()
         wrap = true,
         linebreak = true,
         foldcolumn = "2",
-        winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+        -- winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+        winhighlight = "Normal:Normal,FloatBorder:Normal,Search:None",
       },
     },
 
@@ -302,7 +306,8 @@ function M.defaults()
         },
       },
       win_options = {
-        winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+        -- winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+        winhighlight = "Normal:Normal,FloatBorder:Normal,Search:None",
       },
       buf_options = {
         filetype = "ogpt-input",
@@ -322,7 +327,8 @@ function M.defaults()
         },
       },
       win_options = {
-        winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+        -- winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+        winhighlight = "Normal:Normal,FloatBorder:Normal,Search:None",
       },
       buf_options = {
         filetype = "ogpt-instruction",
@@ -340,7 +346,8 @@ function M.defaults()
         },
       },
       win_options = {
-        winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+        -- winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+        winhighlight = "Normal:Normal,FloatBorder:Normal,Search:None",
       },
       buf_options = {
         filetype = "ogpt-parameters-window",

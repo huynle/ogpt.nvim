@@ -5,7 +5,7 @@ local M = {}
 
 function M.apply_map(popup, opts)
   -- accept output and replace
-  popup:map("n", Config.options.popup.keymaps.accept, function()
+  popup.ui:map("n", Config.options.popup.keymaps.accept, function()
     -- local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
     local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
     -- table.insert(_lines, "")
@@ -21,7 +21,7 @@ function M.apply_map(popup, opts)
   end)
 
   -- accept output and prepend
-  popup:map("n", Config.options.popup.keymaps.prepend, function()
+  popup.ui:map("n", Config.options.popup.keymaps.prepend, function()
     local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
     table.insert(_lines, "")
     table.insert(_lines, "")
@@ -37,7 +37,7 @@ function M.apply_map(popup, opts)
   end)
 
   -- accept output and append
-  popup:map("n", Config.options.popup.keymaps.append, function()
+  popup.ui:map("n", Config.options.popup.keymaps.append, function()
     local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
     local line_count = vim.api.nvim_buf_line_count(opts.main_bufnr)
     if line_count == opts.selection_idx.end_row then
@@ -58,7 +58,7 @@ function M.apply_map(popup, opts)
   end)
 
   -- yank code in output and close
-  popup:map("n", Config.options.popup.keymaps.yank_code, function()
+  popup.ui:map("n", Config.options.popup.keymaps.yank_code, function()
     local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
     local _code = utils.getSelectedCode(_lines)
     vim.fn.setreg(Config.options.yank_register, _code)
@@ -70,7 +70,7 @@ function M.apply_map(popup, opts)
   end)
 
   -- yank output and close
-  popup:map("n", Config.options.popup.keymaps.yank_to_register, function()
+  popup.ui:map("n", Config.options.popup.keymaps.yank_to_register, function()
     local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
     vim.fn.setreg(Config.options.yank_register, _lines)
 
@@ -85,11 +85,11 @@ function M.apply_map(popup, opts)
     keys = { keys }
   end
   for _, key in ipairs(keys) do
-    popup:map("n", key, function()
+    popup.ui:map("n", key, function()
       if opts.stop and type(opts.stop) == "function" then
         opts.stop()
       end
-      popup:unmount()
+      popup.ui:unmount()
     end)
   end
 end

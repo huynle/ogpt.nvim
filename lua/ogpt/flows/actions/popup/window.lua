@@ -1,10 +1,10 @@
-local Popup = require("ogpt.common.popup")
+local View = require("ogpt.common.view")
 local popup_keymap = require("ogpt.flows.actions.popup.keymaps")
 local Config = require("ogpt.config")
 local event = require("nui.utils.autocmd").event
 local Utils = require("ogpt.utils")
 
-local PopupWindow = Popup:extend("PopupWindow")
+local PopupWindow = View:extend("PopupWindow")
 
 function PopupWindow:init(options, edgy)
   options = vim.tbl_deep_extend("keep", options or {}, Config.options.popup)
