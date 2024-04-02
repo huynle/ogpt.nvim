@@ -1,6 +1,6 @@
 local Object = require("ogpt.common.object")
 local Layout = require("ogpt.common.layout")
-local Popup = require("ogpt.common.popup")
+local Popup = require("ogpt.common.view")
 
 local ChatInput = require("ogpt.input")
 local Response = require("ogpt.response")
@@ -694,11 +694,11 @@ function Chat:get_layout_params()
 
   local config = self.display_mode == "right" and right_layout_config or center_layout_config
 
-  local left_layout = Layout.Box(self.chat_window, { grow = 1 })
+  local left_layout = Layout.Box(self.chat_window.ui, { grow = 1 })
   if self.system_role_open then
     left_layout = Layout.Box({
-      Layout.Box(self.system_role_panel, { size = self.display_mode == "center" and 33 or 10 }),
-      Layout.Box(self.chat_window, { grow = 1 }),
+      Layout.Box(self.system_role_panel.ui, { size = self.display_mode == "center" and 33 or 10 }),
+      Layout.Box(self.chat_window.ui, { grow = 1 }),
     }, { dir = self.display_mode == "center" and "row" or "col", grow = 1 })
   end
 
@@ -707,17 +707,17 @@ function Chat:get_layout_params()
     box = Layout.Box({
       Layout.Box({
         left_layout,
-        Layout.Box(self.chat_input, { size = 2 + self.prompt_lines }),
+        Layout.Box(self.chat_input.ui, { size = 2 + self.prompt_lines }),
       }, { dir = "col", grow = 1 }),
       Layout.Box({
-        Layout.Box(self.parameters_panel, { size = "30%" }),
-        Layout.Box(self.sessions_panel, { grow = 1 }),
+        Layout.Box(self.parameters_panel.ui, { size = "30%" }),
+        Layout.Box(self.sessions_panel.ui, { grow = 1 }),
       }, { dir = "col", size = 40 }),
     }, { dir = "row" })
   else
     box = Layout.Box({
       left_layout,
-      Layout.Box(self.chat_input, { size = 2 + self.prompt_lines }),
+      Layout.Box(self.chat_input.ui, { size = 2 + self.prompt_lines }),
     }, { dir = "col" })
   end
 

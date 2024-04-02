@@ -1,4 +1,4 @@
-local Popup = require("ogpt.common.popup")
+local Popup = require("ogpt.common.view")
 local Config = require("ogpt.config")
 
 local UtilWindow = Popup:extend("UtilWindow")
@@ -20,9 +20,19 @@ function UtilWindow:init(options, edgy)
   self.default_text = options.default_text or ""
   self.working = false
   self.on_change = options.on_change
+  self.on_close = options.on_close
+  self.on_submit = options.on_submit
+  self.keymaps = options.keymaps or {}
 
   UtilWindow.super.init(self, popup_options, edgy)
   self:set_text(vim.fn.split(self.default_text, "\n"))
+  self:set_keymaps()
+end
+
+function UtilWindow:set_keymaps()
+  for _, keymap in ipairs(self.keymaps) do
+    self.map(keymap)
+  end
 end
 
 function UtilWindow:toggle_placeholder()
@@ -52,8 +62,9 @@ function UtilWindow:set_text(text)
   self.working = false
 end
 
-function UtilWindow:mount()
-  UtilWindow.super.mount(self)
+function UtilWindow:mount(UI, ...)
+  -- UI.super.mount(self.ui, ...)
+  UtilWindow.super.mount(self, UI, ...)
 
   self:toggle_placeholder()
   vim.api.nvim_buf_attach(self.bufnr, false, {

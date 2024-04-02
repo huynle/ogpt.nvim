@@ -1,4 +1,4 @@
-local Popup = require("ogpt.common.popup")
+local Popup = require("ogpt.common.view")
 local Config = require("ogpt.config")
 local Session = require("ogpt.flows.chat.session")
 local Utils = require("ogpt.utils")

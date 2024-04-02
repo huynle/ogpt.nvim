@@ -5,7 +5,7 @@ local conf = require("telescope.config").values
 local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
 
-local Popup = require("ogpt.common.popup")
+local Popup = require("ogpt.common.view")
 local Config = require("ogpt.config")
 
 local namespace_id = vim.api.nvim_create_namespace("OGPTNS")

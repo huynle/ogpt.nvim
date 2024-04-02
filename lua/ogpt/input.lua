@@ -1,4 +1,4 @@
-local Popup = require("ogpt.common.popup")
+local Popup = require("ogpt.common.view")
 local Text = require("nui.text")
 local defaults = require("nui.utils").defaults
 local is_type = require("nui.utils").is_type
@@ -44,9 +44,9 @@ function Input:init(popup_options, options, edgy)
 
   Input.super.init(self, popup_options, options.edgy)
 
-  self._.default_value = defaults(options.default_value, "")
-  self._.prompt = Text(defaults(options.prompt, ""))
-  self._.disable_cursor_position_patch = defaults(options.disable_cursor_position_patch, false)
+  self.ui._.default_value = defaults(options.default_value, "")
+  self.ui._.prompt = Text(defaults(options.prompt, ""))
+  self.ui._.disable_cursor_position_patch = defaults(options.disable_cursor_position_patch, false)
 
   local props = {}
 
@@ -65,7 +65,7 @@ function Input:init(popup_options, options, edgy)
         vim.api.nvim_command("stopinsert")
       end
 
-      if not self._.disable_cursor_position_patch then
+      if not self.ui._.disable_cursor_position_patch then
         patch_cursor_position(target_cursor, prompt_normal_mode)
       end
 
@@ -76,7 +76,7 @@ function Input:init(popup_options, options, edgy)
   end
 
   props.on_close = function()
-    local target_cursor = vim.api.nvim_win_get_cursor(self._.position.win)
+    local target_cursor = vim.api.nvim_win_get_cursor(self.ui._.position.win)
 
     self:unmount()
 
@@ -85,7 +85,7 @@ function Input:init(popup_options, options, edgy)
         vim.api.nvim_command("stopinsert")
       end
 
-      if not self._.disable_cursor_position_patch then
+      if not self.ui._.disable_cursor_position_patch then
         patch_cursor_position(target_cursor)
       end
 
@@ -114,10 +114,13 @@ function Input:init(popup_options, options, edgy)
   end
 end
 
-function Input:mount()
+function Input:mount(UI, ...)
   local props = self.input_props
 
-  Input.super.mount(self)
+  -- UI.super.mount(self.ui, ...)
+  Input.super.mount(self, UI, ...)
+  -- Input.super.mount(self)
+  -- self.ui:mount()
 
   if props.on_change then
     vim.api.nvim_buf_attach(self.bufnr, false, {
@@ -125,9 +128,9 @@ function Input:mount()
     })
   end
 
-  if #self._.default_value then
+  if #self.ui._.default_value then
     self:on(event.InsertEnter, function()
-      vim.api.nvim_feedkeys(self._.default_value, "n", false)
+      vim.api.nvim_feedkeys(self.ui._.default_value, "n", false)
     end, { once = true })
   end
 
@@ -147,6 +150,4 @@ function Input:mount()
   vim.fn.sign_place(0, "my_group", "singleprompt_sign", self.bufnr, { lnum = 1, priority = 10 })
 end
 
-local NuiInput = Input
-
-return NuiInput
+return Input
