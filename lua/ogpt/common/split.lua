@@ -2,8 +2,8 @@ local NuiSplit = require("nui.split")
 
 Split = NuiSplit:extend("OgptSplit")
 
-function Split:init(options, edgy)
-  self.view = nil
+function Split:init(options, edgy, view)
+  self.view = view
   options = options or {}
   self.edgy = false
   self.init_update = false
@@ -17,7 +17,7 @@ function Split:init(options, edgy)
 end
 
 function Split:mount(...)
-  self.view:mount(Popup, ...)
+  self.view:mount(Split, ...)
   -- self.view:mount()
   -- Split.super.mount(self)
   -- -- syntax and filetype don't always get set in the correct order.
@@ -29,7 +29,7 @@ end
 
 function Split:update_layout(...)
   -- self.view:update_layout(...)
-  self.view:update_layout(Popup, ...)
+  self.view:update_layout(Split, ...)
   -- -- ensure layout cannot get updated after the first time, used for setting up
   -- if not self.init_update or not self.edgy then
   --   Split.super.update_layout(self, ...)

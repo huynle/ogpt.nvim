@@ -2,8 +2,8 @@ local NuiPopup = require("nui.popup")
 
 Popup = NuiPopup:extend("OgptPopup")
 
-function Popup:init(options, edgy)
-  self.view = nil
+function Popup:init(options, edgy, view)
+  self.view = view
   options = options or {}
   self.edgy = false
   self.init_update = false

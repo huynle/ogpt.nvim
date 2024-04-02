@@ -11,12 +11,11 @@ function View:init(options, edgy)
   if options.edgy and options.border or edgy then
     self.edgy = true
     options.border = nil
-    self.ui = Split(options, edgy)
+    self.ui = Split(options, edgy, self)
   else
     options.buf_options.filetype = nil
-    self.ui = Popup(options, edgy)
+    self.ui = Popup(options, edgy, self)
   end
-  self.ui.view = self
   self.bufnr = self.ui.bufnr
   self.winid = nil
 end
