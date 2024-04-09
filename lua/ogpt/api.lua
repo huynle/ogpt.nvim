@@ -28,13 +28,14 @@ function Api:chat_completions(response, inputs)
   local should_stop = inputs.should_stop or function() end
 
   -- local stream = custom_params.stream or false
-  local params, _completion_url, ctx = self.provider:expand_model(custom_params)
+  local params, _completion_url, ctx, headers, model_name = self.provider:expand_model(custom_params)
 
   ctx.params = params
   ctx.provider = self.provider.name
   ctx.model = custom_params.model
   utils.log("Request to: " .. _completion_url)
   utils.log(params)
+  response.model_name = model_name
   response.ctx = ctx
   response.rest_params = params
   response.partial_result_cb = partial_result_fn
@@ -67,7 +68,8 @@ function Api:chat_completions(response, inputs)
     "-d",
     vim.json.encode(params),
   }
-  for _, header_item in ipairs(self.provider:request_headers()) do
+  for _, header_item in ipairs(headers) do
+    table.insert(response.rest_params, header_item)
     table.insert(curl_args, header_item)
   end
 

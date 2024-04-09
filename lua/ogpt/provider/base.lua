@@ -94,13 +94,22 @@ function Provider:models_url()
   return self.envs.MODELS_URL
 end
 
-function Provider:request_headers()
-  return {
-    "-H",
-    "Content-Type: application/json",
-    "-H",
-    self.envs.AUTHORIZATION_HEADER,
-  }
+function Provider:request_headers(params)
+  local _model = params.model
+  local _conform_headers_fn = _model and _model.conform_headers_fn
+
+  if _conform_headers_fn then
+    params = _conform_headers_fn(self, params)
+  else
+    params = {
+      "-H",
+      "Content-Type: application/json",
+      "-H",
+      self.envs.AUTHORIZATION_HEADER,
+    }
+  end
+
+  return params
 end
 
 function Provider:parse_api_model_response(res, cb)
@@ -253,9 +262,9 @@ function Provider:expand_model(params, ctx)
   local final_overrided_applied_params =
     vim.tbl_extend("force", params, vim.tbl_get(_full_unfiltered_params, "model", "params") or {})
 
+  local headers = self:request_headers(params)
   params = self:conform_to_provider_request(final_overrided_applied_params)
-
-  return params, _completion_url, ctx
+  return params, _completion_url, ctx, headers, _model
 end
 
 function Provider:conform_to_provider_request(params)
