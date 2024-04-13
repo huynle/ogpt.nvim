@@ -33,6 +33,7 @@ function Api:chat_completions(response, inputs)
   ctx.params = params
   ctx.provider = self.provider.name
   ctx.model = custom_params.model
+  vim.notify("OGPT Using Provider: " .. self.provider.name .. " Model: " .. custom_params.model, vim.log.levels.INFO)
   utils.log("Request to: " .. _completion_url)
   utils.log(params)
   response.model_name = model_name
