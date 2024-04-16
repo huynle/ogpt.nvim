@@ -377,7 +377,7 @@ function M.defaults()
     },
 
     actions_paths = {
-      -- default action that comes with ogpt/lua/flow/actions
+      -- default action that comes with lua/ogpt/actions.json
       debug.getinfo(1, "S").source:sub(2):match("(.*/)") .. "actions.json",
     },
     show_quickfixes_cmd = "Trouble quickfix",
