@@ -7,7 +7,8 @@
   "grammar_correction": {
     "type": "popup",
     "strategy": "display",
-    "template": "Correct this to standard {{{lang}}}:\n\n{{{input}}}""args": {
+    "template": "Correct this to standard {{{lang}}}:\n\n{{{input}}}",
+    "args": {
       "lang": {
         "type": "string",
         "optional": "true",
@@ -37,7 +38,7 @@
   },
   "docstring": {
     "type": "popup",
-    "strategy": "edit",
+    "strategy": "display",
     "template": "# An elaborate, high quality docstring for the above function:\n# Writing a good docstring\n\nThis is an example of writing a really good docstring that follows a best practice for the given language. Attention is paid to detailing things like\n* parameter and return types (if applicable)\n* any errors that might be raised or returned, depending on the language\n\nI received the following code:\n\n```{{{filetype}}}\n{{{input}}}\n```\n\nThe code with a really good docstring added is below:\n\n```{{{filetype}}}",
     "params": {}
   },
@@ -49,7 +50,7 @@
   },
   "optimize_code": {
     "type": "popup",
-    "strategy": "edit",
+    "strategy": "display",
     "template": "Optimize the following code.\n\nCode:\n```{{{filetype}}}\n{{{input}}}\n```\n\nOptimized version:\n```{{{filetype}}}"
   },
   "summarize": {
