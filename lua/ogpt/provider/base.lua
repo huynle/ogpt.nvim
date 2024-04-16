@@ -247,7 +247,8 @@ function Provider:expand_model(params, ctx)
             _expand(_name, model)
             break
           elseif type(model) == "string" then
-            params.model = model
+            _expand(nil, model)
+            break
           end
         end
       end
