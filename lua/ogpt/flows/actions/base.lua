@@ -147,16 +147,16 @@ function BaseAction:update_variables()
   end
 end
 
-function BaseAction:render_template(variables, templates)
+function BaseAction:render_template(variables)
   variables = vim.tbl_extend("force", self.variables, variables or {})
   -- lazily render the final string.
   -- it recursively loop on the template string until it does not find anymore
   -- {{{}}} patterns
   local stop = false
   local depth = 2
-  local result = self.template
+  local template = self.template
   -- deprecating warning of {{}} (double curly)
-  if vim.fn.match(result, [[\v\{\{([^}]+)\}\}(})@!]]) ~= -1 then
+  if vim.fn.match(template, [[\v\{\{([^}]+)\}\}(})@!]]) ~= -1 then
     utils.log(
       "You may be using the {{<template_helper>}}, please updated to {{{<template_helpers>}}} (triple curly braces)in your custom actions.",
       vim.log.levels.ERROR
@@ -165,22 +165,27 @@ function BaseAction:render_template(variables, templates)
 
   local pattern = "%{%{%{(([%w_]+))%}%}%}"
   repeat
-    for match in string.gmatch(result, pattern) do
+    for match in string.gmatch(template, pattern) do
       local value = variables[match]
       if value then
+        -- Get "default" if value is table type
+        if type(value) == "table" then
+          value = value["default"]
+        end
+        -- Run function if value is function type
         if type(value) == "function" then
           value = value(self.variables)
         end
         local escaped_value = utils.escape_pattern(value)
-        result = string.gsub(result, "{{{" .. match .. "}}}", escaped_value)
+        template = string.gsub(template, "{{{" .. match .. "}}}", escaped_value)
       else
         utils.log("Cannot find {{{" .. match .. "}}}", vim.log.levels.ERROR)
         stop = true
       end
     end
     depth = depth - 1
-  until not string.match(result, pattern) or stop or depth == 0
-  return result
+  until not string.match(template, pattern) or stop or depth == 0
+  return template
 end
 
 function BaseAction:get_params()
