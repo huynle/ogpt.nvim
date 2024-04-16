@@ -7,6 +7,7 @@ local pickers = require("telescope.pickers")
 local Config = require("ogpt.config")
 local action_state = require("telescope.actions.state")
 local actions = require("telescope.actions")
+local async = require("plenary.async.async")
 
 local M = {}
 
