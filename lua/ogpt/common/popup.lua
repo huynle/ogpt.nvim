@@ -20,7 +20,7 @@ function Popup:mount()
   -- syntax and filetype don't always get set in the correct order.
   -- This for syntax to be the last thing to be set.
   if self._.buf_options["syntax"] then
-    vim.api.nvim_buf_set_option(self.bufnr, "syntax", self._.buf_options["syntax"])
+    vim.api.nvim_set_option_value("syntax", self._.buf_options["syntax"], { buf = self.bufnr })
   end
 end
 

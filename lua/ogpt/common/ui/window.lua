@@ -82,15 +82,12 @@ function SimpleView:mount(name, opts)
   end
   self.bufnr = vim.api.nvim_get_current_buf()
   self.winid = vim.api.nvim_get_current_win()
-
-  vim.api.nvim_buf_set_option(self.bufnr, "filetype", name)
-
-  -- vim.api.nvim_exec_autocmds("Syntax", { buffer = self.bufnr, Syntax = opts.buf.filetype })
+  vim.api.nvim_set_option_value("filetype", name, { buf = self.bufnr })
 
   -- Set the buffer type to "nofile" to prevent it from being saved.
   -- vim.api.nvim_buf_set_option(self.bufnr, "buftype", "nofile")
-  for opt, val in pairs(opts.buf) do
-    vim.api.nvim_buf_set_option(self.bufnr, opt, val)
+  for opt, _ in pairs(opts.buf) do
+    vim.api.nvim_set_option_value(opt, name, { buf = self.bufnr })
   end
 
   -- -- Disable swapfile for the buffer.
