@@ -9,8 +9,6 @@ function Popup:init(options, edgy)
   if options.edgy and options.border or edgy then
     self.edgy = true
     options.border = nil
-  else
-    options.buf_options.filetype = nil
   end
   Popup.super.init(self, options)
 end
