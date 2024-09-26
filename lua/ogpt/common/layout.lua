@@ -51,8 +51,7 @@ function Layout:hide(...)
   end
 end
 
-function Layout:update(boxes, ...)
-  self.visible_boxes = boxes
+function Layout:update(...)
   if not self.edgy then
     Layout.super.update(self, ...)
   end
