@@ -43,6 +43,7 @@ function Chat:init(opts)
   self.sessions_panel = nil
   self.parameters_panel = nil
   self.system_role_panel = nil
+  self.boxes = {}
 
   -- UI OPEN INDICATORS
   self.parameters_open = false
@@ -667,6 +668,8 @@ function Chat:get_layout_params()
   local starting_row = tabline_height == 0 and 0 or 1
 
   local width = utils.calculate_percentage_width(Config.options.popup_layout.right.width)
+  local boxes = {}
+
   if self.parameters_open then
     width = width + 40
   end
@@ -695,11 +698,14 @@ function Chat:get_layout_params()
   local config = self.display_mode == "right" and right_layout_config or center_layout_config
 
   local left_layout = Layout.Box(self.chat_window, { grow = 1 })
+  table.insert(boxes, self.chat_window)
+
   if self.system_role_open then
     left_layout = Layout.Box({
       Layout.Box(self.system_role_panel, { size = self.display_mode == "center" and 33 or 10 }),
       Layout.Box(self.chat_window, { grow = 1 }),
     }, { dir = self.display_mode == "center" and "row" or "col", grow = 1 })
+    table.insert(boxes, self.system_role_panel)
   end
 
   local box
@@ -714,14 +720,18 @@ function Chat:get_layout_params()
         Layout.Box(self.sessions_panel, { grow = 1 }),
       }, { dir = "col", size = 40 }),
     }, { dir = "row" })
+    table.insert(boxes, self.chat_input)
+    table.insert(boxes, self.parameters_panel)
+    table.insert(boxes, self.sessions_panel)
   else
     box = Layout.Box({
       left_layout,
       Layout.Box(self.chat_input, { size = 2 + self.prompt_lines }),
     }, { dir = "col" })
+    table.insert(boxes, self.chat_input)
   end
 
-  return config, box
+  return boxes, config, box
 end
 
 --   self:stopSpinner()
@@ -814,8 +824,18 @@ function Chat:open()
     end,
   })
 
-  local _layout_options, _layout_box = self:get_layout_params()
-  self.layout = Layout(_layout_options, _layout_box, Config.options.chat.edgy)
+  table.insert(self.boxes, self.chat_panel)
+  table.insert(self.boxes, self.chat_input)
+  table.insert(self.boxes, self.chat_window)
+  table.insert(self.boxes, self.sessions_panel)
+  table.insert(self.boxes, self.parameters_panel)
+  table.insert(self.boxes, self.system_role_panel)
+
+  local _, _layout_options, _layout_box = self:get_layout_params()
+  self.layout = Layout(self.boxes, _layout_options, _layout_box, Config.options.chat.edgy)
+  -- do the first layout update
+  self.layout:update(self:get_layout_params())
+
   self:set_keymaps()
 
   -- initialize
@@ -1029,15 +1049,17 @@ end
 
 function Chat:hide()
   self.layout:hide()
+  self.active = false
 end
 
 function Chat:show()
   self:redraw(true)
   self.layout:show()
+  self.active = true
 end
 
 function Chat:toggle()
-  if self.layout.winid ~= nil then
+  if self.active then
     self:hide()
   else
     self:show()

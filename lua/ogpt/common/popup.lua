@@ -32,4 +32,8 @@ function Popup:update_layout(...)
   end
 end
 
+function Popup:show(...)
+  Popup.super.show(self, ...)
+end
+
 return Popup
