@@ -31,6 +31,7 @@ function PopupAction:init(name, opts)
   self.ui = opts.ui or {}
   self.cur_win = vim.api.nvim_get_current_win()
   self.output_panel = PopupWindow(popup_options)
+  self.output_panel.parent_winid = self.cur_win
   self.spinner = Spinner:new(function(state) end)
 
   self:update_variables()
@@ -47,7 +48,6 @@ end
 
 function PopupAction:run()
   -- self.stop = false
-  local response = Response(self.provider)
   local params = self:get_params()
   local _, start_row, start_col, end_row, end_col = self:get_visual_selection()
   local opts = {
@@ -68,6 +68,11 @@ function PopupAction:run()
       -- self.stop = true
     end,
   }
+  local response = Response(self.provider, {
+    on_post_render = function(response)
+      self.output_panel:update_popup_size(opts)
+    end,
+  })
 
   if self.strategy == STRATEGY_DISPLAY then
     self:set_loading(true)

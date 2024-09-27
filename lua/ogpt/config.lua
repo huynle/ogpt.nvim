@@ -169,7 +169,7 @@ function M.defaults()
       relative = "editor",
       size = {
         width = "40%",
-        height = 10,
+        height = 5,
       },
       padding = { 1, 1, 1, 1 },
       enter = true,

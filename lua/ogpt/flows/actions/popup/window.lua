@@ -19,8 +19,10 @@ function PopupWindow:update_popup_size(opts)
   end
   opts = vim.tbl_extend("force", self.options, opts or {})
   opts.lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
-  local ui_opts = self:calculate_size(opts)
-  self:update_layout(ui_opts)
+  if self.options.dynamic_resize then
+    opts = self:calculate_size(opts)
+  end
+  self:update_layout(opts)
 end
 
 function PopupWindow:calculate_size(opts)
@@ -48,10 +50,6 @@ function PopupWindow:calculate_size(opts)
   local ui_h = math.ceil(len / ui_w) + ncount
   ui_h = math.min(ui_h, max_h)
   ui_h = math.max(ui_h, 1)
-
-  -- use opts
-  ui_w = opts.ui_w or ui_w
-  ui_h = opts.ui_h or ui_h
 
   -- build ui opts
   local ui_opts = vim.tbl_deep_extend("keep", {
@@ -95,9 +93,9 @@ function PopupWindow:mount(opts)
   if self.options.dynamic_resize then
     -- set the event
     -- https://github.com/MunifTanjim/nui.nvim/blob/main/lua/nui/popup/README.md#popupupdate_layout
-    self:on(event.CursorMoved, function()
-      self:update_popup_size(opts)
-    end)
+    -- self:on(event.CursorMoved, function()
+    --   self:update_popup_size(opts)
+    -- end)
   else
     opts = {
       cur_win = opts.cur_win,

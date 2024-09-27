@@ -304,13 +304,12 @@ function Chat:addAnswerPartial(response)
     for i, line in ipairs(lines) do
       local currentLine = vim.api.nvim_buf_get_lines(buffer, -2, -1, false)[1]
       vim.api.nvim_buf_set_lines(buffer, -2, -1, false, { currentLine .. line })
-
       local last_line_num = vim.api.nvim_buf_line_count(buffer)
       Signs.set_for_lines(self.chat_window.bufnr, start_line, last_line_num - 1, "chat")
       if i == length and i > 1 then
         vim.api.nvim_buf_set_lines(buffer, -1, -1, false, { "" })
       end
-      if self:is_buf_visiable() then
+      if self:is_buf_visible() then
         vim.api.nvim_win_set_cursor(win, { last_line_num, 0 })
       end
     end
@@ -555,7 +554,7 @@ function Chat:is_buf_exists()
   return vim.fn.bufexists(self.chat_window.bufnr) == 1
 end
 
-function Chat:is_buf_visiable()
+function Chat:is_buf_visible()
   -- Get all windows in the current tab
   local wins = vim.api.nvim_tabpage_list_wins(0)
   -- Traverse the window list to determine whether the buffer of chat_window is visible in the window
@@ -585,7 +584,7 @@ function Chat:add_highlight(hl_group, line, col_start, col_end)
 end
 
 function Chat:set_cursor(pos)
-  if self:is_buf_visiable() then
+  if self:is_buf_visible() then
     pcall(vim.api.nvim_win_set_cursor, self.chat_window.winid, pos)
   end
 end

@@ -127,11 +127,17 @@ function Response:pop_content()
   if content[2] == "END" and (content[1] and content[1] == "") then
     content[1] = self:get_processed_text()
   end
+  if self.events.on_pop_content then
+    self.events.on_pop_content()
+  end
   return content
 end
 
 function Response:render()
   self.partial_result_cb(self)
+  if self.events.on_post_render then
+    self.events.on_post_render(self)
+  end
 end
 
 function Response:pop_chunk()

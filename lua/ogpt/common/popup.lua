@@ -6,6 +6,7 @@ function Popup:init(options, edgy)
   options = options or {}
   self.edgy = false
   self.init_update = false
+  self.parent_winid = nil
   if options.edgy and options.border or edgy then
     self.edgy = true
     options.border = nil
