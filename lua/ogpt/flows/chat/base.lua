@@ -43,6 +43,8 @@ function Chat:init(opts)
   self.sessions_panel = nil
   self.parameters_panel = nil
   self.system_role_panel = nil
+  self.boxes = {}
+  self.visible_boxes = {}
 
   -- UI OPEN INDICATORS
   self.parameters_open = false
@@ -302,13 +304,12 @@ function Chat:addAnswerPartial(response)
     for i, line in ipairs(lines) do
       local currentLine = vim.api.nvim_buf_get_lines(buffer, -2, -1, false)[1]
       vim.api.nvim_buf_set_lines(buffer, -2, -1, false, { currentLine .. line })
-
       local last_line_num = vim.api.nvim_buf_line_count(buffer)
       Signs.set_for_lines(self.chat_window.bufnr, start_line, last_line_num - 1, "chat")
       if i == length and i > 1 then
         vim.api.nvim_buf_set_lines(buffer, -1, -1, false, { "" })
       end
-      if self:is_buf_visiable() then
+      if self:is_buf_visible() then
         vim.api.nvim_win_set_cursor(win, { last_line_num, 0 })
       end
     end
@@ -553,7 +554,7 @@ function Chat:is_buf_exists()
   return vim.fn.bufexists(self.chat_window.bufnr) == 1
 end
 
-function Chat:is_buf_visiable()
+function Chat:is_buf_visible()
   -- Get all windows in the current tab
   local wins = vim.api.nvim_tabpage_list_wins(0)
   -- Traverse the window list to determine whether the buffer of chat_window is visible in the window
@@ -583,7 +584,7 @@ function Chat:add_highlight(hl_group, line, col_start, col_end)
 end
 
 function Chat:set_cursor(pos)
-  if self:is_buf_visiable() then
+  if self:is_buf_visible() then
     pcall(vim.api.nvim_win_set_cursor, self.chat_window.winid, pos)
   end
 end
@@ -667,6 +668,8 @@ function Chat:get_layout_params()
   local starting_row = tabline_height == 0 and 0 or 1
 
   local width = utils.calculate_percentage_width(Config.options.popup_layout.right.width)
+  self.visible_boxes = {}
+
   if self.parameters_open then
     width = width + 40
   end
@@ -695,11 +698,14 @@ function Chat:get_layout_params()
   local config = self.display_mode == "right" and right_layout_config or center_layout_config
 
   local left_layout = Layout.Box(self.chat_window, { grow = 1 })
+  table.insert(self.visible_boxes, self.chat_window)
+
   if self.system_role_open then
     left_layout = Layout.Box({
       Layout.Box(self.system_role_panel, { size = self.display_mode == "center" and 33 or 10 }),
       Layout.Box(self.chat_window, { grow = 1 }),
     }, { dir = self.display_mode == "center" and "row" or "col", grow = 1 })
+    table.insert(self.visible_boxes, self.system_role_panel)
   end
 
   local box
@@ -714,11 +720,15 @@ function Chat:get_layout_params()
         Layout.Box(self.sessions_panel, { grow = 1 }),
       }, { dir = "col", size = 40 }),
     }, { dir = "row" })
+    table.insert(self.visible_boxes, self.chat_input)
+    table.insert(self.visible_boxes, self.parameters_panel)
+    table.insert(self.visible_boxes, self.sessions_panel)
   else
     box = Layout.Box({
       left_layout,
       Layout.Box(self.chat_input, { size = 2 + self.prompt_lines }),
     }, { dir = "col" })
+    table.insert(self.visible_boxes, self.chat_input)
   end
 
   return config, box
@@ -814,8 +824,17 @@ function Chat:open()
     end,
   })
 
+  table.insert(self.boxes, self.chat_panel)
+  table.insert(self.boxes, self.chat_input)
+  table.insert(self.boxes, self.chat_window)
+  table.insert(self.boxes, self.sessions_panel)
+  table.insert(self.boxes, self.parameters_panel)
+  table.insert(self.boxes, self.system_role_panel)
+
   local _layout_options, _layout_box = self:get_layout_params()
-  self.layout = Layout(_layout_options, _layout_box, Config.options.chat.edgy)
+  self.layout = Layout(self.boxes, _layout_options, _layout_box, Config.options.chat.edgy)
+  self.layout.visible_boxes = self.visible_boxes
+
   self:set_keymaps()
 
   -- initialize
@@ -1029,15 +1048,17 @@ end
 
 function Chat:hide()
   self.layout:hide()
+  self.active = false
 end
 
 function Chat:show()
   self:redraw(true)
   self.layout:show()
+  self.active = true
 end
 
 function Chat:toggle()
-  if self.layout.winid ~= nil then
+  if self.active then
     self:hide()
   else
     self:show()

@@ -6,6 +6,7 @@ function Popup:init(options, edgy)
   options = options or {}
   self.edgy = false
   self.init_update = false
+  self.parent_winid = nil
   if options.edgy and options.border or edgy then
     self.edgy = true
     options.border = nil
@@ -30,6 +31,10 @@ function Popup:update_layout(...)
     Popup.super.update_layout(self, ...)
     self.init_update = true
   end
+end
+
+function Popup:show(...)
+  Popup.super.show(self, ...)
 end
 
 return Popup

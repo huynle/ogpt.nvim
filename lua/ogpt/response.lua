@@ -20,11 +20,13 @@ function Response:init(provider, events)
   self.accumulated_chunks = {}
   self.processed_text = {}
   self.rest_params = {}
+  self.rest_headers = {}
   self.ctx = {}
   self.partial_result_cb = nil
   self.in_progress = false
   self.strategy = provider.rest_strategy
   self.provider = provider
+  self.model_name = nil
   self.not_processed = Deque.new()
   self.not_processed_raw = Deque.new()
   self.raw_chunk_tx, self.raw_chunk_rx = channel.mpsc()
@@ -56,8 +58,13 @@ function Response:run_async()
   end)
 
   async.run(function()
+    local custom_process_line = vim.tbl_get(self, "provider", "models", self.model_name or "", "process_line_fn")
     while true do
-      self.provider:process_response(self)
+      if custom_process_line and type(custom_process_line) == "function" then
+        custom_process_line(self)
+      else
+        self.provider:process_response(self)
+      end
     end
   end)
 
@@ -120,11 +127,17 @@ function Response:pop_content()
   if content[2] == "END" and (content[1] and content[1] == "") then
     content[1] = self:get_processed_text()
   end
+  if self.events.on_pop_content then
+    self.events.on_pop_content()
+  end
   return content
 end
 
 function Response:render()
   self.partial_result_cb(self)
+  if self.events.on_post_render then
+    self.events.on_post_render(self)
+  end
 end
 
 function Response:pop_chunk()

@@ -164,10 +164,10 @@ function M.defaults()
         row = 0,
         col = 30,
       },
-      relative = "cursor",
+      relative = "editor",
       size = {
         width = "40%",
-        height = 10,
+        height = 5,
       },
       padding = { 1, 1, 1, 1 },
       enter = true,
@@ -185,6 +185,7 @@ function M.defaults()
       win_options = {
         wrap = true,
         linebreak = true,
+        winblend = 0,
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
       },
       keymaps = {
@@ -217,6 +218,7 @@ function M.defaults()
           },
         },
         win_options = {
+          winblend = 0,
           winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
         },
         buf_options = {
@@ -269,6 +271,7 @@ function M.defaults()
         wrap = true,
         linebreak = true,
         foldcolumn = "1",
+        winblend = 0,
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
       },
       buf_options = {
@@ -285,6 +288,7 @@ function M.defaults()
         wrap = true,
         linebreak = true,
         foldcolumn = "2",
+        winblend = 0,
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
       },
     },
@@ -300,6 +304,7 @@ function M.defaults()
         },
       },
       win_options = {
+        winblend = 0,
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
       },
       buf_options = {
@@ -321,6 +326,7 @@ function M.defaults()
       },
       win_options = {
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+        winblend = 0,
       },
       buf_options = {
         filetype = "ogpt-instruction",
@@ -338,6 +344,7 @@ function M.defaults()
         },
       },
       win_options = {
+        winblend = 0,
         winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
       },
       buf_options = {
