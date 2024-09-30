@@ -209,6 +209,7 @@ function M.defaults()
       border_right_sign = "|",
       max_line_length = 120,
       edgy = nil, -- use global default
+      args = {},
       sessions_window = {
         active_sign = " 󰄵 ",
         inactive_sign = " 󰄱 ",

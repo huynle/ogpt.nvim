@@ -12,6 +12,7 @@ local Signs = require("ogpt.signs")
 local Spinner = require("ogpt.spinner")
 local Session = require("ogpt.flows.chat.session")
 local UtilWindow = require("ogpt.util_window")
+local template_helpers = require("ogpt.flows.actions.template_helpers")
 
 QUESTION, ANSWER, SYSTEM = 1, 2, 3
 ROLE_ASSISTANT = "assistant"
@@ -21,7 +22,7 @@ ROLE_USER = "user"
 local Chat = Object("Chat")
 
 function Chat:init(opts)
-  opts = opts or {}
+  self.opts = opts or {}
   self.input_extmark_id = nil
 
   self.active_panel = nil
@@ -53,8 +54,9 @@ function Chat:init(opts)
   self.prompt_lines = 1
 
   self.display_mode = Config.options.popup_layout.default
-  self.params = Config.get_chat_params(opts.provider)
+  self.params = Config.get_chat_params(self.opts.provider)
 
+  self.variables = {}
   self.session = Session.latest()
   self.provider = nil
   self.selectedIndex = 0
@@ -171,6 +173,66 @@ function Chat:isBusy()
   return self.is_running
 end
 
+function Chat:update_variables()
+  local bufnr = vim.api.nvim_get_current_buf()
+  self.variables = vim.tbl_extend("force", self.variables, {
+    filetype = function()
+      return vim.api.nvim_buf_get_option(bufnr, "filetype")
+    end,
+    input = function()
+      return utils.get_selected_text(bufnr)
+    end,
+    selection = function()
+      return utils.get_selected_range(bufnr)
+    end,
+  })
+
+  -- pull in action defined args
+  self.variables = vim.tbl_extend("force", self.variables, self.opts.args or {})
+
+  -- add in plugin predefined template helpers
+  for helper, helper_fn in pairs(template_helpers) do
+    local _v = { [helper] = helper_fn }
+    self.variables = vim.tbl_extend("force", self.variables, _v)
+  end
+end
+
+function Chat:render_template(variables, text)
+  variables = vim.tbl_extend("force", self.variables, variables or {})
+  -- lazily render the final string.
+  -- it recursively loop on the template string until it does not find anymore
+  -- {{{}}} patterns
+  local stop = false
+  local depth = 2
+  local result = text
+  -- deprecating warning of {{}} (double curly)
+  if vim.fn.match(result, [[\v\{\{([^}]+)\}\}(})@!]]) ~= -1 then
+    utils.log(
+      "You may be using the {{<template_helper>}}, please updated to {{{<template_helpers>}}} (triple curly braces)in your custom actions.",
+      vim.log.levels.ERROR
+    )
+  end
+
+  local pattern = "%{%{%{(([%w_]+))%}%}%}"
+  repeat
+    for match in string.gmatch(result, pattern) do
+      local value = variables[match]
+      if value then
+        if type(value) == "function" then
+          value = value(self.variables)
+        end
+        local escaped_value = utils.escape_pattern(value)
+        result = string.gsub(result, "{{{" .. match .. "}}}", escaped_value)
+      else
+        utils.log("Cannot find {{{" .. match .. "}}}", vim.log.levels.ERROR)
+        stop = true
+      end
+    end
+    depth = depth - 1
+  until not string.match(result, pattern) or stop or depth == 0
+  return result
+end
+
 function Chat:add(type, text, usage)
   local idx = self.session:add_item({
     type = type,
@@ -178,6 +240,10 @@ function Chat:add(type, text, usage)
     usage = usage,
     ctx = { context = self.session:previous_context() },
   })
+
+  self:update_variables()
+  text = self:render_template(Config.options.chat.args, text)
+
   self:_add(type, text, usage, idx)
   self:render_role()
 end
