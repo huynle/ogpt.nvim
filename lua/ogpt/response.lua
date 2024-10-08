@@ -141,29 +141,18 @@ function Response:render()
 end
 
 function Response:pop_chunk()
-  -- -- pop the next chunk and add anything that is not processs
-  -- local _value = self.not_processed
-  -- self.not_processed = ""
-  -- local _chunk = self.processsed_raw_rx.recv()
-  -- utils.log("Got chunk... now appending to 'not_processed'", vim.log.levels.TRACE)
-  -- return _value .. _chunk
-
   local _chunk = self.processsed_raw_rx.recv()
   utils.log("pushing processed raw to queue: " .. _chunk, vim.log.levels.TRACE)
 
   -- push on to queue
   self.not_processed:pushright(_chunk)
   utils.log("popping processed raw from queue: " .. _chunk, vim.log.levels.TRACE)
-  return self.not_processed:popleft()
 
-  -- local chunk = _chunk
-  -- -- clear the queue each time to try to get a full chunk
-  -- for i, queued_chunk in self.not_processed:ipairs_left() do
-  --   chunk = chunk .. queued_chunk
-  --   utils.log("Adding to final processed output: " .. chunk, vim.log.levels.TRACE)
-  --   self.not_processed[i] = nil
-  -- end
-  -- return chunk
+  local _data = {}
+  while not self.not_processed:is_empty() do
+    table.insert(_data, self.not_processed:popleft())
+  end
+  return table.concat(_data, "")
 end
 
 function Response:get_accumulated_chunks()
