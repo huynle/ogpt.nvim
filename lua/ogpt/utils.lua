@@ -456,4 +456,17 @@ function M.curl(args, on_exit)
   return job
 end
 
+function M.get_visual_selection(bufnr)
+  local lines, start_row, start_col, end_row, end_col = M.get_visual_lines(bufnr)
+
+  return lines, start_row, start_col, end_row, end_col
+end
+
+function M.get_selected_text(bufnr)
+  -- selection using vim GV, after selection is made, it remains in
+  -- vim registry, and this function recall that selection
+  local lines, _, _, _, _ = M.get_visual_selection(bufnr)
+  return table.concat(lines, "\n")
+end
+
 return M

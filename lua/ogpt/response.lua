@@ -30,8 +30,8 @@ function Response:init(provider, events)
   self.not_processed = Deque.new()
   self.not_processed_raw = Deque.new()
   self.raw_chunk_tx, self.raw_chunk_rx = channel.mpsc()
-  self.processed_raw_tx, self.processed_raw_rx = channel.mpsc()
-  self.processed_content_tx, self.processed_content_rx = channel.mpsc()
+  self.processed_raw_tx, self.processsed_raw_rx = channel.mpsc()
+  self.processed_content_tx, self.processsed_content_rx = channel.mpsc()
   self.response_state = nil
   self.chunk_regex = ""
   self:set_state(self.STATE_INIT)
@@ -90,7 +90,7 @@ function Response:_process_added_chunk()
     chunk = chunk .. queued_chunk
   end
 
-  -- Run different strategies for processing responses here
+  -- Run different strategies for processsing responses here
   if self.provider.response_params.strategy == self.STRATEGY_CHUNK then
     self.processed_raw_tx.send(chunk)
   elseif
@@ -123,7 +123,7 @@ function Response:_process_added_chunk()
 end
 
 function Response:pop_content()
-  local content = self.processed_content_rx.recv()
+  local content = self.processsed_content_rx.recv()
   if content[2] == "END" and (content[1] and content[1] == "") then
     content[1] = self:get_processed_text()
   end
@@ -141,29 +141,18 @@ function Response:render()
 end
 
 function Response:pop_chunk()
-  -- -- pop the next chunk and add anything that is not process
-  -- local _value = self.not_processed
-  -- self.not_processed = ""
-  -- local _chunk = self.processed_raw_rx.recv()
-  -- utils.log("Got chunk... now appending to 'not_processed'", vim.log.levels.TRACE)
-  -- return _value .. _chunk
-
-  local _chunk = self.processed_raw_rx.recv()
+  local _chunk = self.processsed_raw_rx.recv()
   utils.log("pushing processed raw to queue: " .. _chunk, vim.log.levels.TRACE)
 
   -- push on to queue
   self.not_processed:pushright(_chunk)
   utils.log("popping processed raw from queue: " .. _chunk, vim.log.levels.TRACE)
-  return self.not_processed:popleft()
 
-  -- local chunk = _chunk
-  -- -- clear the queue each time to try to get a full chunk
-  -- for i, queued_chunk in self.not_processed:ipairs_left() do
-  --   chunk = chunk .. queued_chunk
-  --   utils.log("Adding to final processed output: " .. chunk, vim.log.levels.TRACE)
-  --   self.not_processed[i] = nil
-  -- end
-  -- return chunk
+  local _data = {}
+  while not self.not_processed:is_empty() do
+    table.insert(_data, self.not_processed:popleft())
+  end
+  return table.concat(_data, "")
 end
 
 function Response:get_accumulated_chunks()
