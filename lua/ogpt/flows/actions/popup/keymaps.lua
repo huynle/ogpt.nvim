@@ -36,6 +36,40 @@ function M.apply_map(popup, opts)
     vim.cmd("q")
   end)
 
+  -- yank code and replace selection
+  popup:map("n", Config.options.popup.keymaps.replace_code, function()
+    -- Get the lines from the popup buffer
+    local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)
+    local _code = utils.getSelectedCode(_lines)
+    local code = vim.split(_code, "\n")
+
+    -- Yank the lines to the specified register
+    vim.fn.setreg("yank_register", table.concat(_lines, "\n"))
+
+    -- Delete the text in the specified selection range
+    vim.api.nvim_buf_set_text(
+      opts.main_bufnr,
+      opts.selection_idx.start_row - 1,
+      opts.selection_idx.start_col - 1,
+      opts.selection_idx.end_row - 1,
+      opts.selection_idx.end_col,
+      { "" }
+    )
+
+    -- Paste the yanked lines over the selection
+    vim.api.nvim_buf_set_text(
+      opts.main_bufnr,
+      opts.selection_idx.start_row - 1,
+      opts.selection_idx.start_col - 1,
+      opts.selection_idx.start_row - 1,
+      opts.selection_idx.start_col - 1,
+      code
+    )
+
+    -- Close the popup
+    vim.cmd("q")
+  end)
+
   -- accept output and append
   popup:map("n", Config.options.popup.keymaps.append, function()
     local _lines = vim.api.nvim_buf_get_lines(popup.bufnr, 0, -1, false)

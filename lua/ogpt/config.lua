@@ -196,6 +196,7 @@ function M.defaults()
         append = "a",
         prepend = "p",
         yank_code = "c",
+        replace_code = "r",
         yank_to_register = "y",
       },
     },
