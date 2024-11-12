@@ -29,6 +29,16 @@ function Layout:init(boxes, options, box, edgy)
   end
 end
 
+function Layout:mount_all(...)
+  if not self.edgy then
+    Layout.super.mount(self, ...)
+  else
+    for _, box in ipairs(self.boxes) do
+      box:mount(...)
+    end
+  end
+end
+
 function Layout:mount(...)
   if not self.edgy then
     Layout.super.mount(self, ...)

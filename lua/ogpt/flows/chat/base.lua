@@ -1040,6 +1040,7 @@ function Chat:set_keymaps()
   -- toggle system
   self:map(Config.options.chat.keymaps.toggle_system_role_open, function()
     if self.system_role_open and self.active_panel == self.system_role_panel then
+      self.system_role_panel:hide()
       self:set_active_panel(self.chat_input)
     end
 
@@ -1048,6 +1049,7 @@ function Chat:set_keymaps()
     self:redraw()
 
     if self.system_role_open then
+      self.system_role_panel:show()
       self:set_active_panel(self.system_role_panel)
     end
   end)

@@ -58,7 +58,11 @@ local finder = function(provider, opts)
         process_single_model({ name = model })
       end
 
-      if not job_started and provider:models_url() then
+      if job_started and job_completed then
+        process_complete()
+      end
+
+      if provider:models_url() then
         local args = {}
         vim.list_extend(args, { provider:models_url() })
         vim.list_extend(args, provider:request_headers())
@@ -79,8 +83,6 @@ local finder = function(provider, opts)
 
         job_started = true
         job:new(job_opts):start()
-      else
-        process_complete()
       end
     end,
   })
