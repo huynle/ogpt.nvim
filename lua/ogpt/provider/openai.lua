@@ -10,6 +10,7 @@ function Openai:init(opts)
   self.api_parameters = {
     "model",
     "messages",
+    "prompt",
     "stream",
     "temperature",
     "presence_penalty",
@@ -50,6 +51,10 @@ function Openai:parse_api_model_response(res, cb)
 end
 
 function Openai:conform_request(params)
+  if params.system then
+    params["prompt"] = params.system
+  end
+
   for key, value in pairs(params) do
     if not vim.tbl_contains(self.api_parameters, key) then
       utils.log("Did not process " .. key .. " for " .. self.name)

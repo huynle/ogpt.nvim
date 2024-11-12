@@ -70,7 +70,6 @@ function M.open_chat_with_awesome_prompt(opts)
       chat.chat_window.border:set_text("top", " OGPT - Acts as " .. act .. " ", "center")
 
       chat:set_system_message(prompt)
-      chat:open_system_panel()
     end),
   })
 end
