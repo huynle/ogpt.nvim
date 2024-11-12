@@ -31,7 +31,7 @@ function EditAction:init(name, opts)
   self.output_panel = nil
   self.parameters_panel = nil
   self.timer = nil
-  self.filetype = vim.api.nvim_buf_get_option(self:get_bufnr(), "filetype")
+  self.filetype = vim.api.nvim_get_option_value("filetype", { buf = self:get_bufnr() })
 
   self.ui = opts.ui or {}
 
@@ -295,15 +295,31 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
           self.system_role_panel:mount()
 
           vim.api.nvim_set_current_win(self.parameters_panel.winid)
-          vim.api.nvim_buf_set_option(self.parameters_panel.bufnr, "modifiable", false)
-          vim.api.nvim_win_set_option(self.parameters_panel.winid, "cursorline", true)
+          vim.api.nvim_set_option_value(
+            "modifiable",
+            false,
+            { scope = "local", win = self.parameters_panel.winid, buf = self.parameters_panel.bufnr }
+          )
+          vim.api.nvim_set_option_value(
+            "cursorline",
+            true,
+            { scope = "local", win = self.parameters_panel.winid, buf = self.parameters_panel.bufnr }
+          )
         end
         parameters_open = not parameters_open
         -- set input and output settings
         --  TODO
         for _, window in ipairs({ self.selection_panel, self.output_panel }) do
-          vim.api.nvim_buf_set_option(window.bufnr, "syntax", self.filetype)
-          vim.api.nvim_win_set_option(window.winid, "number", true)
+          vim.api.nvim_set_option_value("filetype", self.filetype, {
+            scope = "local",
+            win = window.winid,
+            buf = window.bufnr,
+          })
+          vim.api.nvim_set_option_value("number", true, {
+            scope = "local",
+            win = window.winid,
+            buf = window.bufnr,
+          })
         end
       end, {})
     end
@@ -408,8 +424,16 @@ function EditAction:edit_with_instructions(output_lines, selection, opts, ...)
 
   -- set input and output settings
   for _, window in ipairs({ self.selection_panel, self.output_panel }) do
-    vim.api.nvim_buf_set_option(window.bufnr, "syntax", "markdown")
-    vim.api.nvim_win_set_option(window.winid, "number", true)
+    vim.api.nvim_set_option_value("filetype", self.filetype, {
+      scope = "local",
+      win = window.winid,
+      buf = window.bufnr,
+    })
+    vim.api.nvim_set_option_value("number", true, {
+      scope = "local",
+      win = window.winid,
+      buf = window.bufnr,
+    })
   end
   -- end)
 end
@@ -432,7 +456,7 @@ function EditAction:build_edit_messages(input, instructions, opts)
     },
     {
       role = "user",
-      content = self:render_template(variables, opts.template),
+      content = self:render_template(variables),
     },
   }
 

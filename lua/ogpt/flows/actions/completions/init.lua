@@ -51,12 +51,12 @@ function CompletionAction:run()
     local params = self:get_params()
     params.stream = false
     Api.completions(params, function(answer, usage)
-      self:on_result(answer, usage)
+      self:on_result(answer)
     end)
   end)
 end
 
-function CompletionAction:on_result(answer, usage)
+function CompletionAction:on_result(answer)
   vim.schedule(function()
     self:set_loading(false)
 

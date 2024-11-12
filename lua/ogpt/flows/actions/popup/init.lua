@@ -95,7 +95,7 @@ function PopupAction:run()
         end
       end,
     })
-  else
+  else -- Other Popup strategies: REPLACE, APPEND, PREPEND, QUICK_FIX
     self:set_loading(true)
     self.provider.api:chat_completions(response, {
       custom_params = params,
@@ -112,6 +112,7 @@ function PopupAction:on_result(response)
   local content = response:pop_content()
   local answer = content[1]
   local state = content[2]
+
 
   local bufnr = self:get_bufnr()
   local _, start_row, start_col, end_row, end_col = self:get_visual_selection()
