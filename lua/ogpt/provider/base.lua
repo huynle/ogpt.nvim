@@ -95,8 +95,10 @@ function Provider:models_url()
 end
 
 function Provider:request_headers(params)
-  local _model = params.model
-  local _conform_headers_fn = _model and _model.conform_headers_fn
+  local _conform_headers_fn
+  if vim.tbl_get(params or {}, "model", "conform_headers_fn") then
+    _conform_headers_fn = params.model.conform_headers_fn
+  end
 
   if _conform_headers_fn then
     params = _conform_headers_fn(self, params)

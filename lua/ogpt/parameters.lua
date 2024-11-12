@@ -69,77 +69,6 @@ local finder = function(opts)
   })
 end
 
-local params_order = {
-  "provider",
-  "model",
-  "embedding_only",
-  "f16_kv",
-  "frequency_penalty",
-  "logits_all",
-  "low_vram",
-  "main_gpu",
-  "max_tokens",
-  "max_new_tokens",
-  "mirostat",
-  "mirostat_eta",
-  "mirostat_tau",
-  "num_batch",
-  "num_ctx",
-  "num_gpu",
-  "num_gqa",
-  "num_keep",
-  "num_predict",
-  "num_thread",
-  "presence_penalty",
-  "repeat_last_n",
-  "repeat_penalty",
-  "rope_frequency_base",
-  "rope_frequency_scale",
-  "seed",
-  "stop",
-  "temperature",
-  "tfs_z",
-  "top_k",
-  "top_p",
-  "typical_p",
-  "use_mlock",
-  "use_mmap",
-  "vocab_only",
-}
-local params_validators = {
-  provider = model_validator(),
-  model = model_validator(),
-  embedding_only = model_validator(),
-  f16_kv = model_validator(),
-  frequency_penalty = float_validator(),
-  max_tokens = integer_validator(),
-  max_new_tokens = integer_validator(),
-  mirostat = integer_validator(),
-  mirostat_eta = float_validator(),
-  mirostat_tau = float_validator(),
-  num_batch = integer_validator(),
-  num_ctx = integer_validator(),
-  num_gpu = integer_validator(),
-  num_gqa = integer_validator(),
-  num_keep = integer_validator(),
-  num_predict = integer_validator(),
-  num_thread = integer_validator(),
-  presence_penalty = float_validator(),
-  repeat_last_n = integer_validator(),
-  repeat_penalty = float_validator(),
-  seed = integer_validator(),
-  stop = model_validator(),
-  temperature = float_validator(),
-  tfs_z = float_validator(),
-  top_k = float_validator(),
-  top_p = float_validator(),
-  logits_all = bool_validator(),
-  vocab_only = bool_validator(),
-  use_mmap = bool_validator(),
-  use_mlock = bool_validator(),
-  low_vram = bool_validator(),
-}
-
 local function write_virtual_text(bufnr, ns, line, chunks, mode)
   mode = mode or "extmark"
   if mode == "extmark" then
@@ -147,6 +76,12 @@ local function write_virtual_text(bufnr, ns, line, chunks, mode)
   elseif mode == "vt" then
     pcall(vim.api.nvim_buf_set_virtual_text, bufnr, ns, line, chunks, {})
   end
+end
+
+function Parameters:get_params()
+  _out = vim.tbl_get(self, "parent", "provider", "api_parameters") or {}
+  -- add in provide and model every time
+  return vim.tbl_extend("force", _out, { "provider", "model" })
 end
 
 function Parameters:select_parameter(opts)
@@ -162,7 +97,7 @@ function Parameters:select_parameter(opts)
       selection_caret = Config.options.chat.answer_sign .. " ",
       prompt_title = "Parameter",
       finder = finder({
-        parameters = params_order,
+        parameters = self:get_params(),
       }),
       sorter = conf.generic_sorter(opts),
       attach_mappings = function(prompt_bufnr)
@@ -214,7 +149,7 @@ end
 function Parameters:refresh_panel()
   -- write details as virtual text
   local details = {}
-  for _, key in pairs(params_order) do
+  for _, key in pairs(self:get_params()) do
     if self.params[key] ~= nil then
       local display_text = self.params[key]
       if type(display_text) == "table" then
@@ -255,6 +190,7 @@ function Parameters:init(opts)
   self.vts = {}
 
   self.type = opts.type
+
   self.default_params = opts.default_params
   self.session = opts.session
   self.parent = opts.parent
@@ -273,7 +209,7 @@ function Parameters:init(opts)
     local row, _ = unpack(vim.api.nvim_win_get_cursor(self.winid))
 
     local existing_order = {}
-    for _, key in ipairs(params_order) do
+    for _, key in ipairs(self:get_params()) do
       if self.params[key] ~= nil then
         table.insert(existing_order, key)
       end
@@ -297,7 +233,7 @@ function Parameters:init(opts)
     local row, _ = unpack(vim.api.nvim_win_get_cursor(self.winid))
 
     local existing_order = {}
-    for _, key in ipairs(params_order) do
+    for _, key in ipairs(self:get_params()) do
       if self.params[key] ~= nil then
         table.insert(existing_order, key)
       end
@@ -344,7 +280,8 @@ function Parameters:update_property(key, row, new_value, session)
     vim.api.nvim_del_current_line()
     vim.api.nvim_buf_set_option(self.bufnr, "modifiable", false)
   else
-    self.params[key] = params_validators[key](new_value)
+    -- self.params[key] = params_validators[key](new_value)
+    self.params[key] = new_value
   end
   self:write_config(self.params, session)
   self:refresh_panel()

@@ -8,12 +8,12 @@ local Textgenui = ProviderBase:extend("Textgenui")
 function Textgenui:init(opts)
   Textgenui.super.init(self, opts)
   self.name = "textgenui"
-  self.api_parameters = {
+  self._api_parameters = {
     "inputs",
     "parameters",
     -- "stream",
   }
-  self.api_chat_request_options = {
+  self._api_chat_request_options = {
     "best_of",
     "decoder_input_details",
     "details",
@@ -31,6 +31,7 @@ function Textgenui:init(opts)
     "typical_p",
     "watermark",
   }
+  self.api_parameters = vim.tbl_extend("force", self._api_parameters, self._api_chat_request_options)
 end
 
 function Textgenui:load_envs(override)
@@ -60,8 +61,8 @@ function Textgenui:conform_request(params)
   local param_options = {}
 
   for key, value in pairs(params) do
-    if not vim.tbl_contains(self.api_parameters, key) then
-      if vim.tbl_contains(self.api_chat_request_options, key) then
+    if not vim.tbl_contains(self._api_parameters, key) then
+      if vim.tbl_contains(self._api_chat_request_options, key) then
         param_options[key] = value
         params[key] = nil
       else

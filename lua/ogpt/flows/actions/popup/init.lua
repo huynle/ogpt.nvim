@@ -100,6 +100,7 @@ function PopupAction:run()
     self.provider.api:chat_completions(response, {
       custom_params = params,
       partial_result_fn = function(...)
+        opts = opts
         self:on_result(...)
       end,
       should_stop = nil,
@@ -107,44 +108,63 @@ function PopupAction:run()
   end
 end
 
-function PopupAction:on_result(answer)
-  self:set_loading(false)
-  local lines = utils.split_string_by_line(answer)
-  local _, start_row, start_col, end_row, end_col = self:get_visual_selection()
-  local bufnr = self:get_bufnr()
-  if self.strategy == STRATEGY_PREPEND then
-    answer = answer .. "\n" .. self:get_selected_text()
-    vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
-  elseif self.strategy == STRATEGY_APPEND then
-    answer = self:get_selected_text() .. "\n\n" .. answer .. "\n"
-    vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
-  elseif self.strategy == STRATEGY_REPLACE then
-    answer = answer
-    vim.api.nvim_buf_set_text(bufnr, start_row - 1, start_col - 1, end_row - 1, end_col, lines)
-  elseif self.strategy == STRATEGY_QUICK_FIX then
-    if #lines == 1 and lines[1] == "<OK>" then
-      vim.notify("Your Code looks fine, no issues.", vim.log.levels.INFO)
-      return
-    end
+function PopupAction:on_result(response)
+  local content = response:pop_content()
+  local answer = content[1]
+  local state = content[2]
 
-    local entries = {}
-    for _, line in ipairs(lines) do
-      local lnum, text = line:match("(%d+):(.*)")
-      if lnum then
-        local entry = { filename = vim.fn.expand("%:p"), lnum = tonumber(lnum), text = text }
-        table.insert(entries, entry)
-      end
-    end
-    if entries then
-      vim.fn.setqflist(entries)
-      vim.cmd(Config.options.show_quickfixes_cmd)
-    end
+
+  local bufnr = self:get_bufnr()
+  local _, start_row, start_col, end_row, end_col = self:get_visual_selection()
+
+  if state == "ERROR" then
+    self:set_loading(false)
+    utils.log("An Error Occurred: " .. answer, vim.log.levels.ERROR)
+    return
   end
 
-  -- set the cursor onto the answer
-  if self.strategy == STRATEGY_APPEND then
-    local target_line = end_row + 3
-    vim.api.nvim_win_set_cursor(0, { target_line, 0 })
+  if state == "END" then
+    self:set_loading(false)
+    vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
+    vim.api.nvim_buf_set_text(
+      bufnr,
+      start_row - 1,
+      start_col - 1,
+      end_row - 1,
+      end_col,
+      utils.split_string_by_line(answer)
+    )
+    return
+  end
+
+  if state == "START" then
+    self:set_loading(true)
+    vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
+    -- Delete the text in the specified selection range
+    vim.api.nvim_buf_set_text(
+      bufnr,
+      opts.selection_idx.start_row - 1,
+      opts.selection_idx.start_col - 1,
+      opts.selection_idx.end_row - 1,
+      opts.selection_idx.end_col,
+      { "" }
+    )
+  end
+
+  if state == "START" or state == "CONTINUE" then
+    vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
+    local lines = vim.split(answer, "\n", {})
+    local length = #lines
+
+    for i, line in ipairs(lines) do
+      if i > 1 then
+        vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, { "" }) -- add in the new line here
+      end
+      local currentLine = vim.api.nvim_buf_get_lines(bufnr, -2, -1, false)[1]
+      if currentLine then
+        vim.api.nvim_buf_set_lines(bufnr, -2, -1, false, { currentLine .. line })
+      end
+    end
   end
 end
 

@@ -38,6 +38,22 @@ function M.defaults()
           top_p = 0.99,
         },
       },
+      openrouter = {
+        enabled = true,
+        model = "gpt-4",
+        api_host = os.getenv("OPENROUTER_API_HOST") or "https://openrouter.ai/api",
+        api_key = os.getenv("OPENROUTER_API_KEY") or "",
+        api_params = {
+          temperature = 0.5,
+          top_p = 0.99,
+        },
+        api_chat_params = {
+          frequency_penalty = 0.8,
+          presence_penalty = 0.5,
+          temperature = 0.8,
+          top_p = 0.99,
+        },
+      },
       gemini = {
         enabled = true,
         api_host = os.getenv("GEMINI_API_HOST"),
@@ -194,6 +210,7 @@ function M.defaults()
         append = "a",
         prepend = "p",
         yank_code = "c",
+        replace_code = "r",
         yank_to_register = "y",
       },
     },
