@@ -13,15 +13,18 @@ function Gemini:init(opts)
     -- split_chunk_match_regex = '"text": %"(.-)%"[\n%}]',
     -- split_chunk_match_regex = '"parts": %[[\n%s]+(.-)%]', -- capture everything in the "content.parts" of the response
   }
-  self.api_parameters = {
+  self._api_parameters = {
     "contents",
   }
-  self.api_chat_request_options = {
+  self._api_chat_request_options = {
     "stopSequences",
     "temperature",
+    "maxOutputTokens",
     "topP",
     "topK",
   }
+
+  self.api_parameters = vim.tbl_extend("force", self._api_parameters, self._api_chat_request_options)
 end
 
 function Gemini:load_envs(override)
@@ -81,8 +84,8 @@ function Gemini:conform_request(params)
   local param_options = {}
 
   for key, value in pairs(params) do
-    if not vim.tbl_contains(self.api_parameters, key) then
-      if vim.tbl_contains(self.api_chat_request_options, key) then
+    if not vim.tbl_contains(self._api_parameters, key) then
+      if vim.tbl_contains(self._api_chat_request_options, key) then
         -- move it to the options
         param_options[key] = value
         params[key] = nil
