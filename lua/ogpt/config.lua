@@ -56,8 +56,8 @@ function M.defaults()
       },
       gemini = {
         enabled = true,
-        api_host = os.getenv("GEMINI_API_HOST"),
-        api_key = os.getenv("GEMINI_API_KEY"),
+        api_host = os.getenv("GEMINI_API_HOST") or "https://generativelanguage.googleapis.com/v1beta",
+        api_key = os.getenv("GEMINI_API_KEY") or "",
         model = "gemini-pro",
         api_params = {
           temperature = 0.5,
@@ -70,7 +70,8 @@ function M.defaults()
       },
       anthropic = {
         enabled = true,
-        api_key = os.getenv("ANTHROPIC_API_KEY"),
+        api_host = os.getenv("ANTHROPIC_API_HOST") or "https://api.anthropic.com/v1/messages",
+        api_key = os.getenv("ANTHROPIC_API_KEY") or "",
         model = "claude-3-opus-20240229",
         api_params = {
           temperature = 0.5,
@@ -85,8 +86,8 @@ function M.defaults()
       },
       textgenui = {
         enabled = true,
-        api_host = os.getenv("OGPT_API_HOST"),
-        api_key = os.getenv("OGPT_API_KEY"),
+        api_host = os.getenv("TEXTGEN_API_HOST"),
+        api_key = os.getenv("TEXTGEN_API_KEY"),
         model = {
           -- create a modify url specifically for mixtral to run
           name = "mixtral-8-7b",

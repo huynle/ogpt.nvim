@@ -19,9 +19,7 @@ end
 function Openai:load_envs(override)
   local _envs = {}
   _envs.OPENAI_API_HOST = Config.options.providers.openai.api_host
-    or os.getenv("OPENAI_API_HOST")
-    or "https://api.openai.com"
-  _envs.OPENAI_API_KEY = Config.options.providers.openai.api_key or os.getenv("OPENAI_API_KEY") or ""
+  _envs.OPENAI_API_KEY = Config.options.providers.openai.api_key
   _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.OPENAI_API_HOST .. "/v1/models")
   _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OPENAI_API_HOST .. "/v1/completions")
   _envs.CHAT_COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OPENAI_API_HOST .. "/v1/chat/completions")

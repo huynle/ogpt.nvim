@@ -29,12 +29,10 @@ end
 
 function Gemini:load_envs(override)
   local _envs = {}
+  _envs.GEMINI_API_HOST = Config.options.providers.gemini.api_host
   _envs.GEMINI_API_KEY = Config.options.providers.gemini.api_key or os.getenv("GEMINI_API_KEY") or ""
   _envs.AUTH = "key=" .. (_envs.GEMINI_API_KEY or " ")
   _envs.MODEL = "gemini-pro"
-  _envs.GEMINI_API_HOST = Config.options.providers.gemini.api_host
-    or os.getenv("GEMINI_API_HOST")
-    or "https://generativelanguage.googleapis.com/v1beta"
   _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.GEMINI_API_HOST .. "/models")
   self.envs = vim.tbl_extend("force", _envs, override or {})
   return self.envs
