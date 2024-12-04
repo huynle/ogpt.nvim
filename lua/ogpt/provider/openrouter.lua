@@ -29,9 +29,7 @@ end
 function OpenRouter:load_envs(override)
   local _envs = {}
   _envs.OPENROUTER_API_HOST = Config.options.providers.openrouter.api_host
-    or os.getenv("OPENROUTER_API_HOST")
-    or "https://api.openrouter.com"
-  _envs.OPENROUTER_API_KEY = Config.options.providers.openrouter.api_key or os.getenv("OPENROUTER_API_KEY") or ""
+  _envs.OPENROUTER_API_KEY = Config.options.providers.openrouter.api_key
   _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.OPENROUTER_API_HOST .. "/v1/models")
   _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OPENROUTER_API_HOST .. "/v1/completions")
   _envs.CHAT_COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OPENROUTER_API_HOST .. "/v1/chat/completions")

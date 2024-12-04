@@ -12,10 +12,6 @@ function Openai:init(opts)
     "messages",
     "stream",
     "temperature",
-    "presence_penalty",
-    "frequency_penalty",
-    "top_p",
-    "max_tokens",
   }
   self.api_chat_request_options = {}
 end
@@ -23,9 +19,7 @@ end
 function Openai:load_envs(override)
   local _envs = {}
   _envs.OPENAI_API_HOST = Config.options.providers.openai.api_host
-    or os.getenv("OPENAI_API_HOST")
-    or "https://api.openai.com"
-  _envs.OPENAI_API_KEY = Config.options.providers.openai.api_key or os.getenv("OPENAI_API_KEY") or ""
+  _envs.OPENAI_API_KEY = Config.options.providers.openai.api_key
   _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.OPENAI_API_HOST .. "/v1/models")
   _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OPENAI_API_HOST .. "/v1/completions")
   _envs.CHAT_COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.OPENAI_API_HOST .. "/v1/chat/completions")
@@ -50,12 +44,46 @@ function Openai:parse_api_model_response(res, cb)
 end
 
 function Openai:conform_request(params)
+  local _to_remove_system_idx = {}
+  for idx, message in ipairs(params.messages) do
+    if message.role == "system" then
+      table.insert(_to_remove_system_idx, idx)
+    end
+  end
+
+  -- Remove elements from the list based on indices
+  for i = #_to_remove_system_idx, 1, -1 do
+    table.remove(params.messages, _to_remove_system_idx[i])
+  end
+
+  -- conform to support text only model
+  local messages = params.messages
+  local conformed_messages = {}
+  for _, message in ipairs(messages) do
+    table.insert(conformed_messages, {
+      role = message.role,
+      content = utils.gather_text_from_parts(message.content),
+    })
+  end
+
+  -- Insert the updated params.system string at the beginning of conformed_messages
+  if params.system then
+    table.insert(conformed_messages, 1, {
+      role = "system",
+      content = params.system,
+    })
+  end
+
+  params.messages = conformed_messages
+
+  -- general clean up, remove things that shouldnt be here
   for key, value in pairs(params) do
     if not vim.tbl_contains(self.api_parameters, key) then
       utils.log("Did not process " .. key .. " for " .. self.name)
       params[key] = nil
     end
   end
+
   return params
 end
 

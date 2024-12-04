@@ -40,19 +40,16 @@ function Textgenui:load_envs(override)
     or os.getenv("TEXTGEN_API_HOST")
     or "https://api.textgen.com"
   _envs.TEXTGEN_API_KEY = Config.options.providers.textgenui.api_key or os.getenv("TEXTGEN_API_KEY") or ""
-  _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.TEXTGEN_API_HOST .. "/api/tags")
-  _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.TEXTGEN_API_HOST)
-  _envs.CHAT_COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.TEXTGEN_API_HOST)
+  _envs.MODELS_URL = utils.ensureUrlProtocol(_envs.TEXTGEN_API_HOST .. "/v1/models")
+  _envs.COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.TEXTGEN_API_HOST .. "/v1/completions")
+  _envs.CHAT_COMPLETIONS_URL = utils.ensureUrlProtocol(_envs.TEXTGEN_API_HOST .. "/v1/chat/completions")
   _envs.AUTHORIZATION_HEADER = "Authorization: Bearer " .. (_envs.TEXTGEN_API_KEY or " ")
   self.envs = vim.tbl_extend("force", _envs, override or {})
   return self.envs
 end
 
 function Textgenui:completion_url()
-  if self.stream_response then
-    return self.envs.TEXTGEN_API_HOST .. "/generate_stream"
-  end
-  return self.envs.TEXTGEN_API_HOST .. "/generate"
+  return self.envs.COMPLETIONS_URL
 end
 
 function Textgenui:conform_request(params)
@@ -161,6 +158,22 @@ function Textgenui:process_response(response)
     -- done
   else
     response:add_processed_text(_json.token.text, "CONTINUE")
+  end
+end
+
+function Textgenui:parse_api_model_response(res, cb)
+  local response = table.concat(res, "\n")
+  local ok, json = pcall(vim.fn.json_decode, response)
+
+  if not ok then
+    vim.print("OGPT ERROR: something happened when trying request for models from " .. self:models_url())
+  else
+    -- Given a json object from the api, parse this and get the names of the model to be displayed
+    for _, model in ipairs(json.data) do
+      cb({
+        name = model.id,
+      })
+    end
   end
 end
 
